@@ -5,6 +5,7 @@ import { JobPagination } from '@/components/job-pagination';
 import {
   filtersFromSearchParams,
   getCountryFacets,
+  getTagFacets,
   getTaxonomy,
   jobBoardHref,
   searchJobs,
@@ -19,10 +20,11 @@ export async function JobBoard({
   params: Record<string, string | string[] | undefined>;
 }) {
   const filters = filtersFromSearchParams(params);
-  const [{ jobs, total, page }, taxonomy, countries] = await Promise.all([
+  const [{ jobs, total, page }, taxonomy, countries, tags] = await Promise.all([
     searchJobs(filters),
     getTaxonomy(),
     getCountryFacets(),
+    getTagFacets(),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -38,8 +40,8 @@ export async function JobBoard({
           <Link href="/companies" className="underline">
             companies hiring
           </Link>{' '}
-          in the United States, United Kingdom, Canada, Australia, and Europe. Filter by location, robot type, remote,
-          and entry level, or read the{' '}
+          in the United States, United Kingdom, Canada, Australia, and Europe. Filter by location, robot type, skills,
+          remote, and entry level, or read the{' '}
           <Link href="/guides" className="underline">
             robotics career guides
           </Link>
@@ -52,6 +54,7 @@ export async function JobBoard({
           <JobFilters
             filters={filters}
             domains={taxonomy.domains.map((d) => ({ slug: d.slug, label: d.name }))}
+            tags={tags}
             seniorities={taxonomy.seniorities.map((s) => ({ slug: s.slug, label: s.label }))}
             countries={countries}
           />
@@ -76,6 +79,7 @@ function EmptyJobs({ filters }: { filters: JobFilterValues }) {
     filters.q ||
       filters.countries?.length ||
       filters.domains?.length ||
+      filters.tags?.length ||
       filters.seniorities?.length ||
       filters.workplaces?.length ||
       filters.employments?.length ||

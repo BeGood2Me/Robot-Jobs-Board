@@ -89,7 +89,7 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
         {job.techTags.map(({ techTag }) => (
           <Link
             key={techTag.id}
-            href={`/skills/${techTag.slug}-jobs`}
+            href={`/?tag=${techTag.slug}`}
             className="rounded-lg border border-line px-3 py-1 text-sm"
           >
             {techTag.label}

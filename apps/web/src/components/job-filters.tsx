@@ -101,11 +101,13 @@ function CheckList({
 export function JobFilters({
   filters,
   domains,
+  tags,
   seniorities,
   countries,
 }: {
   filters: JobFilterValues;
   domains: Option[];
+  tags: Array<{ slug: string; label: string; count: number }>;
   seniorities: Option[];
   countries: Array<{ country: string; count: number }>;
 }) {
@@ -114,6 +116,7 @@ export function JobFilters({
     filters.q ||
       filters.countries?.length ||
       filters.domains?.length ||
+      filters.tags?.length ||
       filters.seniorities?.length ||
       filters.workplaces?.length ||
       filters.employments?.length ||
@@ -169,6 +172,13 @@ export function JobFilters({
       />
       <CheckList legend="Workplace" name="workplace" options={[...workplaces].sort(byLabel)} selected={filters.workplaces} />
       <CheckList legend="Robot type" name="domain" options={[...domains].sort(byLabel)} selected={filters.domains} />
+      <CheckList
+        legend="Skills"
+        name="tag"
+        options={tags.map((tag) => ({ slug: tag.slug, label: `${tag.label} (${tag.count})` }))}
+        selected={filters.tags}
+        scroll
+      />
       {filters.sort === 'relevance' ? <input type="hidden" name="sort" value="relevance" /> : null}
       <button
         type="submit"
@@ -201,6 +211,9 @@ function HiddenCurrentFilters({ filters }: { filters: JobFilterValues }) {
       ))}
       {(filters.domains ?? []).map((domain) => (
         <input key={`domain-${domain}`} type="hidden" name="domain" value={domain} />
+      ))}
+      {(filters.tags ?? []).map((tag) => (
+        <input key={`tag-${tag}`} type="hidden" name="tag" value={tag} />
       ))}
       {(filters.employments ?? []).map((employment) => (
         <input key={`employment-${employment}`} type="hidden" name="employment" value={employment} />

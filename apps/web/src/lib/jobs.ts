@@ -379,6 +379,26 @@ export async function getTaxonomy() {
   );
 }
 
+export async function getTagFacets() {
+  return withDb(
+    async () => {
+      const [tags, counts] = await Promise.all([
+        prisma.techTag.findMany({ orderBy: { label: 'asc' } }),
+        prisma.jobTechTag.groupBy({
+          by: ['techTagId'],
+          where: { job: publicJobWhere },
+          _count: { _all: true },
+        }),
+      ]);
+      const countById = new Map(counts.map((row) => [row.techTagId, row._count._all]));
+      return tags
+        .map((tag) => ({ slug: tag.slug, label: tag.label, count: countById.get(tag.id) ?? 0 }))
+        .filter((tag) => tag.count > 0);
+    },
+    [] as Array<{ slug: string; label: string; count: number }>,
+  );
+}
+
 export async function getCountryFacets() {
   return withDb(
     async () => {

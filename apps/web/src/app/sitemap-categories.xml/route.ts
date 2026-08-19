@@ -21,15 +21,6 @@ export async function GET() {
     if (count >= INDEX_JOB_THRESHOLD) urls.push(`${site}/robots/${domain.slug}-jobs`);
   }
 
-  const tags = await withDb(() => prisma.techTag.findMany(), []);
-  for (const tag of tags) {
-    const count = await withDb(
-      () => prisma.job.count({ where: { isActive: true, isHidden: false, techTags: { some: { techTagId: tag.id } } } }),
-      0,
-    );
-    if (count >= INDEX_JOB_THRESHOLD) urls.push(`${site}/skills/${tag.slug}-jobs`);
-  }
-
   const remoteCount = await withDb(() => prisma.job.count({ where: { isActive: true, isHidden: false, isRemote: true } }), 0);
   if (remoteCount >= INDEX_JOB_THRESHOLD) urls.push(`${site}/locations/remote-robotics-jobs`);
 

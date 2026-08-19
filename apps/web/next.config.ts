@@ -34,6 +34,7 @@ const nextConfig: NextConfig = {
     return [
       { source: '/blog', destination: '/guides', permanent: true },
       { source: '/blog/:slug', destination: '/guides/:slug', permanent: true },
+      { source: '/skills/:slug-jobs', destination: '/?tag=:slug', permanent: true },
     ];
   },
 };
