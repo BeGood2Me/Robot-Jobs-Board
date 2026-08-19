@@ -2,11 +2,5 @@
   "framework": "nextjs",
   "outputDirectory": "apps/web/.next",
   "buildCommand": "pnpm db:generate && pnpm --filter web build",
-  "installCommand": "pnpm install",
-  "crons": [
-    {
-      "path": "/api/cron/ingest",
-      "schedule": "0 9 * * *"
-    }
-  ]
+  "installCommand": "pnpm install"
 }
