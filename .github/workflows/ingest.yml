@@ -8,7 +8,7 @@ on:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       # Version is read from packageManager in package.json — do not also pass version: here.
