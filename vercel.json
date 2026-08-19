@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "outputDirectory": "apps/web/.next",
   "buildCommand": "pnpm db:generate && pnpm --filter web build",
   "installCommand": "pnpm install",
   "crons": [
