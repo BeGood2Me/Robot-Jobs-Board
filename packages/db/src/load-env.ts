@@ -15,6 +15,9 @@ function monorepoRoot() {
 
 export function loadDatabaseEnv() {
   if (process.env.DATABASE_URL) return;
+  // On Vercel and in production builds, DATABASE_URL must be provided via environment variables.
+  // Avoid probing the filesystem for .env files because it can trigger bundler tracing warnings.
+  if (process.env.NODE_ENV === 'production') return;
   const roots = new Set([process.cwd(), monorepoRoot(), resolve(process.cwd(), '../..'), resolve(process.cwd(), '..')]);
   for (const root of roots) {
     for (const file of ['.env.local', '.env']) {
