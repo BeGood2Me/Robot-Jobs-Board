@@ -2,7 +2,8 @@ import { runIngestion } from '@robot-jobs-board/ingestion';
 import { NextResponse } from 'next/server';
 import { cronAuthorized } from '@/lib/admin';
 
-export const maxDuration = 800;
+// Vercel Hobby maxDuration must be <= 300 for serverless functions.
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 async function handle(request: Request) {
