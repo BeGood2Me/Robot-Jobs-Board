@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next",
-  "buildCommand": "pnpm db:generate && pnpm --filter web build",
+  "rootDirectory": "apps/web",
+  "buildCommand": "pnpm --filter @robot-jobs-board/db generate && pnpm build",
   "installCommand": "pnpm install",
   "crons": [
     {
