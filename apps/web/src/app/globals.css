@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --muted: #666666;
+  --card: #ffffff;
+  --chip: #f4f4f4;
+  --line: #e5e5e5;
+  --accent: #0f766e;
+  --accent-fg: #ffffff;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --muted: #9b9b9b;
+  --card: #181818;
+  --chip: #1f1f1f;
+  --line: #272727;
+  --accent: #5eead4;
+  --accent-fg: #000000;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-chip: var(--chip);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
+.ease-fluid {
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.job-html h2,
+.job-html h3,
+.job-html h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--foreground);
+}
+
+.job-html p,
+.job-html li,
+.job-html div {
+  margin-bottom: 0.75rem;
+  color: var(--muted);
+}
+
+.job-html strong,
+.job-html b {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.job-html ul,
+.job-html ol {
+  padding-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.job-html a {
+  text-decoration: underline;
+}
+
+.job-html table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.job-html th,
+.job-html td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}

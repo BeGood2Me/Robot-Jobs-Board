@@ -1,0 +1,108 @@
+---
+title: "How to become a robotics engineer in 2026"
+slug: "how-to-become-a-robotics-engineer"
+description: "A practical path into robotics engineering: the skills companies hire for, projects that get interviews, and the first jobs worth applying to."
+publishedAt: "2026-06-12"
+updatedAt: "2026-08-18"
+tags: ["candidate", "career", "robotics engineer"]
+audience: "candidate"
+faqs:
+  - question: "Do you need a PhD to become a robotics engineer?"
+    answer: "No. Most software, deployment, test, and integration jobs hire bachelor's degrees, internships, or a public project trail. PhDs help for research-heavy humanoid perception and controls seats, not for the majority of AMR and field jobs."
+  - question: "How long does it take to become a robotics engineer?"
+    answer: "If you already write software, a focused year of Linux, C++ or Python, and one public robot or simulation project is enough to compete for internships, deployment, test, and junior software jobs. Switching from an unrelated field usually takes longer because you need proof on hardware or high-fidelity sim."
+  - question: "What skills do robotics engineers need?"
+    answer: "Live postings cluster around C++, Python, Linux, and the ability to debug a system that moves. ROS 2 shows up on AMR and many industrial teams. Controls intuition, Git, CMake, and a debugger matter more than a long list of course certificates."
+  - question: "Can you become a robotics engineer without a robotics degree?"
+    answer: "Yes. Computer science, mechanical, electrical, and self-taught backgrounds all get hired when the portfolio matches the job. CS people add Linux and a ROS 2 or controls project. ME and EE people add fluent Python and one C++ driver or test job. Self-taught people need public, reliable work."
+---
+
+Robotics hiring looks opaque from the outside. Job posts mix C++, ROS 2, controls, and "experience with robots" without saying which robots or which layer of the stack. This guide is for students, recent grads, career switchers, and self-taught engineers who want a first job that ships on hardware or simulation, not a generic software job with a robot in the hero image.
+
+The short version: you do not need a PhD. You do need a public trail of work that proves you can write C++ or Python, live in Linux, and debug a system that moves. Robot Jobs Board exists so you can see what companies are asking for this month. Start with [entry level robotics jobs](/?entry=1) and [ROS 2 jobs](/skills/ros2-jobs) while you build that trail.
+
+## What does a robotics engineer do?
+
+A robotics engineer owns some slice of a machine that senses, decides, and moves. That slice is rarely "the whole robot." In live postings it is usually one of these:
+
+**Software on the robot.** Perception, planning, controls, and drivers. C++ is the default. Python shows up for tooling, ML, and tests. Linux is assumed.
+
+**Software around the robot.** Fleet software, cloud, data pipelines, simulation, and developer tools. Python and web stacks are more common. These jobs still expect you to understand frames, latency, and failure modes.
+
+**Deployment and integration.** Getting AMRs or humanoids running in a warehouse or lab. Linux, networking, and the patience to stand on a concrete floor. See [AMR jobs](/robots/amr-jobs) and [deployment language on company pages](/companies).
+
+**Hardware-adjacent software.** Embedded, firmware, and test. C or C++, benches that flake, and a calm relationship with logs.
+
+If you are early career, deployment, test, and simulation are the honest on-ramps. Staff perception jobs are not.
+
+## Do you need a degree to work in robotics?
+
+Most teams still prefer a bachelor's in CS, ME, EE, or a related field. They will hire without one if you can show the work.
+
+They will not hire a CV that is only courses. A degree without a project that moved a robot, even in sim, loses to a weaker pedigree with a public repo, a failure writeup, and a clip.
+
+PhDs matter for a minority of seats: novel controls, foundation-model policy work, and some medical robotics. If that is not the job you want, do not wait for a doctorate.
+
+## Skills robotics companies actually hire for
+
+Scan [C++ robotics jobs](/skills/cpp-jobs) and you will see the same cluster:
+
+1. **C++** for anything that runs on the robot.
+2. **Python** for glue, notebooks, and tests.
+3. **Linux** until it is boring.
+4. **ROS 2** if the company is not a humanoid lab with a private stack. See [ROS 2 jobs](/skills/ros2-jobs).
+5. **Controls intuition** even if you are not the controls owner: frames, PID, why a joint oscillates.
+6. **Git, CMake, and a debugger.** GDB or lldb, not print forever.
+
+Simulation is the cheapest way to practice. Gazebo, Isaac Sim, and Webots all appear in [simulation tagged listings](/skills/isaac-sim-jobs). A small stack that drives a differential robot, a manipulator, or a drone in sim is worth more than a certificate.
+
+If you want warehouse work, add networking and the nerve to debug WiFi next to a charger. If you want aerial work, [PX4 jobs](/skills/px4-jobs) and [drone jobs](/robots/drone-jobs) tell you whether clearance and on-site time are the real filter.
+
+## Portfolios that hiring managers finish
+
+Hiring managers skim. A good robotics portfolio is three artifacts, not twelve:
+
+- A GitHub repo with a README that states the robot, the stack, and a clip or plot of the result.
+- A short writeup of a failure. "The controller was unstable at 1.2 m/s until I changed X" is memorable.
+- One hardware or HIL story if you can get it. A cheap lidar, a manipulator kit, or a PX4 SITL rig counts.
+
+Skip the infinite list of Coursera badges. Link the repo from your application and start from the [job list](/) when you are ready to apply.
+
+## Roadmaps by background
+
+**Computer science.** You can already write software. Add Linux, CMake, and a ROS 2 navigation or MoveIt project. Read enough controls to talk about error, delay, and sensors without waving your hands.
+
+**Mechanical or electrical.** You already understand the plant. Add Python until it is fluent, then C++ for one driver or controller. Your edge is hardware bring-up; lean into test and integration jobs first.
+
+**Self-taught.** You need proof. One public robot project beaten into reliability beats a dozen tutorials. Contribute docs or tests to an open source stack (ROS 2, PX4, gz) so someone can see you work in public.
+
+**Career switcher from web or data.** Treat the first year as an apprenticeship in physical systems. Target simulation, tooling, and fleet software, then move closer to the metal.
+
+## Entry level robotics jobs worth targeting
+
+Search for systems integrator, deployment engineer, QA and test, simulation engineer, robotics intern, and junior robotics software. Filter [entry level jobs](/?entry=1) and ignore titles that demand five years of "production autonomy" unless you truly have it.
+
+Humanoid labs hire operators and data collection staff. Those jobs teach the robot. They are not software engineering, but they are a way inside. Read [humanoid jobs](/robots/humanoid-jobs) with that distinction in mind.
+
+Internships and co-ops are the cleanest path if you are still in school. Apply where the posting names a robot and a stack, not where the brand is loudest.
+
+## How to use this site while you learn
+
+1. Pick a domain: [AMR](/robots/amr-jobs), [humanoid](/robots/humanoid-jobs), or [drone](/robots/drone-jobs).
+2. Note the three most common tools in those descriptions.
+3. Build a small project in that stack.
+4. Apply to jobs that match the project, not the dream title.
+
+If you are still choosing a path, read [AMR versus humanoid careers](/guides/amr-vs-humanoid-careers). For a snapshot of what postings emphasize, read [robotics skills in live job posts](/guides/robotics-skills-trending-from-job-posts).
+
+## How to apply without wasting weeks
+
+Apply to jobs where your project overlaps the description, not where the company is famous. Ten tailored applications beat eighty generic ones.
+
+Keep a list of board URLs you already used. Robot Jobs Board is the index; Greenhouse, Lever, and Ashby are still where you click Apply. If a posting is gone, the job page will say so and show related live jobs instead of a dead end.
+
+Talk about hardware time in interviews even if it was a university lab or a garage robot. Interviewers are listening for whether you have seen a system fail in the real world.
+
+Sleep on compensation. Humanoid labs in a few cities pay more. AMR deployment in a secondary city can teach more in a year. Pick the loop you want to be inside, then negotiate.
+
+When you are ready to look, [search open robotics jobs](/).

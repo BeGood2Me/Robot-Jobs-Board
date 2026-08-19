@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pnpm db:generate && pnpm --filter web build",
+  "installCommand": "pnpm install",
+  "crons": [
+    {
+      "path": "/api/cron/ingest",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}

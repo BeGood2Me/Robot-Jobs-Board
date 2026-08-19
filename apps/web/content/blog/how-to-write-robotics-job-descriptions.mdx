@@ -1,0 +1,96 @@
+---
+title: "How to write a robotics job description engineers will finish"
+slug: "how-to-write-robotics-job-descriptions"
+description: "Write robotics JDs that name the robot, stack, and site. Practical advice for AMR, humanoid, drone, and field hiring managers."
+publishedAt: "2026-07-08"
+updatedAt: "2026-08-18"
+tags: ["employer", "hiring", "job description"]
+audience: "employer"
+faqs:
+  - question: "What should a robotics job description include?"
+    answer: "The robot (AMR, humanoid, drone, cobot, quadruped), the environment, the layer of the stack, a short must-have versus nice-to-have skill list, and whether the work is on site, hybrid, or remote. Add the 90-day problem the person owns."
+  - question: "Should robotics jobs be remote?"
+    answer: "Hardware bring-up is on site. Fleet software and some perception training can be remote. A humanoid locomotion job listed as nationwide remote usually wastes a week. Write the split: lab days, travel sites, and how remote people test on hardware."
+  - question: "How do I attract robotics software engineers?"
+    answer: "Name the platform and the stack without a ten-tool wishlist. Publish a band or a level definition. Link a robot video, not a culture deck. Keep the ATS public so candidates can see the actual posting."
+  - question: "Where do robotics companies find candidates?"
+    answer: "AMR and field engineers show up in ROS Discourse, vendor user groups, and warehouse automation communities. Humanoid talent clusters around controls and ML labs. Drones still live near PX4 forums. Public ATS boards are also how competitors already recruit."
+---
+
+Robotics engineers ignore most job descriptions. They open the posting, search for the robot, the stack, and whether the work is on site, then bounce. If you are hiring AMR, humanoid, drone, or field talent, the JD is not a branding exercise. It is a filter that either saves you time or floods you with web developers who once imported OpenCV.
+
+This article is for founders, hiring managers, and recruiters at robotics companies and warehouses rolling out AMRs. The goal is a posting that the right people finish. When you are ready to reach that audience, [post a job](/post-a-job) or point us at your public Greenhouse, Lever, or Ashby board.
+
+## What a robotics job description must say
+
+"Robotics software engineer" is not a job. "C++ engineer on a pallet AMR using ROS 2 Humble in a 3PL site" is a job. Name:
+
+- The platform: AMR, humanoid, drone, cobot cell, quadruped.
+- The environment: warehouse aisle, factory cell, outdoor inspection, OR.
+- The layer: perception, controls, planning, firmware, fleet, deployment.
+
+Candidates use that sentence to self-select. You will see it in how they talk about [AMR jobs](/robots/amr-jobs) versus [humanoid jobs](/robots/humanoid-jobs) on this site.
+
+## Publish the stack without a wishlist
+
+A useful stack section is short.
+
+Must have: C++17, Linux, one shipped system that talks to hardware or a high-fidelity sim.
+
+Nice to have: ROS 2, CUDA, PLC, PX4, depending on the domain.
+
+Never put ten years of ROS, PyTorch, and FPGA in the same bullet unless you are hiring a principal who will actually own all three. That pattern is how you get zero senior applicants and a pile of keyword-stuffed CVs.
+
+If the work is PLC and cell integration, say so. Industrial people do not search for "full stack." They search for [PLC robotics jobs](/skills/plc-jobs) and [industrial jobs](/robots/industrial-jobs).
+
+## On site versus remote is a product decision
+
+Hardware bring-up is on site. Fleet software and some perception training can be remote. Pretending a humanoid locomotion job is remote nationwide wastes everyone a week.
+
+Write the split in one paragraph: which days are in the lab, which sites you travel to, and whether a remote software pod exists. Warehouse AMR deployments should name the city. See how location pages such as [Austin robotics jobs](/locations/austin-robotics-jobs) collect that demand.
+
+Remote software jobs should still mention time zones and how you test on hardware. "We ship to a nightly robot farm" is more convincing than "fast paced environment."
+
+## Compensation and leveling
+
+Robotics pay bands are wide. A junior AMR deployment engineer and a senior humanoid controls engineer are not in the same market. If you cannot publish a number, publish a band and the level. "Senior means you have shipped a controller that ran unsupervised on a customer floor" is more useful than "5+ years."
+
+If you are a warehouse operator hiring your first robotics integrator, you are competing with vendors. Pay like it. Look at live [senior](/?seniority=senior) and [lead](/?seniority=lead) listings before you guess.
+
+## A structure that works
+
+1. **Opening paragraph:** robot, site, and the problem this person owns in 90 days.
+2. **Work you will do:** six bullets max, verbs first.
+3. **Stack:** must versus nice.
+4. **How we run hardware:** lab, customer site, sim.
+5. **Interview:** what the loop looks like. A take-home on a bag of data beats a trivia panel.
+
+Link internally to the team blog or a robot video. Do not link to a 40-page culture deck.
+
+## Example openings you can steal
+
+**AMR:** "You will own navigation recoveries for a pallet AMR fleet in two 3PL sites. First 90 days: ship a change that cuts manual assists during shift change. C++ and ROS 2 Humble. Three days a week on site in [city]."
+
+**Humanoid:** "You will own whole-body balance tests on our lab robot. First 90 days: a repeatable fall-recovery eval in sim and on hardware. C++, Linux, on site in [city]. CUDA is nice. This is not a remote job."
+
+**Intern:** "Summer intern on our AMR test bench. You will write Python fixtures, run overnight soaks, and file bugs with logs. You will not train a foundation model. Link a repo that moved a robot, even in Gazebo."
+
+## Where to find robotics engineers
+
+AMR and field engineers hang out in ROS Discourse, vendor user groups, and warehouse automation Slack communities. Humanoid talent clusters around controls and ML labs. Drones still live near PX4 and defense-adjacent forums.
+
+You can also search your own competitors' public boards, which is what Robot Jobs Board already does. If you want those people looking at you, keep your ATS public and [send us the board token](/post-a-job).
+
+For warehouses introducing AMRs, hire one integrator who has commissioned a fleet before you hire five computer vision PhDs. The failure mode is a parked robot, not a missing paper.
+
+## Common robotics JD mistakes
+
+- Listing every tool the company has ever touched.
+- Hiding the robot behind "AI platform."
+- Requiring a clearance when the work is unclassified sim.
+- Copying a FAANG software JD and swapping in the word robot.
+- Forgetting visa or relocation reality for on-site lab jobs.
+
+Write the posting the way you would brief a new teammate on Monday morning. Then publish it. Engineers will finish it, and the rest will leave, which is the point.
+
+If you want the candidate-side view of the same market, read [how to become a robotics engineer](/guides/how-to-become-a-robotics-engineer) and [what live job posts ask for](/guides/robotics-skills-trending-from-job-posts).

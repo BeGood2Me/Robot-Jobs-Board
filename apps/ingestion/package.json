@@ -1,0 +1,30 @@
+{
+  "name": "@robot-jobs-board/ingestion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./apply-url": "./src/apply-url.ts",
+    "./html": "./src/html.ts"
+  },
+  "scripts": {
+    "ingest:run": "tsx src/cli.ts run",
+    "ingest:cron": "tsx src/cli.ts cron",
+    "ingest:reclassify": "tsx src/cli.ts reclassify",
+    "test": "vitest run",
+    "lint": "echo \"no lint\""
+  },
+  "dependencies": {
+    "@robot-jobs-board/config": "workspace:*",
+    "@robot-jobs-board/db": "workspace:*",
+    "@robot-jobs-board/taxonomy": "workspace:*",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

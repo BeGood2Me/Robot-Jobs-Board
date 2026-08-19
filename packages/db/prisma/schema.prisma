@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SourceSystem {
+  greenhouse
+  lever
+  ashby
+  joblistingsapi
+  workday
+  workable
+}
+
+enum WorkplaceType {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  TEMPORARY
+}
+
+model Company {
+  id               String             @id @default(cuid())
+  name             String
+  slug             String             @unique
+  website          String?
+  description      String             @db.Text
+  seoIntro         String             @db.Text
+  logoUrl          String?
+  sourceSystem     SourceSystem
+  sourceIdentifier String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  jobs             Job[]
+  feeds            SourceFeedConfig[]
+
+  @@unique([sourceSystem, sourceIdentifier])
+  @@index([slug])
+}
+
+model Job {
+  id                String          @id @default(cuid())
+  externalId        String
+  sourceSystem      SourceSystem
+  companyId         String
+  company           Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title             String
+  slug              String
+  descriptionHtml   String          @db.Text
+  descriptionPlain  String          @db.Text
+  url               String
+  locationRaw       String
+  country           String?
+  region            String?
+  city              String?
+  isRemote          Boolean         @default(false)
+  workplaceType     WorkplaceType   @default(ONSITE)
+  employmentType    EmploymentType  @default(FULL_TIME)
+  department        String?
+  compensationText  String?
+  postedAt          DateTime?
+  expiresAt         DateTime?
+  lastSeenAt        DateTime        @default(now())
+  isActive          Boolean         @default(true)
+  /// Founder moderation. Hidden jobs stay out of the public site even if the ATS still lists them.
+  isHidden          Boolean         @default(false)
+  hiddenAt          DateTime?
+  hiddenNote        String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  robotDomains      JobRobotDomain[]
+  techTags          JobTechTag[]
+  seniorities       JobSeniority[]
+
+  @@unique([sourceSystem, externalId])
+  @@index([isActive])
+  @@index([isHidden])
+  @@index([isActive, isHidden])
+  @@index([sourceSystem])
+  @@index([companyId])
+  @@index([country])
+  @@index([city])
+  @@index([postedAt])
+  @@index([slug])
+  @@index([isActive, postedAt])
+}
+
+model RobotDomain {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  description String           @db.Text
+  jobs        JobRobotDomain[]
+}
+
+model JobRobotDomain {
+  jobId    String
+  domainId String
+  job      Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  domain   RobotDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, domainId])
+  @@index([domainId])
+}
+
+model TechTag {
+  id    String       @id @default(cuid())
+  slug  String       @unique
+  label String
+  jobs  JobTechTag[]
+}
+
+model JobTechTag {
+  jobId    String
+  techTagId String
+  job      Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  techTag  TechTag @relation(fields: [techTagId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, techTagId])
+  @@index([techTagId])
+}
+
+model SeniorityLevel {
+  id     String         @id @default(cuid())
+  slug   String         @unique
+  label  String
+  jobs   JobSeniority[]
+}
+
+model JobSeniority {
+  jobId       String
+  seniorityId String
+  job         Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  seniority   SeniorityLevel @relation(fields: [seniorityId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, seniorityId])
+  @@index([seniorityId])
+}
+
+model SourceFeedConfig {
+  id           String       @id @default(cuid())
+  companyId    String
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sourceSystem SourceSystem
+  /// boardToken (Greenhouse), site (Lever/Workable), jobBoardName (Ashby), host+tenant+site (Workday)
+  config       Json
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([active])
+  @@index([sourceSystem])
+}
