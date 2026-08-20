@@ -42,6 +42,6 @@ export async function syncJobsNow(): Promise<{ ok: boolean; message: string }> {
   revalidatePath('/');
   return {
     ok: true,
-    message: `Sync finished. ${created} new, ${updated} updated, ${metrics.expired} expired, ${metrics.robotExpired} non-robot removed.`,
+    message: `Sync finished. ${created} new, ${updated} updated, ${metrics.deleted} removed from feed, ${metrics.robotDeleted} non-robot deleted.`,
   };
 }

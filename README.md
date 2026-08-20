@@ -68,9 +68,10 @@ The runner:
 - Upserts jobs on `(sourceSystem, externalId)`
 - Re-applies taxonomy tags
 - Leaves founder-hidden jobs hidden
-- Marks jobs inactive when `lastSeenAt` is older than `INGEST_INACTIVE_AFTER_DAYS` (default 1)
+- Hard-deletes jobs that disappear from an employer ATS feed on the next successful sync for that board
+- Deletes stale rows if a feed sync fails and `lastSeenAt` is older than `INGEST_INACTIVE_AFTER_DAYS` (default 1)
 
-Logs are JSON lines with `fetched`, `created`, `updated`, `skipped`, and `expired` counts.
+Logs are JSON lines with `fetched`, `created`, `updated`, `skipped`, and `deleted` counts.
 
 You can also click **Sync boards now** on `/admin/jobs`.
 
@@ -78,11 +79,9 @@ You can also click **Sync boards now** on `/admin/jobs`.
 
 Sign in at `/admin/login` with `ADMIN_SECRET`.
 
-- **Remove from site** hides a listing. The next ingest will not bring it back.
-- **Restore** puts it on the public board again.
-- Hidden jobs 404 on the public job URL and are omitted from search, sitemaps, and company pages.
-
-Do not delete rows from the database if you only want them off the site. A delete would be recreated on the next sync.
+- **Remove from site** hides a listing while it still appears on the source board. Hidden jobs 404 on the public job URL and are omitted from search, sitemaps, and company pages.
+- **Restore** puts a hidden listing back on the public board.
+- If the employer removes a job from their ATS, the next sync **deletes** it from the database entirely (including hidden copies of that posting).
 
 ### Add a company board
 
@@ -144,7 +143,7 @@ Repo secrets:
 4. Confirm `robots.txt` allow rules and the sitemap index.
 5. Request indexing on a few job and category URLs after the first ingest.
 
-Expired jobs return 404 and are omitted from search, sitemaps, and company pages. Category pages with fewer than 5 active jobs also send `noindex`.
+Removed jobs are deleted from the database and return 404. Category pages with fewer than 5 active jobs also send `noindex`.
 
 ## Project layout
 

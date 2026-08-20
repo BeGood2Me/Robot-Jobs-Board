@@ -120,8 +120,8 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-semibold text-foreground">How long we keep it</h2>
           <p className="mt-3">
             Open jobs stay listed while they still appear on the source board and pass our robotics and location
-            filters. Jobs that disappear from the source, or that we mark inactive or hidden, drop off the public board.
-            Emails you send are kept only as long as needed to handle the request. Analytics and server logs are kept
+            filters. When a job disappears from the employer feed, we delete it from our database on the next sync
+            and it returns 404 on the site. Emails you send are kept only as long as needed to handle the request. Analytics and server logs are kept
             according to each provider&apos;s retention settings, typically for operational and security periods rather
             than indefinitely for marketing.
           </p>

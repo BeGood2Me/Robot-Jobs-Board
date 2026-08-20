@@ -87,7 +87,6 @@ export default async function AdminJobsPage({ searchParams }: PageProps<'/admin/
                     Hidden{job.hiddenNote ? `: ${job.hiddenNote}` : ''}
                   </p>
                 ) : null}
-                {!job.isActive && !job.isHidden ? <p className="mt-2 text-sm">Expired on the source board</p> : null}
               </div>
               {job.isHidden ? (
                 <form action={restoreJob}>

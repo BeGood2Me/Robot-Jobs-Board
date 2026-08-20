@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
   const { id } = await params;
   const job = await getJobById(id);
-  if (!job || job.isHidden || !job.isActive) return { title: 'Job not found' };
+  if (!job || job.isHidden) return { title: 'Job not found' };
   return {
     title: `${job.title} at ${job.company.name}`,
     description: job.descriptionPlain.slice(0, 160),
@@ -39,7 +39,7 @@ function ApplyNowLink({ href, className }: { href: string; className?: string })
 export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[slug]'>) {
   const { id, slug } = await params;
   const job = await getJobById(id);
-  if (!job || job.isHidden || !job.isActive) notFound();
+  if (!job || job.isHidden) notFound();
   if (job.slug !== slug) permanentRedirect(`/jobs/${job.id}/${job.slug}`);
 
   const related = await relatedJobs(job);
