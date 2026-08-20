@@ -126,19 +126,57 @@ function countryWhere(country: string): Prisma.JobWhereInput {
   };
 }
 
+/** Expand short career keywords so "grad" finds "New Grad" / "graduate" titles. */
+export function expandSearchTerms(q: string): string[] {
+  const base = q.trim();
+  if (!base) return [];
+  const terms = new Set<string>([base]);
+  const lower = base.toLowerCase();
+  if (lower === 'grad' || lower === 'grads') {
+    terms.add('graduate');
+    terms.add('new grad');
+    terms.add('new-grad');
+  } else if (lower === 'junior' || lower === 'jr' || lower === 'jr.') {
+    terms.add('junior');
+    terms.add('entry level');
+    terms.add('entry-level');
+  } else if (lower === 'intern') {
+    terms.add('internship');
+    terms.add('intern');
+  }
+  return [...terms];
+}
+
+function textSearchWhere(q: string): Prisma.JobWhereInput {
+  const terms = expandSearchTerms(q);
+  return {
+    OR: terms.flatMap((term) => [
+      { title: { contains: term, mode: 'insensitive' as const } },
+      { descriptionPlain: { contains: term, mode: 'insensitive' as const } },
+      { locationRaw: { contains: term, mode: 'insensitive' as const } },
+      { company: { name: { contains: term, mode: 'insensitive' as const } } },
+    ]),
+  };
+}
+
+function titleSearchWhere(q: string): Prisma.JobWhereInput {
+  const terms = expandSearchTerms(q);
+  return {
+    OR: terms.map((term) => ({ title: { contains: term, mode: 'insensitive' as const } })),
+  };
+}
+
+function companySearchWhere(q: string): Prisma.JobWhereInput {
+  const terms = expandSearchTerms(q);
+  return {
+    OR: terms.map((term) => ({ company: { name: { contains: term, mode: 'insensitive' as const } } })),
+  };
+}
+
 export function jobWhere(filters: JobFilters, activeOnly = true): Prisma.JobWhereInput {
   const and: Prisma.JobWhereInput[] = [];
   if (activeOnly) and.push(publicJobWhere);
-  if (filters.q) {
-    and.push({
-      OR: [
-        { title: { contains: filters.q, mode: 'insensitive' } },
-        { descriptionPlain: { contains: filters.q, mode: 'insensitive' } },
-        { locationRaw: { contains: filters.q, mode: 'insensitive' } },
-        { company: { name: { contains: filters.q, mode: 'insensitive' } } },
-      ],
-    });
-  }
+  if (filters.q) and.push(textSearchWhere(filters.q));
   if (filters.domains?.length) {
     and.push({
       robotDomains: { some: { domain: { slug: { in: filters.domains } } } },
@@ -199,21 +237,18 @@ export async function searchJobs(filters: JobFilters) {
       const page = Math.min(requestedPage, pages);
       const skip = (page - 1) * PAGE_SIZE;
       const jobs =
-        filters.sort === 'relevance' && filters.q
+        filters.q && filters.sort !== 'newest'
           ? await findByPriority(
               where,
               [
-                { title: { contains: filters.q, mode: 'insensitive' } },
+                titleSearchWhere(filters.q),
                 {
-                  AND: [
-                    { NOT: { title: { contains: filters.q, mode: 'insensitive' } } },
-                    { company: { name: { contains: filters.q, mode: 'insensitive' } } },
-                  ],
+                  AND: [{ NOT: titleSearchWhere(filters.q) }, companySearchWhere(filters.q)],
                 },
                 {
                   AND: [
-                    { NOT: { title: { contains: filters.q, mode: 'insensitive' } } },
-                    { NOT: { company: { name: { contains: filters.q, mode: 'insensitive' } } } },
+                    { NOT: titleSearchWhere(filters.q) },
+                    { NOT: companySearchWhere(filters.q) },
                   ],
                 },
               ],

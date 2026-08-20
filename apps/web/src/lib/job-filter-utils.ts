@@ -27,8 +27,10 @@ export function filtersFromSearchParams(params: Record<string, string | string[]
   const seniorities = list(params.seniority ?? params.seniorities).filter(
     (slug) => slug !== 'junior' && slug !== 'entry',
   );
+  const q = first(params.q);
+  const explicitSort = first(params.sort);
   return {
-    q: first(params.q),
+    q,
     domains: list(params.domain ?? params.domains),
     tags: list(params.tag ?? params.tags),
     seniorities,
@@ -43,7 +45,13 @@ export function filtersFromSearchParams(params: Record<string, string | string[]
       list(params.seniority ?? params.seniorities).includes('junior') ||
       list(params.seniority ?? params.seniorities).includes('entry'),
     remote: first(params.remote) === '1' || first(params.remote) === 'true',
-    sort: first(params.sort) === 'relevance' ? 'relevance' : 'newest',
+    // Text search defaults to relevance so title matches (e.g. "New Grad") are not buried.
+    sort:
+      explicitSort === 'newest' || explicitSort === 'relevance'
+        ? explicitSort
+        : q
+          ? 'relevance'
+          : 'newest',
     page: Number(first(params.page) ?? 1) || 1,
   };
 }
@@ -59,7 +67,7 @@ export function countActiveFilters(filters: JobFilters): number {
     (filters.employments?.length ?? 0) +
     (filters.entryLevel ? 1 : 0) +
     (filters.remote ? 1 : 0) +
-    (filters.sort === 'relevance' ? 1 : 0)
+    (filters.sort === 'relevance' && !filters.q ? 1 : 0)
   );
 }
 
