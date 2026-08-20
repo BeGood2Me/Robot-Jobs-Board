@@ -26,6 +26,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          INGEST_INACTIVE_AFTER_DAYS: "3"
+          INGEST_INACTIVE_AFTER_DAYS: "1"
           NEXT_PUBLIC_SITE_URL: https://robotjobsboard.com
           NODE_ENV: production

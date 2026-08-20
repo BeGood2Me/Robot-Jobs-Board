@@ -13,13 +13,7 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
   const { id } = await params;
   const job = await getJobById(id);
-  if (!job || job.isHidden) return { title: 'Job not found' };
-  if (!job.isActive) {
-    return {
-      title: `${job.title} is no longer active`,
-      robots: { index: false, follow: true },
-    };
-  }
+  if (!job || job.isHidden || !job.isActive) return { title: 'Job not found' };
   return {
     title: `${job.title} at ${job.company.name}`,
     description: job.descriptionPlain.slice(0, 160),
@@ -45,7 +39,7 @@ function ApplyNowLink({ href, className }: { href: string; className?: string })
 export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[slug]'>) {
   const { id, slug } = await params;
   const job = await getJobById(id);
-  if (!job || job.isHidden) notFound();
+  if (!job || job.isHidden || !job.isActive) notFound();
   if (job.slug !== slug) permanentRedirect(`/jobs/${job.id}/${job.slug}`);
 
   const related = await relatedJobs(job);
@@ -61,17 +55,7 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
-      {job.isActive ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd(job)) }} />
-      ) : null}
-      {!job.isActive ? (
-        <div className="mb-8 rounded-2xl border border-line bg-chip p-6">
-          <p className="font-semibold">This job is no longer active.</p>
-          <p className="mt-2 text-sm text-muted">
-            The posting was removed from the source feed. Similar open jobs are listed below.
-          </p>
-        </div>
-      ) : null}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd(job)) }} />
       <p className="text-sm">
         <Link href={`/companies/${job.company.slug}`} className="text-muted hover:text-accent">
           {job.company.name}
@@ -105,17 +89,13 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
           </Link>
         ))}
       </div>
-      {job.isActive ? (
-        <div className="mt-8">
-          <ApplyNowLink href={applyHref} />
-        </div>
-      ) : null}
+      <div className="mt-8">
+        <ApplyNowLink href={applyHref} />
+      </div>
       <article className="job-html mt-12 max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
-      {job.isActive ? (
-        <div className="mt-12">
-          <ApplyNowLink href={applyHref} />
-        </div>
-      ) : null}
+      <div className="mt-12">
+        <ApplyNowLink href={applyHref} />
+      </div>
       <section className="mt-16">
         <h2 className="text-2xl font-semibold">Related jobs</h2>
         <div className="mt-6 grid gap-4">

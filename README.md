@@ -68,7 +68,7 @@ The runner:
 - Upserts jobs on `(sourceSystem, externalId)`
 - Re-applies taxonomy tags
 - Leaves founder-hidden jobs hidden
-- Marks jobs inactive when `lastSeenAt` is older than `INGEST_INACTIVE_AFTER_DAYS` (default 3)
+- Marks jobs inactive when `lastSeenAt` is older than `INGEST_INACTIVE_AFTER_DAYS` (default 1)
 
 Logs are JSON lines with `fetched`, `created`, `updated`, `skipped`, and `expired` counts.
 
@@ -144,7 +144,7 @@ Repo secrets:
 4. Confirm `robots.txt` allow rules and the sitemap index.
 5. Request indexing on a few job and category URLs after the first ingest.
 
-Expired jobs stay at HTTP 200 with `noindex`, a clear inactive banner, and related live roles. Category pages with fewer than 5 active jobs also send `noindex`.
+Expired jobs return 404 and are omitted from search, sitemaps, and company pages. Category pages with fewer than 5 active jobs also send `noindex`.
 
 ## Project layout
 
