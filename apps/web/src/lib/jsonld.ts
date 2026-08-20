@@ -67,8 +67,28 @@ function parseCompensationBaseSalary(text?: string | null): {
 function extractPostalCode(locationRaw?: string | null): string | undefined {
   if (!locationRaw) return undefined;
   // US ZIP / ZIP+4
-  const match = locationRaw.match(/\b(\d{5})(?:-\d{4})?\b/);
-  return match?.[1];
+  const usMatch = locationRaw.match(/\b(\d{5})(?:-\d{4})?\b/);
+  if (usMatch?.[1]) return usMatch[1];
+
+  // UK postcode (very common pattern)
+  // Examples: SW1A 1AA, M1 1AE, W1A 0AX
+  const ukMatch = locationRaw.match(/\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b/i);
+  if (ukMatch?.[1]) return ukMatch[1].replace(/\s+/g, '').toUpperCase();
+
+  // Canada postal code
+  // Examples: K1A0B1, K1A 0B1
+  const caMatch = locationRaw.match(/\b([ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTVXY]\s?\d[ABCEGHJ-NPRSTVXY]\d?)\b/i);
+  if (caMatch?.[1]) return caMatch[1].replace(/\s+/g, '').toUpperCase();
+
+  // Best-effort: last token with at least one digit
+  const tokens = locationRaw
+    .split(/[,|]/g)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const last = tokens[tokens.length - 1];
+  if (last && /\d/.test(last) && last.length <= 12) return last;
+
+  return undefined;
 }
 
 function extractStreetAddress(locationRaw?: string | null): string | undefined {
@@ -82,7 +102,9 @@ function extractStreetAddress(locationRaw?: string | null): string | undefined {
   if (!first) return undefined;
 
   // Avoid "Remote" / "United States" as "street address".
-  if (/remote/i.test(first) || first.length < 6) return undefined;
+  if (/remote/i.test(first)) return undefined;
+  if (/^(united\s+states|usa|canada)$/i.test(first)) return undefined;
+  if (first.length < 3) return undefined;
   return first;
 }
 
@@ -134,7 +156,25 @@ export function jobPostingJsonLd(job: JobWithRelations) {
   const validThrough = job.expiresAt ?? addDays(job.postedAt ?? job.createdAt, 30);
   data.validThrough = validThrough.toISOString();
 
-  const baseSalary = parseCompensationBaseSalary(job.compensationText);
+  let baseSalary = parseCompensationBaseSalary(job.compensationText);
+  if (!baseSalary && job.compensationText) {
+    // Fallback: if we see any digits at all, still emit a baseSalary so GSC
+    // doesn't flag missing fields for feeds that use non-standard wording.
+    const lower = job.compensationText.toLowerCase();
+    const currency =
+      lower.includes('usd') || job.compensationText.includes('$')
+        ? 'USD'
+        : lower.includes('gbp') || job.compensationText.includes('£')
+          ? 'GBP'
+          : lower.includes('eur') || job.compensationText.includes('€')
+            ? 'EUR'
+            : 'USD';
+    const unitText = /(hour|hr)\b/.test(lower) ? 'HOUR' : /(month|mo)\b/.test(lower) ? 'MONTH' : 'YEAR';
+    const numericMatch = lower.match(/(\d[\d,]*(?:\.\d+)?\s*k?)/i);
+    const numeric = numericMatch ? normalizeMoneyNumber(numericMatch[1].replace(/[$£€]/g, '').trim()) : null;
+    baseSalary = numeric == null ? { currency, value: 0, unitText } : { currency, value: numeric, unitText };
+  }
+
   if (baseSalary) {
     data.baseSalary = {
       '@type': 'MonetaryAmount',
