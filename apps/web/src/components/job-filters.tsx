@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import type { JobFilters as JobFilterValues } from '@/lib/job-filter-utils';
 
 type Option = { slug: string; label: string; name?: string };
@@ -118,6 +119,10 @@ export function JobFilters({
   applyMode?: 'instant' | 'manual';
 }) {
   const router = useRouter();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchId = applyMode === 'manual' ? 'job-search-mobile' : 'job-search';
+  const [query, setQuery] = useState(filters.q ?? '');
+
   const hasFilters = Boolean(
     filters.q ||
       filters.countries?.length ||
@@ -130,38 +135,82 @@ export function JobFilters({
       filters.sort === 'relevance',
   );
 
+  useEffect(() => {
+    setQuery(filters.q ?? '');
+  }, [filters.q]);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, []);
+
   function apply(form: HTMLFormElement, close = false) {
     router.push(hrefFromForm(form), { scroll: false });
     if (close) onApplied?.();
   }
 
+  function scheduleSearch(form: HTMLFormElement) {
+    if (applyMode === 'manual') return;
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => apply(form), 350);
+  }
+
+  const filterKey = JSON.stringify({
+    countries: filters.countries,
+    domains: filters.domains,
+    tags: filters.tags,
+    seniorities: filters.seniorities,
+    workplaces: filters.workplaces,
+    employments: filters.employments,
+    entryLevel: filters.entryLevel,
+    sort: filters.sort,
+  });
+
   return (
     <form
-      key={JSON.stringify(filters)}
+      key={filterKey}
       method="get"
       action="/"
       onSubmit={(event) => {
         event.preventDefault();
+        if (searchTimer.current) clearTimeout(searchTimer.current);
         apply(event.currentTarget, true);
       }}
       onChange={(event) => {
-        if (applyMode === 'manual') return;
         const target = event.target;
-        if (target instanceof HTMLInputElement && target.type === 'text') return;
+        if (target instanceof HTMLInputElement && (target.type === 'text' || target.type === 'search')) {
+          scheduleSearch(event.currentTarget);
+          return;
+        }
+        if (applyMode === 'manual') return;
+        if (searchTimer.current) clearTimeout(searchTimer.current);
         apply(event.currentTarget);
       }}
       className={className ?? 'rounded-2xl border border-line bg-card p-6 max-lg:border-0 max-lg:bg-transparent max-lg:p-0'}
     >
-      <label className="block text-sm font-semibold" htmlFor="job-search">
+      <label className="block text-sm font-semibold" htmlFor={searchId}>
         Search
       </label>
-      <input
-        id="job-search"
-        name="q"
-        defaultValue={filters.q ?? ''}
-        placeholder="Title, company, or city"
-        className="mt-3 h-10 w-full rounded-lg border border-line bg-background px-3 text-sm"
-      />
+      <div className="mt-3 flex gap-2">
+        <input
+          id={searchId}
+          name="q"
+          type="search"
+          enterKeyHint="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Title, company, or city"
+          autoComplete="off"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-background px-3 text-sm"
+        />
+        <button
+          type="submit"
+          className="h-10 shrink-0 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90"
+        >
+          Search
+        </button>
+      </div>
       <CheckList
         legend="Location"
         name="country"
@@ -262,6 +311,69 @@ export function JobSort({ filters }: { filters: JobFilterValues }) {
         <option value="newest">Newest</option>
         <option value="relevance">Relevance</option>
       </select>
+    </form>
+  );
+}
+
+export function MobileSearchBar({ filters }: { filters: JobFilterValues }) {
+  const router = useRouter();
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [query, setQuery] = useState(filters.q ?? '');
+
+  useEffect(() => {
+    setQuery(filters.q ?? '');
+  }, [filters.q]);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  function go(q: string) {
+    const params = new URLSearchParams();
+    const trimmed = q.trim();
+    if (trimmed) params.set('q', trimmed);
+    for (const country of filters.countries ?? []) params.append('country', country);
+    for (const domain of filters.domains ?? []) params.append('domain', domain);
+    for (const tag of filters.tags ?? []) params.append('tag', tag);
+    for (const seniority of filters.seniorities ?? []) params.append('seniority', seniority);
+    if (filters.entryLevel) params.set('entry', '1');
+    for (const workplace of filters.workplaces ?? []) params.append('workplace', workplace);
+    for (const employment of filters.employments ?? []) params.append('employment', employment);
+    if (filters.sort === 'relevance') params.set('sort', 'relevance');
+    const encoded = params.toString();
+    router.push(encoded ? `/?${encoded}` : '/', { scroll: false });
+  }
+
+  return (
+    <form
+      className="flex gap-2 lg:hidden"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (timer.current) clearTimeout(timer.current);
+        go(query);
+      }}
+    >
+      <input
+        name="q"
+        type="search"
+        enterKeyHint="search"
+        value={query}
+        placeholder="Search jobs"
+        autoComplete="off"
+        aria-label="Search jobs"
+        className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-card px-3 text-sm"
+        onChange={(event) => {
+          const value = event.currentTarget.value;
+          setQuery(value);
+          if (timer.current) clearTimeout(timer.current);
+          timer.current = setTimeout(() => go(value), 350);
+        }}
+      />
+      <button type="submit" className="h-10 shrink-0 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-fg">
+        Search
+      </button>
     </form>
   );
 }

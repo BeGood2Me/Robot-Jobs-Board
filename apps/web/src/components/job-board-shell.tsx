@@ -2,7 +2,7 @@
 
 import { FunnelSimple, X } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
-import { JobFilters, JobSort } from '@/components/job-filters';
+import { JobFilters, JobSort, MobileSearchBar } from '@/components/job-filters';
 import type { JobFilters as JobFilterValues } from '@/lib/job-filter-utils';
 import { countActiveFilters } from '@/lib/job-filter-utils';
 
@@ -39,6 +39,7 @@ export function JobBoardShell({
     <div className="mt-8 grid gap-8 lg:mt-10 lg:grid-cols-[280px_minmax(0,1fr)]">
       {/* Listings first in the DOM so phones never scroll past a filter panel */}
       <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-start-1">
+        <MobileSearchBar filters={filters} />
         <div className="sticky top-16 z-30 -mx-6 border-b border-line bg-background/95 px-6 py-3 backdrop-blur-xl lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
           <div className="flex flex-wrap items-center justify-between gap-3 lg:hidden">
             <button
