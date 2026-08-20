@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="max-w-[680px] text-4xl font-semibold text-balance">Privacy policy</h1>
-      <p className="mt-3 font-mono text-sm text-muted">Updated August 18, 2026</p>
+      <p className="mt-3 font-mono text-sm text-muted">Updated August 20, 2026</p>
       <div className="mt-8 space-y-8 text-pretty text-muted">
         <p>
           Robot Jobs Board is a public robotics job board. This page explains what information we handle when you use
@@ -48,8 +48,9 @@ export default function PrivacyPage() {
           </p>
           <p className="mt-3">
             Hosting and database providers may keep standard server logs, which can include IP address, browser type,
-            and the pages requested. We use that for security and to keep the site running. We do not run advertising
-            cookies or a third party analytics pixel on this site.
+            and the pages requested. We use that for security and to keep the site running. We also use Vercel Analytics
+            and Google Analytics to understand how the site is used (pages viewed, approximate location, device and
+            browser). We do not use that data for advertising.
           </p>
         </section>
 
@@ -66,7 +67,9 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-semibold text-foreground">Cookies</h2>
           <p className="mt-3">
             Ordinary visitors do not need an account cookie. A signed in operator cookie is used only for the private
-            admin tools. Your browser may also store saved job IDs locally, which is not a tracking cookie.
+            admin tools. Your browser may also store saved job IDs locally, which is not a tracking cookie. Google
+            Analytics may set cookies or use similar storage for measurement; you can block them with browser settings
+            or extensions.
           </p>
         </section>
 
@@ -82,8 +85,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-semibold text-foreground">Who else sees it</h2>
           <p className="mt-3">
-            The site is hosted on Vercel. Job data is stored in Postgres with Neon. Apply links go to the employer or
-            their ATS. Those sites have their own privacy policies. We do not sell personal information.
+            The site is hosted on Vercel. Job data is stored in Postgres with Neon. Site usage measurement is processed
+            by Vercel and Google. Apply links go to the employer or their ATS. Those sites have their own privacy
+            policies. We do not sell personal information.
           </p>
         </section>
 
