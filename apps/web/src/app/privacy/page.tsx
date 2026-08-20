@@ -29,21 +29,22 @@ export default function PrivacyPage() {
 
       <div className="mt-8 space-y-8 text-pretty text-muted">
         <p>
-          <span className="font-semibold text-foreground">California / U.S. state privacy rights:</span> See the{' '}
-          <a href="#state-privacy-rights" className="underline">
-            State privacy rights notice
-          </a>{' '}
-          below. European users: see the{' '}
+          <span className="font-semibold text-foreground">EEA / UK users:</span> see the{' '}
           <a href="#notice-to-european-users" className="underline">
             Notice to European users
+          </a>
+          . U.S. state residents: see the{' '}
+          <a href="#state-privacy-rights" className="underline">
+            State privacy rights notice
           </a>
           .
         </p>
 
         <p>
-          Robot Jobs Board (&quot;Robot Jobs Board,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) operates a
-          public robotics job board that indexes open roles from company career pages and applicant tracking systems.
-          This Privacy Policy describes how we process personal information collected through our website at{' '}
+          Robot Jobs Board (&quot;Robot Jobs Board,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is operated
+          from Ireland and runs a public robotics job board that indexes open roles from company career pages and
+          applicant tracking systems. This Privacy Policy describes how we process personal information collected
+          through our website at{' '}
           <Link href="https://www.robotjobsboard.com" className="underline">
             robotjobsboard.com
           </Link>{' '}
@@ -328,9 +329,11 @@ export default function PrivacyPage() {
         <section id="international" className="scroll-mt-28">
           <h2 className="text-xl font-semibold text-foreground">International data transfer</h2>
           <p className="mt-3">
-            We use U.S.-based providers (including Vercel, Neon, and Google) and may process information in the United
-            States or other countries where privacy laws differ from those in your location. European users should read
-            the transfer information in the{' '}
+            We are established in Ireland. Some of our service providers (including Vercel, Neon, and Google) process
+            data in the United States or other countries outside Ireland and the EEA. Where we transfer personal data
+            from the EEA or UK to countries without an adequacy decision, we use appropriate safeguards such as the
+            European Commission&apos;s Standard Contractual Clauses (and the UK international data transfer addendum
+            where required), or another lawful transfer mechanism. See also the{' '}
             <a href="#notice-to-european-users" className="underline">
               Notice to European users
             </a>
@@ -341,7 +344,7 @@ export default function PrivacyPage() {
         <section id="children" className="scroll-mt-28">
           <h2 className="text-xl font-semibold text-foreground">Children</h2>
           <p className="mt-3">
-            The Service is not intended for anyone under 18. We do not knowingly collect personal information from
+            The Service is not intended for anyone under 16. We do not knowingly collect personal information from
             children. If you believe a child provided personal information, contact hello@robotjobsboard.com and we
             will delete it as required by law.
           </p>
@@ -359,9 +362,13 @@ export default function PrivacyPage() {
         <section id="contact" className="scroll-mt-28">
           <h2 className="text-xl font-semibold text-foreground">How to contact us</h2>
           <p className="mt-3">
-            Questions or privacy requests:{' '}
+            Controller (Ireland): Robot Jobs Board. Privacy questions and requests:{' '}
             <a href="mailto:hello@robotjobsboard.com" className="underline">
               hello@robotjobsboard.com
+            </a>
+            . Our lead supervisory authority in the EEA is the Data Protection Commission (Ireland) —{' '}
+            <a href="https://www.dataprotection.ie" className="underline" rel="noopener noreferrer">
+              dataprotection.ie
             </a>
             .
           </p>
@@ -420,13 +427,13 @@ export default function PrivacyPage() {
         <section id="notice-to-european-users" className="scroll-mt-28">
           <h2 className="text-xl font-semibold text-foreground">Notice to European users</h2>
           <p className="mt-3">
-            This section applies to individuals in the United Kingdom and the European Economic Area
-            (&quot;Europe&quot;). References to &quot;personal information&quot; include &quot;personal data&quot; under
-            the GDPR / UK GDPR.
+            This section applies to individuals in the European Economic Area, the United Kingdom, and Switzerland.
+            References to &quot;personal information&quot; include &quot;personal data&quot; under the GDPR / UK GDPR.
           </p>
           <p className="mt-3">
-            <span className="font-semibold text-foreground">Controller.</span> Robot Jobs Board is the controller for
-            processing described in this policy. Contact: hello@robotjobsboard.com.
+            <span className="font-semibold text-foreground">Controller.</span> Robot Jobs Board, operated from Ireland,
+            is the controller for processing described in this policy. Contact: hello@robotjobsboard.com. Because we
+            are established in Ireland, we do not appoint a separate EU Article 27 representative.
           </p>
           <p className="mt-3">
             <span className="font-semibold text-foreground">Legal bases.</span> We process personal information where
@@ -439,11 +446,16 @@ export default function PrivacyPage() {
           <p className="mt-3">
             <span className="font-semibold text-foreground">Your rights.</span> You may have rights to access, correct,
             delete, restrict, object, withdraw consent, and request portability. Email hello@robotjobsboard.com. You may
-            also lodge a complaint with your local supervisory authority (EEA:{' '}
-            <a href="https://edpb.europa.eu/about-edpb/board/members_en" className="underline" rel="noopener noreferrer">
-              EDPB members
+            also lodge a complaint with your local supervisory authority, including Ireland&apos;s Data Protection
+            Commission (
+            <a href="https://www.dataprotection.ie" className="underline" rel="noopener noreferrer">
+              dataprotection.ie
             </a>
-            ; UK: Information Commissioner&apos;s Office,{' '}
+            ), other EEA authorities listed by the{' '}
+            <a href="https://edpb.europa.eu/about-edpb/board/members_en" className="underline" rel="noopener noreferrer">
+              EDPB
+            </a>
+            , or the UK ICO (
             <a href="https://ico.org.uk" className="underline" rel="noopener noreferrer">
               ico.org.uk
             </a>
@@ -451,10 +463,10 @@ export default function PrivacyPage() {
           </p>
           <p className="mt-3">
             <span className="font-semibold text-foreground">Transfers outside Europe.</span> Using the Service involves
-            processing in the United States and possibly other countries. Where we transfer personal data from Europe,
-            we rely on appropriate safeguards (such as standard contractual clauses) or another lawful transfer
-            mechanism, or a derogation where permitted. Contact us for more detail on the mechanism used for a specific
-            transfer.
+            processing by providers in the United States and possibly other countries. Where we transfer personal data
+            from Europe, we rely on appropriate safeguards (such as Standard Contractual Clauses) or another lawful
+            transfer mechanism, or a derogation where permitted. Contact us for more detail on the mechanism used for a
+            specific transfer.
           </p>
           <p className="mt-3">
             <span className="font-semibold text-foreground">No automated decision-making</span> that produces legal or
