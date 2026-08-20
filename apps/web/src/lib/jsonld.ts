@@ -1,6 +1,91 @@
 import type { JobWithRelations } from './jobs';
 import { PAGE_SIZE, getSiteUrl } from './site';
 
+function addDays(date: Date, days: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function normalizeMoneyNumber(raw: string): number | null {
+  // Supports:
+  // - 120000
+  // - 120,000
+  // - 120k / 120 K
+  // - 120.5k
+  const trimmed = raw.trim().toLowerCase();
+  const isK = trimmed.endsWith('k');
+  const num = trimmed.replace(/,/g, '').replace(/k$/, '').trim();
+  const parsed = Number(num);
+  if (!Number.isFinite(parsed)) return null;
+  return isK ? parsed * 1000 : parsed;
+}
+
+function parseCompensationBaseSalary(text?: string | null): {
+  currency: string;
+  value: number;
+  unitText?: string;
+} | null {
+  if (!text) return null;
+
+  const lower = text.toLowerCase();
+
+  const currency =
+    lower.includes('usd') || text.includes('$')
+      ? 'USD'
+      : lower.includes('gbp') || text.includes('£')
+        ? 'GBP'
+        : lower.includes('eur') || text.includes('€')
+          ? 'EUR'
+          : 'USD';
+
+  // Infer whether it's annual/monthly/hourly-ish.
+  let unitText: string | undefined;
+  if (/(hour|hr)\b/.test(lower)) unitText = 'HOUR';
+  else if (/(month|mo)\b/.test(lower)) unitText = 'MONTH';
+  else if (/\bweek\b/.test(lower)) unitText = 'WEEK';
+  else unitText = 'YEAR';
+
+  // Range first: "100k - 130k", "100000–130000", "100000 to 130000"
+  const rangeMatch = lower.match(
+    /([$£€]?\s*\d+(?:[.,]\d+)?\s*k?)\s*(?:-|–|to)\s*([$£€]?\s*\d+(?:[.,]\d+)?\s*k?)/i,
+  );
+
+  const singleMatch = !rangeMatch ? lower.match(/([$£€]?\s*\d+(?:[.,]\d+)?\s*k?)/i) : null;
+
+  const numberMatch = rangeMatch ? rangeMatch[1] : singleMatch?.[1];
+  if (!numberMatch) return null;
+
+  // Strip any currency symbols from the captured value.
+  const cleaned = numberMatch.replace(/[$£€]/g, '').trim();
+  const value = normalizeMoneyNumber(cleaned);
+  if (value == null) return null;
+
+  return { currency, value, unitText };
+}
+
+function extractPostalCode(locationRaw?: string | null): string | undefined {
+  if (!locationRaw) return undefined;
+  // US ZIP / ZIP+4
+  const match = locationRaw.match(/\b(\d{5})(?:-\d{4})?\b/);
+  return match?.[1];
+}
+
+function extractStreetAddress(locationRaw?: string | null): string | undefined {
+  if (!locationRaw) return undefined;
+  const raw = locationRaw.trim();
+  if (!raw) return undefined;
+
+  // Best-effort: take the first comma-separated segment.
+  const parts = raw.split(',').map((p) => p.trim()).filter(Boolean);
+  const first = parts[0] ?? '';
+  if (!first) return undefined;
+
+  // Avoid "Remote" / "United States" as "street address".
+  if (/remote/i.test(first) || first.length < 6) return undefined;
+  return first;
+}
+
 function employmentSchema(type: string): string {
   switch (type) {
     case 'FULL_TIME':
@@ -44,8 +129,22 @@ export function jobPostingJsonLd(job: JobWithRelations) {
     applicationContact: undefined,
   };
 
-  if (job.expiresAt) {
-    data.validThrough = job.expiresAt.toISOString();
+  // Google expects `validThrough` for JobPosting rich results.
+  // If the feed doesn't provide an expiresAt, infer a conservative deadline.
+  const validThrough = job.expiresAt ?? addDays(job.postedAt ?? job.createdAt, 30);
+  data.validThrough = validThrough.toISOString();
+
+  const baseSalary = parseCompensationBaseSalary(job.compensationText);
+  if (baseSalary) {
+    data.baseSalary = {
+      '@type': 'MonetaryAmount',
+      currency: baseSalary.currency,
+      value: {
+        '@type': 'QuantitativeValue',
+        value: baseSalary.value,
+        unitText: baseSalary.unitText,
+      },
+    };
   }
 
   if (job.isRemote || job.workplaceType === 'REMOTE') {
@@ -60,6 +159,8 @@ export function jobPostingJsonLd(job: JobWithRelations) {
       '@type': 'Place',
       address: {
         '@type': 'PostalAddress',
+        streetAddress: extractStreetAddress(job.locationRaw) ?? undefined,
+        postalCode: extractPostalCode(job.locationRaw) ?? undefined,
         addressLocality: job.city ?? undefined,
         addressRegion: job.region ?? undefined,
         addressCountry: job.country ?? 'US',
