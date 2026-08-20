@@ -22,7 +22,7 @@ export function JobCard({ job }: { job: JobWithRelations }) {
     .join(' \u00b7 ');
 
   return (
-    <article className="rounded-2xl border border-line bg-card p-6 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_0_24px_rgba(94,234,212,0.08)]">
+    <article className="rounded-2xl border border-line bg-card p-6 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] md:hover:-translate-y-0.5 md:hover:border-accent/40 md:hover:shadow-[0_0_24px_rgba(94,234,212,0.08)]">
       <div className="flex flex-col gap-6 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
           <h2 className="text-xl font-semibold">

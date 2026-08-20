@@ -104,12 +104,18 @@ export function JobFilters({
   tags,
   seniorities,
   countries,
+  onApplied,
+  className,
+  applyMode = 'instant',
 }: {
   filters: JobFilterValues;
   domains: Option[];
   tags: Array<{ slug: string; label: string; count: number }>;
   seniorities: Option[];
   countries: Array<{ country: string; count: number }>;
+  onApplied?: () => void;
+  className?: string;
+  applyMode?: 'instant' | 'manual';
 }) {
   const router = useRouter();
   const hasFilters = Boolean(
@@ -124,8 +130,9 @@ export function JobFilters({
       filters.sort === 'relevance',
   );
 
-  function apply(form: HTMLFormElement) {
+  function apply(form: HTMLFormElement, close = false) {
     router.push(hrefFromForm(form), { scroll: false });
+    if (close) onApplied?.();
   }
 
   return (
@@ -135,14 +142,15 @@ export function JobFilters({
       action="/"
       onSubmit={(event) => {
         event.preventDefault();
-        apply(event.currentTarget);
+        apply(event.currentTarget, true);
       }}
       onChange={(event) => {
+        if (applyMode === 'manual') return;
         const target = event.target;
         if (target instanceof HTMLInputElement && target.type === 'text') return;
         apply(event.currentTarget);
       }}
-      className="rounded-2xl border border-line bg-card p-6"
+      className={className ?? 'rounded-2xl border border-line bg-card p-6 max-lg:border-0 max-lg:bg-transparent max-lg:p-0'}
     >
       <label className="block text-sm font-semibold" htmlFor="job-search">
         Search

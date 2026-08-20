@@ -32,7 +32,7 @@ export function JobPagination({
   const next = page < pages;
 
   return (
-    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-2 pt-6">
+    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-2 pt-6 pb-4">
       {previous ? (
         <Link href={hrefFor(page - 1)} className={pageLinkClass(false)}>
           Previous

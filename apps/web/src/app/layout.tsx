@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} dark h-full`}>
-      <body className="flex min-h-full flex-col bg-background font-sans text-foreground antialiased">
+      <body className="flex min-h-full flex-col overflow-x-clip bg-background font-sans text-foreground antialiased">
         <a
           href="#content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-foreground focus:px-3 focus:py-2 focus:text-background"
@@ -36,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           Skip to content
         </a>
         <SiteNav />
-        <main id="content" className="flex-1">
+        <main id="content" className="relative z-0 flex-1">
           {children}
         </main>
         <SiteFooter />

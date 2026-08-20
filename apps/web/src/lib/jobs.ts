@@ -61,6 +61,21 @@ export function filtersFromSearchParams(params: Record<string, string | string[]
   };
 }
 
+export function countActiveFilters(filters: JobFilters): number {
+  return (
+    (filters.q ? 1 : 0) +
+    (filters.countries?.length ?? 0) +
+    (filters.domains?.length ?? 0) +
+    (filters.tags?.length ?? 0) +
+    (filters.seniorities?.length ?? 0) +
+    (filters.workplaces?.length ?? 0) +
+    (filters.employments?.length ?? 0) +
+    (filters.entryLevel ? 1 : 0) +
+    (filters.remote ? 1 : 0) +
+    (filters.sort === 'relevance' ? 1 : 0)
+  );
+}
+
 export function jobBoardHref(filters: JobFilters, page = filters.page ?? 1): string {
   const query = new URLSearchParams();
   if (filters.q) query.set('q', filters.q);
