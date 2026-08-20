@@ -1,4 +1,5 @@
 import type { EmploymentType, Prisma, WorkplaceType } from '@robot-jobs-board/db';
+import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from './db';
 import { type JobFilters } from './job-filter-utils';
 import { PAGE_SIZE } from './site';
@@ -149,11 +150,13 @@ export function expandSearchTerms(q: string): string[] {
 
 function textSearchWhere(q: string): Prisma.JobWhereInput {
   const terms = expandSearchTerms(q);
+  // Skip descriptionPlain — ILIKE on large text is too slow for interactive search.
   return {
     OR: terms.flatMap((term) => [
       { title: { contains: term, mode: 'insensitive' as const } },
-      { descriptionPlain: { contains: term, mode: 'insensitive' as const } },
       { locationRaw: { contains: term, mode: 'insensitive' as const } },
+      { city: { contains: term, mode: 'insensitive' as const } },
+      { department: { contains: term, mode: 'insensitive' as const } },
       { company: { name: { contains: term, mode: 'insensitive' as const } } },
     ]),
   };
@@ -232,37 +235,36 @@ export async function searchJobs(filters: JobFilters) {
   const newestOrder = [{ postedAt: 'desc' as const }, { createdAt: 'desc' as const }];
   return withDb(
     async () => {
-      const total = await prisma.job.count({ where });
-      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-      const page = Math.min(requestedPage, pages);
-      const skip = (page - 1) * PAGE_SIZE;
-      const jobs =
-        filters.q && filters.sort !== 'newest'
-          ? await findByPriority(
+      const skip = (requestedPage - 1) * PAGE_SIZE;
+      const relevance = Boolean(filters.q && filters.sort !== 'newest');
+      const [total, jobs] = await Promise.all([
+        prisma.job.count({ where }),
+        relevance
+          ? findByPriority(
               where,
               [
-                titleSearchWhere(filters.q),
+                titleSearchWhere(filters.q!),
                 {
-                  AND: [{ NOT: titleSearchWhere(filters.q) }, companySearchWhere(filters.q)],
+                  AND: [{ NOT: titleSearchWhere(filters.q!) }, companySearchWhere(filters.q!)],
                 },
                 {
-                  AND: [
-                    { NOT: titleSearchWhere(filters.q) },
-                    { NOT: companySearchWhere(filters.q) },
-                  ],
+                  AND: [{ NOT: titleSearchWhere(filters.q!) }, { NOT: companySearchWhere(filters.q!) }],
                 },
               ],
               skip,
               PAGE_SIZE,
               newestOrder,
             )
-          : await prisma.job.findMany({
+          : prisma.job.findMany({
               where,
               include: jobCardInclude,
               orderBy: newestOrder,
               skip,
               take: PAGE_SIZE,
-            });
+            }),
+      ]);
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      const page = Math.min(requestedPage, pages);
       return { jobs, total, page, pageSize: PAGE_SIZE };
     },
     { jobs: [] as JobWithRelations[], total: 0, page: requestedPage, pageSize: PAGE_SIZE },
@@ -276,26 +278,47 @@ async function findByPriority(
   take: number,
   orderBy: Prisma.JobOrderByWithRelationInput[],
 ): Promise<JobWithRelations[]> {
+  // Page 1: run buckets in parallel (they're mutually exclusive via NOT clauses).
+  if (skip === 0) {
+    const pages = await Promise.all(
+      buckets.map((bucket) =>
+        prisma.job.findMany({
+          where: { AND: [where, bucket] },
+          include: jobCardInclude,
+          orderBy,
+          take,
+        }),
+      ),
+    );
+    const jobs: JobWithRelations[] = [];
+    for (const page of pages) {
+      for (const job of page) {
+        jobs.push(job);
+        if (jobs.length >= take) return jobs;
+      }
+    }
+    return jobs;
+  }
+
   const jobs: JobWithRelations[] = [];
   let remainingSkip = skip;
   let remainingTake = take;
   for (const bucket of buckets) {
     if (remainingTake <= 0) break;
-    const bucketWhere: Prisma.JobWhereInput = { AND: [where, bucket] };
-    const count = await prisma.job.count({ where: bucketWhere });
-    if (remainingSkip >= count) {
-      remainingSkip -= count;
-      continue;
-    }
+    // Avoid COUNT(*) — over-fetch then slice.
     const page = await prisma.job.findMany({
-      where: bucketWhere,
+      where: { AND: [where, bucket] },
       include: jobCardInclude,
       orderBy,
-      skip: remainingSkip,
-      take: remainingTake,
+      take: remainingSkip + remainingTake,
     });
-    jobs.push(...page);
-    remainingTake -= page.length;
+    if (page.length <= remainingSkip) {
+      remainingSkip -= page.length;
+      continue;
+    }
+    const slice = page.slice(remainingSkip, remainingSkip + remainingTake);
+    jobs.push(...slice);
+    remainingTake -= slice.length;
     remainingSkip = 0;
   }
   return jobs;
@@ -337,57 +360,78 @@ export async function relatedJobs(job: JobWithRelations, take = 6) {
 
 export async function getTaxonomy() {
   return withDb(
-    async () => {
-      const [domains, tags, seniorities] = await Promise.all([
-        prisma.robotDomain.findMany({ orderBy: { name: 'asc' } }),
-        prisma.techTag.findMany({ orderBy: { label: 'asc' } }),
-        prisma.seniorityLevel.findMany({ orderBy: { label: 'asc' } }),
-      ]);
-      return { domains, tags, seniorities };
-    },
+    unstable_cache(
+      async () => {
+        const [domains, tags, seniorities] = await Promise.all([
+          prisma.robotDomain.findMany({ orderBy: { name: 'asc' } }),
+          prisma.techTag.findMany({ orderBy: { label: 'asc' } }),
+          prisma.seniorityLevel.findMany({ orderBy: { label: 'asc' } }),
+        ]);
+        return { domains, tags, seniorities };
+      },
+      ['job-board-taxonomy'],
+      { revalidate: 300 },
+    ),
     { domains: [], tags: [], seniorities: [] },
   );
 }
 
 export async function getTagFacets() {
   return withDb(
-    async () => {
-      const [tags, counts] = await Promise.all([
-        prisma.techTag.findMany({ orderBy: { label: 'asc' } }),
-        prisma.jobTechTag.groupBy({
-          by: ['techTagId'],
-          where: { job: publicJobWhere },
-          _count: { _all: true },
-        }),
-      ]);
-      const countById = new Map(counts.map((row) => [row.techTagId, row._count._all]));
-      return tags
-        .map((tag) => ({ slug: tag.slug, label: tag.label, count: countById.get(tag.id) ?? 0 }))
-        .filter((tag) => tag.count > 0);
-    },
+    unstable_cache(
+      async () => {
+        const [tags, counts] = await Promise.all([
+          prisma.techTag.findMany({ orderBy: { label: 'asc' } }),
+          prisma.jobTechTag.groupBy({
+            by: ['techTagId'],
+            where: { job: publicJobWhere },
+            _count: { _all: true },
+          }),
+        ]);
+        const countById = new Map(counts.map((row) => [row.techTagId, row._count._all]));
+        return tags
+          .map((tag) => ({ slug: tag.slug, label: tag.label, count: countById.get(tag.id) ?? 0 }))
+          .filter((tag) => tag.count > 0);
+      },
+      ['job-board-tag-facets'],
+      { revalidate: 120 },
+    ),
     [] as Array<{ slug: string; label: string; count: number }>,
   );
 }
 
 export async function getCountryFacets() {
   return withDb(
-    async () => {
-      const rows = await prisma.job.groupBy({
-        by: ['country'],
-        where: { ...publicJobWhere, country: { not: null } },
-        _count: { _all: true },
-      });
-      const preferred = ['United States', 'United Kingdom', 'Canada', 'Australia', 'Ireland', 'Germany', 'France', 'Switzerland'];
-      return rows
-        .filter((row) => row.country)
-        .map((row) => ({ country: row.country as string, count: row._count._all }))
-        .sort((a, b) => {
-          const ai = preferred.indexOf(a.country);
-          const bi = preferred.indexOf(b.country);
-          if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-          return b.count - a.count;
+    unstable_cache(
+      async () => {
+        const rows = await prisma.job.groupBy({
+          by: ['country'],
+          where: { ...publicJobWhere, country: { not: null } },
+          _count: { _all: true },
         });
-    },
+        const preferred = [
+          'United States',
+          'United Kingdom',
+          'Canada',
+          'Australia',
+          'Ireland',
+          'Germany',
+          'France',
+          'Switzerland',
+        ];
+        return rows
+          .filter((row) => row.country)
+          .map((row) => ({ country: row.country as string, count: row._count._all }))
+          .sort((a, b) => {
+            const ai = preferred.indexOf(a.country);
+            const bi = preferred.indexOf(b.country);
+            if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+            return b.count - a.count;
+          });
+      },
+      ['job-board-country-facets'],
+      { revalidate: 120 },
+    ),
     [] as Array<{ country: string; count: number }>,
   );
 }

@@ -2,8 +2,21 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import type { JobFilters as JobFilterValues } from '@/lib/job-filter-utils';
+
+function SearchButton({ pending }: { pending: boolean }) {
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="h-10 shrink-0 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-fg transition-[transform,opacity,filter] duration-100 hover:opacity-90 active:scale-95 active:brightness-90 disabled:pointer-events-none disabled:scale-95 disabled:opacity-80 disabled:brightness-90"
+    >
+      {pending ? 'Searching…' : 'Search'}
+    </button>
+  );
+}
 
 type Option = { slug: string; label: string; name?: string };
 
@@ -119,9 +132,12 @@ export function JobFilters({
   applyMode?: 'instant' | 'manual';
 }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasPending = useRef(false);
   const searchId = applyMode === 'manual' ? 'job-search-mobile' : 'job-search';
   const [query, setQuery] = useState(filters.q ?? '');
+  const [searchClicked, setSearchClicked] = useState(false);
 
   const hasFilters = Boolean(
     filters.q ||
@@ -140,13 +156,21 @@ export function JobFilters({
   }, [filters.q]);
 
   useEffect(() => {
+    if (wasPending.current && !isPending) setSearchClicked(false);
+    wasPending.current = isPending;
+  }, [isPending]);
+
+  useEffect(() => {
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
   }, []);
 
-  function apply(form: HTMLFormElement, close = false) {
-    router.push(hrefFromForm(form), { scroll: false });
+  function apply(form: HTMLFormElement, close = false, fromSearchButton = false) {
+    if (fromSearchButton) setSearchClicked(true);
+    startTransition(() => {
+      router.push(hrefFromForm(form), { scroll: false });
+    });
     if (close) onApplied?.();
   }
 
@@ -175,7 +199,7 @@ export function JobFilters({
       onSubmit={(event) => {
         event.preventDefault();
         if (searchTimer.current) clearTimeout(searchTimer.current);
-        apply(event.currentTarget, true);
+        apply(event.currentTarget, true, true);
       }}
       onChange={(event) => {
         const target = event.target;
@@ -204,12 +228,7 @@ export function JobFilters({
           autoComplete="off"
           className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-background px-3 text-sm"
         />
-        <button
-          type="submit"
-          className="h-10 shrink-0 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-fg transition-opacity hover:opacity-90"
-        >
-          Search
-        </button>
+        <SearchButton pending={searchClicked} />
       </div>
       <CheckList
         legend="Location"
@@ -239,7 +258,7 @@ export function JobFilters({
       {filters.sort === 'relevance' ? <input type="hidden" name="sort" value="relevance" /> : null}
       <button
         type="submit"
-        className="mt-6 h-10 w-full rounded-lg bg-accent px-3 text-base font-semibold text-accent-fg transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
+        className="mt-6 h-10 w-full rounded-lg bg-accent px-3 text-base font-semibold text-accent-fg transition-[transform,opacity,filter] duration-100 hover:opacity-90 active:scale-[0.98] active:brightness-90 focus-visible:ring-2 focus-visible:ring-accent"
       >
         Apply filters
       </button>
@@ -317,12 +336,20 @@ export function JobSort({ filters }: { filters: JobFilterValues }) {
 
 export function MobileSearchBar({ filters }: { filters: JobFilterValues }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasPending = useRef(false);
   const [query, setQuery] = useState(filters.q ?? '');
+  const [searchClicked, setSearchClicked] = useState(false);
 
   useEffect(() => {
     setQuery(filters.q ?? '');
   }, [filters.q]);
+
+  useEffect(() => {
+    if (wasPending.current && !isPending) setSearchClicked(false);
+    wasPending.current = isPending;
+  }, [isPending]);
 
   useEffect(() => {
     return () => {
@@ -330,7 +357,8 @@ export function MobileSearchBar({ filters }: { filters: JobFilterValues }) {
     };
   }, []);
 
-  function go(q: string) {
+  function go(q: string, fromSearchButton = false) {
+    if (fromSearchButton) setSearchClicked(true);
     const params = new URLSearchParams();
     const trimmed = q.trim();
     if (trimmed) params.set('q', trimmed);
@@ -343,7 +371,9 @@ export function MobileSearchBar({ filters }: { filters: JobFilterValues }) {
     for (const employment of filters.employments ?? []) params.append('employment', employment);
     if (filters.sort === 'relevance') params.set('sort', 'relevance');
     const encoded = params.toString();
-    router.push(encoded ? `/?${encoded}` : '/', { scroll: false });
+    startTransition(() => {
+      router.push(encoded ? `/?${encoded}` : '/', { scroll: false });
+    });
   }
 
   return (
@@ -352,7 +382,7 @@ export function MobileSearchBar({ filters }: { filters: JobFilterValues }) {
       onSubmit={(event) => {
         event.preventDefault();
         if (timer.current) clearTimeout(timer.current);
-        go(query);
+        go(query, true);
       }}
     >
       <input
@@ -371,9 +401,7 @@ export function MobileSearchBar({ filters }: { filters: JobFilterValues }) {
           timer.current = setTimeout(() => go(value), 350);
         }}
       />
-      <button type="submit" className="h-10 shrink-0 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-fg">
-        Search
-      </button>
+      <SearchButton pending={searchClicked} />
     </form>
   );
 }
