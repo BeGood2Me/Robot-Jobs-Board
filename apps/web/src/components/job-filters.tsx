@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { JobFilters as JobFilterValues } from '@/lib/jobs';
+import type { JobFilters as JobFilterValues } from '@/lib/job-filter-utils';
 
 type Option = { slug: string; label: string; name?: string };
 

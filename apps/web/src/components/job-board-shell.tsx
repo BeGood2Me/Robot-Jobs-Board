@@ -3,8 +3,8 @@
 import { FunnelSimple, X } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { JobFilters, JobSort } from '@/components/job-filters';
-import type { JobFilters as JobFilterValues } from '@/lib/jobs';
-import { countActiveFilters } from '@/lib/jobs';
+import type { JobFilters as JobFilterValues } from '@/lib/job-filter-utils';
+import { countActiveFilters } from '@/lib/job-filter-utils';
 
 type FilterProps = {
   filters: JobFilterValues;
