@@ -5,9 +5,9 @@ import { JobCard } from '@/components/job-card';
 import { JobPagination } from '@/components/job-pagination';
 import { getCompanyBySlug, getCompanyJobsPage } from '@/lib/jobs';
 import { companyPageJsonLd } from '@/lib/jsonld';
-import { PAGE_SIZE, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
+import { PAGE_SIZE } from '@/lib/site';
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 900;
 
 function companyJobsHref(slug: string, page = 1) {
   return page > 1 ? `/companies/${slug}?page=${page}` : `/companies/${slug}`;

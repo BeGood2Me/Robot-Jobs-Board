@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { JobBoard } from '@/components/job-board';
-import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 900;
 
 export const metadata: Metadata = {
   title: 'Robotics jobs',

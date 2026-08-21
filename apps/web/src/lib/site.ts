@@ -1,8 +1,9 @@
 export const INDEX_JOB_THRESHOLD = 5;
 export const PAGE_SIZE = 10;
 
-/** Public board freshness. Aggregation only needs daily updates; 15 minutes is conservative. */
-export const PUBLIC_REVALIDATE_SECONDS = 15 * 60;
+/** Public board freshness (seconds). Aggregation only needs daily updates; 15 minutes is conservative.
+ *  Page `export const revalidate` must use the literal `900` — Next cannot analyze imported values. */
+export const PUBLIC_REVALIDATE_SECONDS = 900;
 
 export function getSiteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
