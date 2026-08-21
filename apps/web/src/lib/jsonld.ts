@@ -108,6 +108,141 @@ function extractStreetAddress(locationRaw?: string | null): string | undefined {
   return first;
 }
 
+const US_STATE_BY_CODE: Record<string, string> = {
+  AL: 'Alabama',
+  AK: 'Alaska',
+  AZ: 'Arizona',
+  AR: 'Arkansas',
+  CA: 'California',
+  CO: 'Colorado',
+  CT: 'Connecticut',
+  DE: 'Delaware',
+  FL: 'Florida',
+  GA: 'Georgia',
+  HI: 'Hawaii',
+  ID: 'Idaho',
+  IL: 'Illinois',
+  IN: 'Indiana',
+  IA: 'Iowa',
+  KS: 'Kansas',
+  KY: 'Kentucky',
+  LA: 'Louisiana',
+  ME: 'Maine',
+  MD: 'Maryland',
+  MA: 'Massachusetts',
+  MI: 'Michigan',
+  MN: 'Minnesota',
+  MS: 'Mississippi',
+  MO: 'Missouri',
+  MT: 'Montana',
+  NE: 'Nebraska',
+  NV: 'Nevada',
+  NH: 'New Hampshire',
+  NJ: 'New Jersey',
+  NM: 'New Mexico',
+  NY: 'New York',
+  NC: 'North Carolina',
+  ND: 'North Dakota',
+  OH: 'Ohio',
+  OK: 'Oklahoma',
+  OR: 'Oregon',
+  PA: 'Pennsylvania',
+  RI: 'Rhode Island',
+  SC: 'South Carolina',
+  SD: 'South Dakota',
+  TN: 'Tennessee',
+  TX: 'Texas',
+  UT: 'Utah',
+  VT: 'Vermont',
+  VA: 'Virginia',
+  WA: 'Washington',
+  WV: 'West Virginia',
+  WI: 'Wisconsin',
+  WY: 'Wyoming',
+  DC: 'District of Columbia',
+};
+
+const CA_PROVINCE_BY_CODE: Record<string, string> = {
+  AB: 'Alberta',
+  BC: 'British Columbia',
+  MB: 'Manitoba',
+  NB: 'New Brunswick',
+  NL: 'Newfoundland and Labrador',
+  NS: 'Nova Scotia',
+  NT: 'Northwest Territories',
+  NU: 'Nunavut',
+  ON: 'Ontario',
+  PE: 'Prince Edward Island',
+  QC: 'Quebec',
+  SK: 'Saskatchewan',
+  YT: 'Yukon',
+};
+
+const AU_STATE_BY_CODE: Record<string, string> = {
+  ACT: 'Australian Capital Territory',
+  NSW: 'New South Wales',
+  NT: 'Northern Territory',
+  QLD: 'Queensland',
+  SA: 'South Australia',
+  TAS: 'Tasmania',
+  VIC: 'Victoria',
+  WA: 'Western Australia',
+};
+
+function expandRegionToken(token: string): string | undefined {
+  const cleaned = token.replace(/\([^)]*\)/g, '').trim();
+  if (!cleaned || /^remote$/i.test(cleaned)) return undefined;
+  const upper = cleaned.toUpperCase();
+  if (US_STATE_BY_CODE[upper]) return US_STATE_BY_CODE[upper];
+  if (CA_PROVINCE_BY_CODE[upper]) return CA_PROVINCE_BY_CODE[upper];
+  if (AU_STATE_BY_CODE[upper]) return AU_STATE_BY_CODE[upper];
+  // "CA 94107" / "TX"
+  const codeOnly = upper.match(/^([A-Z]{2})(?:\s+\d[\d-]*)?$/);
+  if (codeOnly?.[1]) {
+    const code = codeOnly[1];
+    return US_STATE_BY_CODE[code] ?? CA_PROVINCE_BY_CODE[code] ?? AU_STATE_BY_CODE[code];
+  }
+  // Full state/province names already look like regions.
+  if (/^[A-Za-z][A-Za-z\s.'-]{1,40}$/.test(cleaned) && !/^(united\s+states|usa|u\.s\.a\.|canada|australia|united\s+kingdom|uk|ireland|germany|france|switzerland)$/i.test(cleaned)) {
+    return cleaned;
+  }
+  return undefined;
+}
+
+/** Prefer stored region; else parse from locationRaw so GSC always gets addressRegion. */
+function resolveAddressRegion(job: {
+  region?: string | null;
+  city?: string | null;
+  country?: string | null;
+  locationRaw?: string | null;
+}): string {
+  const stored = job.region?.trim();
+  if (stored) return stored;
+
+  const parts = (job.locationRaw ?? '')
+    .split(/[,|/]/g)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  // "City, ST" or "City, State, Country" — try middle tokens first.
+  for (const part of parts.slice(1)) {
+    const region = expandRegionToken(part);
+    if (region) return region;
+  }
+  for (const part of parts) {
+    const region = expandRegionToken(part);
+    if (region && region.toLowerCase() !== (job.city ?? '').trim().toLowerCase()) return region;
+  }
+
+  const city = job.city?.trim();
+  if (city && !/^remote$/i.test(city)) return city;
+
+  const country = job.country?.trim();
+  if (country) return country;
+
+  return 'Nationwide';
+}
+
 function employmentSchema(type: string): string {
   switch (type) {
     case 'FULL_TIME':
@@ -195,15 +330,19 @@ export function jobPostingJsonLd(job: JobWithRelations) {
   }
 
   if (job.workplaceType !== 'REMOTE') {
+    const streetAddress = extractStreetAddress(job.locationRaw);
+    const postalCode = extractPostalCode(job.locationRaw);
+    const addressLocality = job.city?.trim() || undefined;
     data.jobLocation = {
       '@type': 'Place',
       address: {
         '@type': 'PostalAddress',
-        streetAddress: extractStreetAddress(job.locationRaw) ?? undefined,
-        postalCode: extractPostalCode(job.locationRaw) ?? undefined,
-        addressLocality: job.city ?? undefined,
-        addressRegion: job.region ?? undefined,
-        addressCountry: job.country ?? 'US',
+        ...(streetAddress ? { streetAddress } : {}),
+        ...(postalCode ? { postalCode } : {}),
+        ...(addressLocality ? { addressLocality } : {}),
+        // Required by Google Job Postings (non-critical today; omit → GSC warning).
+        addressRegion: resolveAddressRegion(job),
+        addressCountry: job.country?.trim() || 'US',
       },
     };
   }
