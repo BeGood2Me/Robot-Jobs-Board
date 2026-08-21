@@ -1,8 +1,9 @@
+import type { Prisma } from '@robot-jobs-board/db';
+import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import { prisma, withDb } from './db';
 import { jobCardSelect, type JobCardData } from './jobs';
 import { INDEX_JOB_THRESHOLD, slugify } from './site';
-import type { Prisma } from '@robot-jobs-board/db';
-import { unstable_cache } from 'next/cache';
 
 export type ProgrammaticKind = 'domain' | 'skill' | 'location' | 'combo';
 
@@ -48,13 +49,13 @@ const loadPlaceIndex = unstable_cache(
     return { cities, countries, regions };
   },
   ['place-index'],
-  { revalidate: 300 },
+  { revalidate: 600 },
 );
 
-export async function resolvePlace(place: string): Promise<{
+export const resolvePlace = cache(async (place: string): Promise<{
   label: string;
   where: Prisma.JobWhereInput;
-} | null> {
+} | null> => {
   if (place === 'remote') {
     return { label: 'Remote', where: { isRemote: true } };
   }
@@ -71,10 +72,23 @@ export async function resolvePlace(place: string): Promise<{
     .split('-')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
-  return { label: pretty, where: { OR: [{ city: { equals: pretty, mode: 'insensitive' } }, { country: { equals: pretty, mode: 'insensitive' } }] } };
-}
+  return {
+    label: pretty,
+    where: {
+      OR: [
+        { city: { equals: pretty, mode: 'insensitive' } },
+        { country: { equals: pretty, mode: 'insensitive' } },
+      ],
+    },
+  };
+});
 
-export function domainCopy(name: string, description: string): { h1: string; title: string; description: string; intro: string } {
+export function domainCopy(name: string, description: string): {
+  h1: string;
+  title: string;
+  description: string;
+  intro: string;
+} {
   return {
     h1: `${name} robotics jobs`,
     title: `${name} robotics jobs`,
@@ -92,8 +106,9 @@ export function skillCopy(label: string): { h1: string; title: string; descripti
   };
 }
 
-export async function loadListing(where: Prisma.JobWhereInput) {
-  return withDb(async () => {
+const loadListingCached = unstable_cache(
+  async (cacheKey: string, whereJson: string) => {
+    const where = JSON.parse(whereJson) as Prisma.JobWhereInput;
     const jobs = await prisma.job.findMany({
       where: { isActive: true, isHidden: false, ...where },
       select: jobCardSelect,
@@ -101,5 +116,53 @@ export async function loadListing(where: Prisma.JobWhereInput) {
       take: 50,
     });
     return { jobs, total: jobs.length, indexable: jobs.length >= INDEX_JOB_THRESHOLD };
-  }, { jobs: [] as JobCardData[], total: 0, indexable: false });
+  },
+  ['seo-listing'],
+  { revalidate: 300 },
+);
+
+export async function loadListing(where: Prisma.JobWhereInput, cacheKey: string) {
+  return withDb(
+    () => loadListingCached(cacheKey, JSON.stringify(where)),
+    { jobs: [] as JobCardData[], total: 0, indexable: false },
+  );
 }
+
+const listingIndexableCached = unstable_cache(
+  async (cacheKey: string, whereJson: string) => {
+    const where = JSON.parse(whereJson) as Prisma.JobWhereInput;
+    const count = await prisma.job.count({
+      where: { isActive: true, isHidden: false, ...where },
+    });
+    return count >= INDEX_JOB_THRESHOLD;
+  },
+  ['seo-listing-indexable'],
+  { revalidate: 300 },
+);
+
+/** Metadata-only: count instead of fetching 50 job cards. */
+export async function listingIsIndexable(where: Prisma.JobWhereInput, cacheKey: string) {
+  return withDb(() => listingIndexableCached(cacheKey, JSON.stringify(where)), false);
+}
+
+export const getDomainBySlug = cache(async (slug: string) =>
+  withDb(
+    () =>
+      prisma.robotDomain.findUnique({
+        where: { slug },
+        select: { id: true, slug: true, name: true, description: true },
+      }),
+    null,
+  ),
+);
+
+export const getTagBySlug = cache(async (slug: string) =>
+  withDb(
+    () =>
+      prisma.techTag.findUnique({
+        where: { slug },
+        select: { id: true, slug: true, label: true },
+      }),
+    null,
+  ),
+);

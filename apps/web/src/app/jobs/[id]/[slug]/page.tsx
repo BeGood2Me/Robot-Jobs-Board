@@ -8,7 +8,7 @@ import { getJobById, relatedJobs } from '@/lib/jobs';
 import { sanitizeJobHtml } from '@/lib/sanitize';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
   const { id } = await params;

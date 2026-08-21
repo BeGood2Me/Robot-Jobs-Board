@@ -3,12 +3,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { JobCard } from '@/components/job-card';
 import { JobPagination } from '@/components/job-pagination';
-import { prisma, withDb } from '@/lib/db';
-import { jobCardSelect, publicJobWhere } from '@/lib/jobs';
+import { getCompanyBySlug, getCompanyJobsPage } from '@/lib/jobs';
 import { companyPageJsonLd } from '@/lib/jsonld';
 import { PAGE_SIZE } from '@/lib/site';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 180;
 
 function companyJobsHref(slug: string, page = 1) {
   return page > 1 ? `/companies/${slug}?page=${page}` : `/companies/${slug}`;
@@ -16,12 +15,9 @@ function companyJobsHref(slug: string, page = 1) {
 
 export async function generateMetadata({ params }: PageProps<'/companies/[slug]'>): Promise<Metadata> {
   const { slug } = await params;
-  const company = await withDb(() => prisma.company.findUnique({ where: { slug } }), null);
+  const company = await getCompanyBySlug(slug);
   if (!company) return { title: 'Company not found' };
-  const total = await withDb(
-    () => prisma.job.count({ where: { ...publicJobWhere, companyId: company.id } }),
-    0,
-  );
+  const { total } = await getCompanyJobsPage(company.id, 1);
   return {
     title: `${company.name} robotics jobs`,
     description: `${total} open robotics job${total === 1 ? '' : 's'} at ${company.name}. ${company.description}`.slice(
@@ -46,24 +42,12 @@ export default async function CompanyPage({
   const sp = await searchParams;
   const requestedPage = Math.max(1, Number(typeof sp.page === 'string' ? sp.page : 1) || 1);
 
-  const company = await withDb(() => prisma.company.findUnique({ where: { slug } }), null);
+  const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 
-  const where = { ...publicJobWhere, companyId: company.id };
-  const total = await withDb(() => prisma.job.count({ where }), 0);
+  const { total, jobs } = await getCompanyJobsPage(company.id, requestedPage);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requestedPage, pages);
-  const jobs = await withDb(
-    () =>
-      prisma.job.findMany({
-        where,
-        select: jobCardSelect,
-        orderBy: [{ postedAt: 'desc' }, { createdAt: 'desc' }],
-        skip: (page - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      }),
-    [],
-  );
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">

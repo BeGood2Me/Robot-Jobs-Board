@@ -1,23 +1,34 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
+import { publicJobWhere } from '@/lib/jobs';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: 'Robotics companies hiring',
   description: 'Company profiles for robotics teams hiring across AMRs, humanoids, drones, and more.',
 };
 
+const loadCompaniesIndex = unstable_cache(
+  async () =>
+    prisma.company.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        _count: { select: { jobs: { where: publicJobWhere } } },
+      },
+      orderBy: { name: 'asc' },
+    }),
+  ['companies-index'],
+  { revalidate: 300 },
+);
+
 export default async function CompaniesPage() {
-  const companies = await withDb(
-    () =>
-      prisma.company.findMany({
-        include: { _count: { select: { jobs: { where: { isActive: true, isHidden: false } } } } },
-        orderBy: { name: 'asc' },
-      }),
-    [],
-  );
+  const companies = await withDb(loadCompaniesIndex, []);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">

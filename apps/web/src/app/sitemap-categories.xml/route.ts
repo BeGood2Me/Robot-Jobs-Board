@@ -1,4 +1,6 @@
+import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
+import { publicJobWhere } from '@/lib/jobs';
 import { INDEX_JOB_THRESHOLD, getSiteUrl, slugify } from '@/lib/site';
 
 function urlset(urls: string[]) {
@@ -8,51 +10,62 @@ ${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
 </urlset>`;
 }
 
-export async function GET() {
-  const site = getSiteUrl();
-  const urls: string[] = [`${site}/`];
+const loadCategorySitemapUrls = unstable_cache(
+  async () => {
+    const site = getSiteUrl();
+    const urls: string[] = [`${site}/`];
 
-  const domains = await withDb(() => prisma.robotDomain.findMany(), []);
-  for (const domain of domains) {
-    const count = await withDb(
-      () => prisma.job.count({ where: { isActive: true, isHidden: false, robotDomains: { some: { domainId: domain.id } } } }),
-      0,
-    );
-    if (count >= INDEX_JOB_THRESHOLD) urls.push(`${site}/robots/${domain.slug}-jobs`);
-  }
+    const domains = await prisma.robotDomain.findMany({
+      select: {
+        slug: true,
+        _count: { select: { jobs: { where: { job: publicJobWhere } } } },
+      },
+    });
+    for (const domain of domains) {
+      if (domain._count.jobs >= INDEX_JOB_THRESHOLD) {
+        urls.push(`${site}/robots/${domain.slug}-jobs`);
+      }
+    }
 
-  const remoteCount = await withDb(() => prisma.job.count({ where: { isActive: true, isHidden: false, isRemote: true } }), 0);
-  if (remoteCount >= INDEX_JOB_THRESHOLD) urls.push(`${site}/locations/remote-robotics-jobs`);
+    const remoteCount = await prisma.job.count({ where: { ...publicJobWhere, isRemote: true } });
+    if (remoteCount >= INDEX_JOB_THRESHOLD) urls.push(`${site}/locations/remote-robotics-jobs`);
 
-  const cities = await withDb(
-    () =>
+    const [cities, countries] = await Promise.all([
       prisma.job.groupBy({
         by: ['city'],
-        where: { isActive: true, isHidden: false, city: { not: null } },
+        where: { ...publicJobWhere, city: { not: null } },
         _count: true,
       }),
-    [],
-  );
-  for (const row of cities) {
-    if (row.city && row._count >= INDEX_JOB_THRESHOLD) {
-      urls.push(`${site}/locations/${slugify(row.city)}-robotics-jobs`);
-    }
-  }
-
-  const countries = await withDb(
-    () =>
       prisma.job.groupBy({
         by: ['country'],
-        where: { isActive: true, isHidden: false, country: { not: null } },
+        where: { ...publicJobWhere, country: { not: null } },
         _count: true,
       }),
-    [],
-  );
-  for (const row of countries) {
-    if (row.country && row._count >= INDEX_JOB_THRESHOLD) {
-      urls.push(`${site}/locations/${slugify(row.country)}-robotics-jobs`);
-    }
-  }
+    ]);
 
-  return new Response(urlset(urls), { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
+    for (const row of cities) {
+      if (row.city && row._count >= INDEX_JOB_THRESHOLD) {
+        urls.push(`${site}/locations/${slugify(row.city)}-robotics-jobs`);
+      }
+    }
+    for (const row of countries) {
+      if (row.country && row._count >= INDEX_JOB_THRESHOLD) {
+        urls.push(`${site}/locations/${slugify(row.country)}-robotics-jobs`);
+      }
+    }
+
+    return urls;
+  },
+  ['sitemap-categories'],
+  { revalidate: 900 },
+);
+
+export async function GET() {
+  const urls = await withDb(loadCategorySitemapUrls, []);
+  return new Response(urlset(urls), {
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=86400',
+    },
+  });
 }

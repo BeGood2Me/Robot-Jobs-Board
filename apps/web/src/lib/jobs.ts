@@ -1,5 +1,6 @@
 import type { EmploymentType, Prisma, WorkplaceType } from '@robot-jobs-board/db';
 import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import { prisma, withDb } from './db';
 import { type JobFilters } from './job-filter-utils';
 import { PAGE_SIZE } from './site';
@@ -23,7 +24,42 @@ export const jobCardSelect = {
 
 export type JobCardData = Prisma.JobGetPayload<{ select: typeof jobCardSelect }>;
 
-/** Full job row for detail pages (still omits heavy company text fields). */
+/** Explicit columns for detail pages — avoids transferring unused Job/Company TEXT. */
+export const jobDetailSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  descriptionHtml: true,
+  descriptionPlain: true,
+  url: true,
+  locationRaw: true,
+  country: true,
+  region: true,
+  city: true,
+  isRemote: true,
+  workplaceType: true,
+  employmentType: true,
+  department: true,
+  compensationText: true,
+  postedAt: true,
+  expiresAt: true,
+  createdAt: true,
+  isHidden: true,
+  isActive: true,
+  sourceSystem: true,
+  externalId: true,
+  companyId: true,
+  company: {
+    select: { name: true, slug: true, website: true, logoUrl: true, sourceIdentifier: true },
+  },
+  robotDomains: {
+    select: { domainId: true, domain: { select: { id: true, slug: true, name: true } } },
+  },
+  techTags: { select: { techTag: { select: { id: true, slug: true, label: true } } } },
+  seniorities: { select: { seniority: { select: { id: true, slug: true, label: true } } } },
+} satisfies Prisma.JobSelect;
+
+/** @deprecated Prefer jobDetailSelect / jobCardSelect. */
 export const jobDetailInclude = {
   company: { select: { name: true, slug: true, website: true, logoUrl: true, sourceIdentifier: true } },
   robotDomains: { include: { domain: { select: { id: true, slug: true, name: true } } } },
@@ -31,10 +67,9 @@ export const jobDetailInclude = {
   seniorities: { include: { seniority: { select: { id: true, slug: true, label: true } } } },
 } satisfies Prisma.JobInclude;
 
-/** @deprecated Prefer jobCardSelect for lists; kept for detail typing. */
 export const jobCardInclude = jobDetailInclude;
 
-export type JobWithRelations = Prisma.JobGetPayload<{ include: typeof jobDetailInclude }>;
+export type JobWithRelations = Prisma.JobGetPayload<{ select: typeof jobDetailSelect }>;
 
 export const publicJobWhere = {
   isActive: true,
@@ -305,7 +340,7 @@ export async function searchJobs(filters: JobFilters) {
         return { jobs, total, page, pageSize: PAGE_SIZE };
       },
       ['search-jobs', cacheKey],
-      { revalidate: 60 },
+      { revalidate: 180 },
     ),
     { jobs: [] as JobCardData[], total: 0, page: requestedPage, pageSize: PAGE_SIZE },
   );
@@ -318,34 +353,12 @@ async function findByPriority(
   take: number,
   orderBy: Prisma.JobOrderByWithRelationInput[],
 ): Promise<JobCardData[]> {
-  // Page 1: run buckets in parallel (they're mutually exclusive via NOT clauses).
-  if (skip === 0) {
-    const pages = await Promise.all(
-      buckets.map((bucket) =>
-        prisma.job.findMany({
-          where: { AND: [where, bucket] },
-          select: jobCardSelect,
-          orderBy,
-          take,
-        }),
-      ),
-    );
-    const jobs: JobCardData[] = [];
-    for (const page of pages) {
-      for (const job of page) {
-        jobs.push(job);
-        if (jobs.length >= take) return jobs;
-      }
-    }
-    return jobs;
-  }
-
+  // Sequential buckets with early exit — avoids 3× page-size egress when titles fill the page.
   const jobs: JobCardData[] = [];
   let remainingSkip = skip;
   let remainingTake = take;
   for (const bucket of buckets) {
     if (remainingTake <= 0) break;
-    // Avoid COUNT(*) — over-fetch then slice.
     const page = await prisma.job.findMany({
       where: { AND: [where, bucket] },
       select: jobCardSelect,
@@ -364,16 +377,41 @@ async function findByPriority(
   return jobs;
 }
 
-export async function getJobById(id: string) {
-  return withDb(
-    () =>
-      prisma.job.findUnique({
-        where: { id },
-        include: jobDetailInclude,
-      }),
-    null,
-  );
-}
+const loadJobByIdCached = unstable_cache(
+  async (id: string) =>
+    prisma.job.findUnique({
+      where: { id },
+      select: jobDetailSelect,
+    }),
+  ['job-by-id'],
+  { revalidate: 300 },
+);
+
+/** Dedupes metadata + page in one request; caches across crawlers for 5 minutes. */
+export const getJobById = cache(async (id: string) => withDb(() => loadJobByIdCached(id), null));
+
+const loadRelatedJobsCached = unstable_cache(
+  async (jobId: string, companyId: string, city: string | null, domainIdsKey: string, take: number) => {
+    const domainIds = domainIdsKey ? domainIdsKey.split(',') : [];
+    return prisma.job.findMany({
+      where: {
+        isActive: true,
+        isHidden: false,
+        id: { not: jobId },
+        OR: [
+          { companyId },
+          city ? { city } : undefined,
+          domainIds.length ? { robotDomains: { some: { domainId: { in: domainIds } } } } : undefined,
+        ].filter(Boolean) as Prisma.JobWhereInput[],
+      },
+      select: jobCardSelect,
+      orderBy: { postedAt: 'desc' },
+      take,
+    });
+  },
+  ['related-jobs'],
+  { revalidate: 300 },
+);
 
 export async function relatedJobs(
   job: Pick<JobWithRelations, 'id' | 'companyId' | 'city'> & {
@@ -381,24 +419,12 @@ export async function relatedJobs(
   },
   take = 6,
 ) {
-  const domainIds = job.robotDomains.map((d) => d.domainId);
+  const domainIdsKey = job.robotDomains
+    .map((d) => d.domainId)
+    .sort()
+    .join(',');
   return withDb(
-    () =>
-      prisma.job.findMany({
-        where: {
-          isActive: true,
-          isHidden: false,
-          id: { not: job.id },
-          OR: [
-            { companyId: job.companyId },
-            job.city ? { city: job.city } : undefined,
-            domainIds.length ? { robotDomains: { some: { domainId: { in: domainIds } } } } : undefined,
-          ].filter(Boolean) as Prisma.JobWhereInput[],
-        },
-        select: jobCardSelect,
-        orderBy: { postedAt: 'desc' },
-        take,
-      }),
+    () => loadRelatedJobsCached(job.id, job.companyId, job.city, domainIdsKey, take),
     [] as JobCardData[],
   );
 }
@@ -408,14 +434,23 @@ export async function getTaxonomy() {
     unstable_cache(
       async () => {
         const [domains, tags, seniorities] = await Promise.all([
-          prisma.robotDomain.findMany({ orderBy: { name: 'asc' } }),
-          prisma.techTag.findMany({ orderBy: { label: 'asc' } }),
-          prisma.seniorityLevel.findMany({ orderBy: { label: 'asc' } }),
+          prisma.robotDomain.findMany({
+            orderBy: { name: 'asc' },
+            select: { id: true, slug: true, name: true },
+          }),
+          prisma.techTag.findMany({
+            orderBy: { label: 'asc' },
+            select: { id: true, slug: true, label: true },
+          }),
+          prisma.seniorityLevel.findMany({
+            orderBy: { label: 'asc' },
+            select: { id: true, slug: true, label: true },
+          }),
         ]);
         return { domains, tags, seniorities };
       },
       ['job-board-taxonomy'],
-      { revalidate: 300 },
+      { revalidate: 600 },
     ),
     { domains: [], tags: [], seniorities: [] },
   );
@@ -426,7 +461,10 @@ export async function getTagFacets() {
     unstable_cache(
       async () => {
         const [tags, counts] = await Promise.all([
-          prisma.techTag.findMany({ orderBy: { label: 'asc' } }),
+          prisma.techTag.findMany({
+            orderBy: { label: 'asc' },
+            select: { id: true, slug: true, label: true },
+          }),
           prisma.jobTechTag.groupBy({
             by: ['techTagId'],
             where: { job: publicJobWhere },
@@ -439,7 +477,7 @@ export async function getTagFacets() {
           .filter((tag) => tag.count > 0);
       },
       ['job-board-tag-facets'],
-      { revalidate: 120 },
+      { revalidate: 300 },
     ),
     [] as Array<{ slug: string; label: string; count: number }>,
   );
@@ -475,7 +513,7 @@ export async function getCountryFacets() {
           });
       },
       ['job-board-country-facets'],
-      { revalidate: 120 },
+      { revalidate: 300 },
     ),
     [] as Array<{ country: string; count: number }>,
   );
@@ -483,4 +521,57 @@ export async function getCountryFacets() {
 
 export async function countActiveJobs(where: Prisma.JobWhereInput) {
   return withDb(() => prisma.job.count({ where: { ...publicJobWhere, ...where } }), 0);
+}
+
+export const companyPublicSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  website: true,
+  logoUrl: true,
+  description: true,
+  seoIntro: true,
+} satisfies Prisma.CompanySelect;
+
+export type CompanyPublic = Prisma.CompanyGetPayload<{ select: typeof companyPublicSelect }>;
+
+const loadCompanyBySlugCached = unstable_cache(
+  async (slug: string) =>
+    prisma.company.findUnique({
+      where: { slug },
+      select: companyPublicSelect,
+    }),
+  ['company-by-slug'],
+  { revalidate: 300 },
+);
+
+export const getCompanyBySlug = cache(async (slug: string) =>
+  withDb(() => loadCompanyBySlugCached(slug), null),
+);
+
+const loadCompanyJobsPageCached = unstable_cache(
+  async (companyId: string, page: number) => {
+    const where = { ...publicJobWhere, companyId };
+    const [total, jobs] = await Promise.all([
+      prisma.job.count({ where }),
+      prisma.job.findMany({
+        where,
+        select: jobCardSelect,
+        orderBy: [{ postedAt: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+      }),
+    ]);
+    return { total, jobs };
+  },
+  ['company-jobs-page'],
+  { revalidate: 180 },
+);
+
+export async function getCompanyJobsPage(companyId: string, requestedPage: number) {
+  const page = Math.max(1, requestedPage);
+  return withDb(
+    () => loadCompanyJobsPageCached(companyId, page),
+    { total: 0, jobs: [] as JobCardData[] },
+  );
 }

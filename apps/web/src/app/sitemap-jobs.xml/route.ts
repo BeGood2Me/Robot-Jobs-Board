@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
 import { getSiteUrl } from '@/lib/site';
 
@@ -8,16 +9,25 @@ ${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
 </urlset>`;
 }
 
+const loadJobSitemapUrls = unstable_cache(
+  async () => {
+    const site = getSiteUrl();
+    const jobs = await prisma.job.findMany({
+      where: { isActive: true, isHidden: false },
+      select: { id: true, slug: true },
+    });
+    return jobs.map((job) => `${site}/jobs/${job.id}/${job.slug}`);
+  },
+  ['sitemap-jobs'],
+  { revalidate: 900 },
+);
+
 export async function GET() {
-  const site = getSiteUrl();
-  const jobs = await withDb(
-    () =>
-      prisma.job.findMany({
-        where: { isActive: true, isHidden: false },
-        select: { id: true, slug: true },
-      }),
-    [],
-  );
-  const xml = urlset(jobs.map((job) => `${site}/jobs/${job.id}/${job.slug}`));
-  return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
+  const urls = await withDb(loadJobSitemapUrls, []);
+  return new Response(urlset(urls), {
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=86400',
+    },
+  });
 }
