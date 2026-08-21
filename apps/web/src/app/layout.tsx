@@ -26,6 +26,15 @@ export const metadata: Metadata = {
   description:
     'Find robotics jobs in the United States, United Kingdom, Canada, Australia, and Europe, plus guides for getting started.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '48x48' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+    ],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
