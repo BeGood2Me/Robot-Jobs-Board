@@ -3,8 +3,9 @@ import Link from 'next/link';
 import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
 import { publicJobWhere } from '@/lib/jobs';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export const revalidate = 300;
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
   title: 'Robotics companies hiring',
@@ -24,7 +25,7 @@ const loadCompaniesIndex = unstable_cache(
       orderBy: { name: 'asc' },
     }),
   ['companies-index'],
-  { revalidate: 300 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export default async function CompaniesPage() {

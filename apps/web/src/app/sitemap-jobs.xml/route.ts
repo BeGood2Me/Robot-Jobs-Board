@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
-import { getSiteUrl } from '@/lib/site';
+import { getSiteUrl, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 function urlset(urls: string[]) {
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -19,7 +19,7 @@ const loadJobSitemapUrls = unstable_cache(
     return jobs.map((job) => `${site}/jobs/${job.id}/${job.slug}`);
   },
   ['sitemap-jobs'],
-  { revalidate: 900 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export async function GET() {
@@ -27,7 +27,7 @@ export async function GET() {
   return new Response(urlset(urls), {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=86400',
+      'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
     },
   });
 }

@@ -9,8 +9,9 @@ import {
   loadListing,
   resolvePlace,
 } from '@/lib/programmatic';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export const revalidate = 300;
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 async function resolveCombo(place: string, combo: string) {
   const resolved = await resolvePlace(place);

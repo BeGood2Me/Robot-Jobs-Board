@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import { prisma, withDb } from './db';
 import { type JobFilters } from './job-filter-utils';
-import { PAGE_SIZE } from './site';
+import { PAGE_SIZE, PUBLIC_REVALIDATE_SECONDS } from './site';
 
 export type { JobFilters } from './job-filter-utils';
 export { countActiveFilters, filtersFromSearchParams, jobBoardHref } from './job-filter-utils';
@@ -340,7 +340,7 @@ export async function searchJobs(filters: JobFilters) {
         return { jobs, total, page, pageSize: PAGE_SIZE };
       },
       ['search-jobs', cacheKey],
-      { revalidate: 180 },
+      { revalidate: PUBLIC_REVALIDATE_SECONDS },
     ),
     { jobs: [] as JobCardData[], total: 0, page: requestedPage, pageSize: PAGE_SIZE },
   );
@@ -384,7 +384,7 @@ const loadJobByIdCached = unstable_cache(
       select: jobDetailSelect,
     }),
   ['job-by-id'],
-  { revalidate: 300 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 /** Dedupes metadata + page in one request; caches across crawlers for 5 minutes. */
@@ -410,7 +410,7 @@ const loadRelatedJobsCached = unstable_cache(
     });
   },
   ['related-jobs'],
-  { revalidate: 300 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export async function relatedJobs(
@@ -450,7 +450,7 @@ export async function getTaxonomy() {
         return { domains, tags, seniorities };
       },
       ['job-board-taxonomy'],
-      { revalidate: 600 },
+      { revalidate: PUBLIC_REVALIDATE_SECONDS },
     ),
     { domains: [], tags: [], seniorities: [] },
   );
@@ -477,7 +477,7 @@ export async function getTagFacets() {
           .filter((tag) => tag.count > 0);
       },
       ['job-board-tag-facets'],
-      { revalidate: 300 },
+      { revalidate: PUBLIC_REVALIDATE_SECONDS },
     ),
     [] as Array<{ slug: string; label: string; count: number }>,
   );
@@ -513,7 +513,7 @@ export async function getCountryFacets() {
           });
       },
       ['job-board-country-facets'],
-      { revalidate: 300 },
+      { revalidate: PUBLIC_REVALIDATE_SECONDS },
     ),
     [] as Array<{ country: string; count: number }>,
   );
@@ -542,7 +542,7 @@ const loadCompanyBySlugCached = unstable_cache(
       select: companyPublicSelect,
     }),
   ['company-by-slug'],
-  { revalidate: 300 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export const getCompanyBySlug = cache(async (slug: string) =>
@@ -565,7 +565,7 @@ const loadCompanyJobsPageCached = unstable_cache(
     return { total, jobs };
   },
   ['company-jobs-page'],
-  { revalidate: 180 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export async function getCompanyJobsPage(companyId: string, requestedPage: number) {

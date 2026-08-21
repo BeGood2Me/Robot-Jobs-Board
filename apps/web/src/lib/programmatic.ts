@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import { prisma, withDb } from './db';
 import { jobCardSelect, type JobCardData } from './jobs';
-import { INDEX_JOB_THRESHOLD, slugify } from './site';
+import { INDEX_JOB_THRESHOLD, PUBLIC_REVALIDATE_SECONDS, slugify } from './site';
 
 export type ProgrammaticKind = 'domain' | 'skill' | 'location' | 'combo';
 
@@ -49,7 +49,7 @@ const loadPlaceIndex = unstable_cache(
     return { cities, countries, regions };
   },
   ['place-index'],
-  { revalidate: 600 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export const resolvePlace = cache(async (place: string): Promise<{
@@ -118,7 +118,7 @@ const loadListingCached = unstable_cache(
     return { jobs, total: jobs.length, indexable: jobs.length >= INDEX_JOB_THRESHOLD };
   },
   ['seo-listing'],
-  { revalidate: 300 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export async function loadListing(where: Prisma.JobWhereInput, cacheKey: string) {
@@ -137,7 +137,7 @@ const listingIndexableCached = unstable_cache(
     return count >= INDEX_JOB_THRESHOLD;
   },
   ['seo-listing-indexable'],
-  { revalidate: 300 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 /** Metadata-only: count instead of fetching 50 job cards. */

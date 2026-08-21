@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
-import { getSiteUrl } from '@/lib/site';
+import { getSiteUrl, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 const loadCompanySitemapXml = unstable_cache(
   async () => {
@@ -13,7 +13,7 @@ ${companies.map((c) => `  <url><loc>${site}/companies/${c.slug}</loc></url>`).jo
 </urlset>`;
   },
   ['sitemap-companies'],
-  { revalidate: 900 },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
 export async function GET() {
@@ -21,7 +21,7 @@ export async function GET() {
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=86400',
+      'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
     },
   });
 }

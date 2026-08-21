@@ -8,8 +8,9 @@ import {
   loadListing,
   parseDomainSlug,
 } from '@/lib/programmatic';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export const revalidate = 300;
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 export async function generateMetadata({ params }: PageProps<'/robots/[slug]'>): Promise<Metadata> {
   const { slug } = await params;

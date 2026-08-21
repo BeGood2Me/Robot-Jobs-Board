@@ -6,9 +6,9 @@ import { JobCard } from '@/components/job-card';
 import { jobPostingJsonLd } from '@/lib/jsonld';
 import { getJobById, relatedJobs } from '@/lib/jobs';
 import { sanitizeJobHtml } from '@/lib/sanitize';
-import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
+import { employmentLabel, formatPosted, PUBLIC_REVALIDATE_SECONDS, seniorityLabel, workplaceLabel } from '@/lib/site';
 
-export const revalidate = 300;
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
   const { id } = await params;
