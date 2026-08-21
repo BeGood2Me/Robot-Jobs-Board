@@ -387,8 +387,23 @@ const loadJobByIdCached = unstable_cache(
   { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
-/** Dedupes metadata + page in one request; caches across crawlers for 5 minutes. */
-export const getJobById = cache(async (id: string) => withDb(() => loadJobByIdCached(id), null));
+function reviveJobDates<T extends {
+  postedAt?: Date | string | null;
+  expiresAt?: Date | string | null;
+  createdAt?: Date | string;
+} | null>(job: T): T {
+  if (!job) return job;
+  const postedAt = job.postedAt == null ? job.postedAt : new Date(job.postedAt);
+  const expiresAt = job.expiresAt == null ? job.expiresAt : new Date(job.expiresAt);
+  const createdAt = job.createdAt == null ? job.createdAt : new Date(job.createdAt);
+  return { ...job, postedAt, expiresAt, createdAt };
+}
+
+/** Dedupes metadata + page in one request; caches across crawlers. */
+export const getJobById = cache(async (id: string) => {
+  const job = await withDb(() => loadJobByIdCached(id), null);
+  return reviveJobDates(job) as JobWithRelations | null;
+});
 
 const loadRelatedJobsCached = unstable_cache(
   async (jobId: string, companyId: string, city: string | null, domainIdsKey: string, take: number) => {
@@ -423,10 +438,11 @@ export async function relatedJobs(
     .map((d) => d.domainId)
     .sort()
     .join(',');
-  return withDb(
+  const jobs = await withDb(
     () => loadRelatedJobsCached(job.id, job.companyId, job.city, domainIdsKey, take),
     [] as JobCardData[],
   );
+  return jobs.map((item) => reviveJobDates(item)) as JobCardData[];
 }
 
 export async function getTaxonomy() {

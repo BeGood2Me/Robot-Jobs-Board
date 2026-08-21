@@ -7,6 +7,17 @@ function addDays(date: Date, days: number) {
   return d;
 }
 
+/** `unstable_cache` JSON-serializes Dates to strings — normalize before schema use. */
+function asDate(value: Date | string | null | undefined): Date | null {
+  if (value == null) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function asDateRequired(value: Date | string | null | undefined, fallback = new Date()): Date {
+  return asDate(value) ?? fallback;
+}
+
 function normalizeMoneyNumber(raw: string): number | null {
   // Supports:
   // - 120000
@@ -263,12 +274,15 @@ function employmentSchema(type: string): string {
 export function jobPostingJsonLd(job: JobWithRelations) {
   const site = getSiteUrl();
   const description = job.descriptionPlain.slice(0, 5000);
+  const postedAt = asDate(job.postedAt);
+  const createdAt = asDateRequired(job.createdAt);
+  const expiresAt = asDate(job.expiresAt);
   const data: Record<string, unknown> = {
     '@context': 'https://schema.org/',
     '@type': 'JobPosting',
     title: job.title,
     description,
-    datePosted: job.postedAt?.toISOString() ?? job.createdAt.toISOString(),
+    datePosted: (postedAt ?? createdAt).toISOString(),
     employmentType: employmentSchema(job.employmentType),
     hiringOrganization: {
       '@type': 'Organization',
@@ -288,7 +302,7 @@ export function jobPostingJsonLd(job: JobWithRelations) {
 
   // Google expects `validThrough` for JobPosting rich results.
   // If the feed doesn't provide an expiresAt, infer a conservative deadline.
-  const validThrough = job.expiresAt ?? addDays(job.postedAt ?? job.createdAt, 30);
+  const validThrough = expiresAt ?? addDays(postedAt ?? createdAt, 30);
   data.validThrough = validThrough.toISOString();
 
   let baseSalary = parseCompensationBaseSalary(job.compensationText);
