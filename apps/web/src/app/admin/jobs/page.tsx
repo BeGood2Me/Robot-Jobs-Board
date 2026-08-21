@@ -31,7 +31,17 @@ export default async function AdminJobsPage({ searchParams }: PageProps<'/admin/
           }
         : {}),
     },
-    include: { company: true },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      isActive: true,
+      isHidden: true,
+      hiddenNote: true,
+      postedAt: true,
+      locationRaw: true,
+      company: { select: { name: true } },
+    },
     orderBy: [{ isHidden: 'desc' }, { postedAt: 'desc' }],
     take: 100,
   });

@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { Clock, MapPin } from '@phosphor-icons/react/ssr';
-import type { JobWithRelations } from '@/lib/jobs';
+import type { JobCardData } from '@/lib/jobs';
 import { employmentLabel, formatPosted } from '@/lib/site';
 import { SaveJobButton } from './save-job-button';
 
-export function JobCard({ job }: { job: JobWithRelations }) {
+export function JobCard({ job }: { job: JobCardData }) {
   const href = `/jobs/${job.id}/${job.slug}`;
   const location =
     [

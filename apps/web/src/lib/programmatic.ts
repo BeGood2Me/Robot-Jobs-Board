@@ -1,7 +1,8 @@
-import type { Prisma } from '@robot-jobs-board/db';
-import { INDEX_JOB_THRESHOLD, slugify } from './site';
 import { prisma, withDb } from './db';
-import { jobCardInclude, type JobWithRelations } from './jobs';
+import { jobCardSelect, type JobCardData } from './jobs';
+import { INDEX_JOB_THRESHOLD, slugify } from './site';
+import type { Prisma } from '@robot-jobs-board/db';
+import { unstable_cache } from 'next/cache';
 
 export type ProgrammaticKind = 'domain' | 'skill' | 'location' | 'combo';
 
@@ -25,6 +26,31 @@ export function parseSkillSlug(param: string): string | null {
   return match?.[1] ?? null;
 }
 
+const loadPlaceIndex = unstable_cache(
+  async () => {
+    const [cities, countries, regions] = await Promise.all([
+      prisma.job.findMany({
+        where: { isActive: true, isHidden: false, city: { not: null } },
+        distinct: ['city'],
+        select: { city: true },
+      }),
+      prisma.job.findMany({
+        where: { isActive: true, isHidden: false, country: { not: null } },
+        distinct: ['country'],
+        select: { country: true },
+      }),
+      prisma.job.findMany({
+        where: { isActive: true, isHidden: false, region: { not: null } },
+        distinct: ['region'],
+        select: { region: true },
+      }),
+    ]);
+    return { cities, countries, regions };
+  },
+  ['place-index'],
+  { revalidate: 300 },
+);
+
 export async function resolvePlace(place: string): Promise<{
   label: string;
   where: Prisma.JobWhereInput;
@@ -32,29 +58,7 @@ export async function resolvePlace(place: string): Promise<{
   if (place === 'remote') {
     return { label: 'Remote', where: { isRemote: true } };
   }
-  const companies = await withDb(
-    async () => {
-      const [cities, countries, regions] = await Promise.all([
-        prisma.job.findMany({
-          where: { isActive: true, isHidden: false, city: { not: null } },
-          distinct: ['city'],
-          select: { city: true },
-        }),
-        prisma.job.findMany({
-          where: { isActive: true, isHidden: false, country: { not: null } },
-          distinct: ['country'],
-          select: { country: true },
-        }),
-        prisma.job.findMany({
-          where: { isActive: true, isHidden: false, region: { not: null } },
-          distinct: ['region'],
-          select: { region: true },
-        }),
-      ]);
-      return { cities, countries, regions };
-    },
-    { cities: [], countries: [], regions: [] },
-  );
+  const companies = await withDb(loadPlaceIndex, { cities: [], countries: [], regions: [] });
 
   const city = companies.cities.find((row) => slugify(row.city ?? '') === place);
   if (city?.city) return { label: city.city, where: { city: city.city } };
@@ -92,10 +96,10 @@ export async function loadListing(where: Prisma.JobWhereInput) {
   return withDb(async () => {
     const jobs = await prisma.job.findMany({
       where: { isActive: true, isHidden: false, ...where },
-      include: jobCardInclude,
+      select: jobCardSelect,
       orderBy: { postedAt: 'desc' },
       take: 50,
     });
     return { jobs, total: jobs.length, indexable: jobs.length >= INDEX_JOB_THRESHOLD };
-  }, { jobs: [] as JobWithRelations[], total: 0, indexable: false });
+  }, { jobs: [] as JobCardData[], total: 0, indexable: false });
 }

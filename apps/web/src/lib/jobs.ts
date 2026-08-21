@@ -7,14 +7,34 @@ import { PAGE_SIZE } from './site';
 export type { JobFilters } from './job-filter-utils';
 export { countActiveFilters, filtersFromSearchParams, jobBoardHref } from './job-filter-utils';
 
-export const jobCardInclude = {
-  company: true,
-  robotDomains: { include: { domain: true } },
-  techTags: { include: { techTag: true } },
-  seniorities: { include: { seniority: true } },
+export const jobCardSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  city: true,
+  country: true,
+  locationRaw: true,
+  isRemote: true,
+  workplaceType: true,
+  employmentType: true,
+  postedAt: true,
+  company: { select: { name: true, slug: true } },
+} satisfies Prisma.JobSelect;
+
+export type JobCardData = Prisma.JobGetPayload<{ select: typeof jobCardSelect }>;
+
+/** Full job row for detail pages (still omits heavy company text fields). */
+export const jobDetailInclude = {
+  company: { select: { name: true, slug: true, website: true, logoUrl: true, sourceIdentifier: true } },
+  robotDomains: { include: { domain: { select: { id: true, slug: true, name: true } } } },
+  techTags: { include: { techTag: { select: { id: true, slug: true, label: true } } } },
+  seniorities: { include: { seniority: { select: { id: true, slug: true, label: true } } } },
 } satisfies Prisma.JobInclude;
 
-export type JobWithRelations = Prisma.JobGetPayload<{ include: typeof jobCardInclude }>;
+/** @deprecated Prefer jobCardSelect for lists; kept for detail typing. */
+export const jobCardInclude = jobDetailInclude;
+
+export type JobWithRelations = Prisma.JobGetPayload<{ include: typeof jobDetailInclude }>;
 
 export const publicJobWhere = {
   isActive: true,
@@ -231,43 +251,63 @@ export function jobWhere(filters: JobFilters, activeOnly = true): Prisma.JobWher
 
 export async function searchJobs(filters: JobFilters) {
   const requestedPage = Math.max(1, filters.page ?? 1);
-  const where = jobWhere(filters);
-  const newestOrder = [{ postedAt: 'desc' as const }, { createdAt: 'desc' as const }];
+  const cacheKey = JSON.stringify({
+    q: filters.q ?? '',
+    page: requestedPage,
+    sort: filters.sort ?? 'newest',
+    domains: filters.domains ?? [],
+    tags: filters.tags ?? [],
+    seniorities: filters.seniorities ?? [],
+    countries: filters.countries ?? [],
+    workplaces: filters.workplaces ?? [],
+    employments: filters.employments ?? [],
+    entryLevel: Boolean(filters.entryLevel),
+    region: filters.region ?? '',
+    city: filters.city ?? '',
+    remote: Boolean(filters.remote),
+  });
+
   return withDb(
-    async () => {
-      const skip = (requestedPage - 1) * PAGE_SIZE;
-      const relevance = Boolean(filters.q && filters.sort !== 'newest');
-      const [total, jobs] = await Promise.all([
-        prisma.job.count({ where }),
-        relevance
-          ? findByPriority(
-              where,
-              [
-                titleSearchWhere(filters.q!),
-                {
-                  AND: [{ NOT: titleSearchWhere(filters.q!) }, companySearchWhere(filters.q!)],
-                },
-                {
-                  AND: [{ NOT: titleSearchWhere(filters.q!) }, { NOT: companySearchWhere(filters.q!) }],
-                },
-              ],
-              skip,
-              PAGE_SIZE,
-              newestOrder,
-            )
-          : prisma.job.findMany({
-              where,
-              include: jobCardInclude,
-              orderBy: newestOrder,
-              skip,
-              take: PAGE_SIZE,
-            }),
-      ]);
-      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-      const page = Math.min(requestedPage, pages);
-      return { jobs, total, page, pageSize: PAGE_SIZE };
-    },
-    { jobs: [] as JobWithRelations[], total: 0, page: requestedPage, pageSize: PAGE_SIZE },
+    unstable_cache(
+      async () => {
+        const where = jobWhere(filters);
+        const newestOrder = [{ postedAt: 'desc' as const }, { createdAt: 'desc' as const }];
+        const skip = (requestedPage - 1) * PAGE_SIZE;
+        const relevance = Boolean(filters.q && filters.sort !== 'newest');
+        const [total, jobs] = await Promise.all([
+          prisma.job.count({ where }),
+          relevance
+            ? findByPriority(
+                where,
+                [
+                  titleSearchWhere(filters.q!),
+                  {
+                    AND: [{ NOT: titleSearchWhere(filters.q!) }, companySearchWhere(filters.q!)],
+                  },
+                  {
+                    AND: [{ NOT: titleSearchWhere(filters.q!) }, { NOT: companySearchWhere(filters.q!) }],
+                  },
+                ],
+                skip,
+                PAGE_SIZE,
+                newestOrder,
+              )
+            : prisma.job.findMany({
+                where,
+                select: jobCardSelect,
+                orderBy: newestOrder,
+                skip,
+                take: PAGE_SIZE,
+              }),
+        ]);
+        const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        const page = Math.min(requestedPage, pages);
+        return { jobs, total, page, pageSize: PAGE_SIZE };
+      },
+      ['search-jobs', cacheKey],
+      { revalidate: 60 },
+    ),
+    { jobs: [] as JobCardData[], total: 0, page: requestedPage, pageSize: PAGE_SIZE },
   );
 }
 
@@ -277,20 +317,20 @@ async function findByPriority(
   skip: number,
   take: number,
   orderBy: Prisma.JobOrderByWithRelationInput[],
-): Promise<JobWithRelations[]> {
+): Promise<JobCardData[]> {
   // Page 1: run buckets in parallel (they're mutually exclusive via NOT clauses).
   if (skip === 0) {
     const pages = await Promise.all(
       buckets.map((bucket) =>
         prisma.job.findMany({
           where: { AND: [where, bucket] },
-          include: jobCardInclude,
+          select: jobCardSelect,
           orderBy,
           take,
         }),
       ),
     );
-    const jobs: JobWithRelations[] = [];
+    const jobs: JobCardData[] = [];
     for (const page of pages) {
       for (const job of page) {
         jobs.push(job);
@@ -300,7 +340,7 @@ async function findByPriority(
     return jobs;
   }
 
-  const jobs: JobWithRelations[] = [];
+  const jobs: JobCardData[] = [];
   let remainingSkip = skip;
   let remainingTake = take;
   for (const bucket of buckets) {
@@ -308,7 +348,7 @@ async function findByPriority(
     // Avoid COUNT(*) — over-fetch then slice.
     const page = await prisma.job.findMany({
       where: { AND: [where, bucket] },
-      include: jobCardInclude,
+      select: jobCardSelect,
       orderBy,
       take: remainingSkip + remainingTake,
     });
@@ -329,13 +369,18 @@ export async function getJobById(id: string) {
     () =>
       prisma.job.findUnique({
         where: { id },
-        include: jobCardInclude,
+        include: jobDetailInclude,
       }),
     null,
   );
 }
 
-export async function relatedJobs(job: JobWithRelations, take = 6) {
+export async function relatedJobs(
+  job: Pick<JobWithRelations, 'id' | 'companyId' | 'city'> & {
+    robotDomains: Array<{ domainId: string }>;
+  },
+  take = 6,
+) {
   const domainIds = job.robotDomains.map((d) => d.domainId);
   return withDb(
     () =>
@@ -350,11 +395,11 @@ export async function relatedJobs(job: JobWithRelations, take = 6) {
             domainIds.length ? { robotDomains: { some: { domainId: { in: domainIds } } } } : undefined,
           ].filter(Boolean) as Prisma.JobWhereInput[],
         },
-        include: jobCardInclude,
+        select: jobCardSelect,
         orderBy: { postedAt: 'desc' },
         take,
       }),
-    [] as JobWithRelations[],
+    [] as JobCardData[],
   );
 }
 

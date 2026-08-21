@@ -1,5 +1,5 @@
 import { JobCard } from '@/components/job-card';
-import type { JobWithRelations } from '@/lib/jobs';
+import type { JobCardData } from '@/lib/jobs';
 
 export function SeoJobList({
   h1,
@@ -9,7 +9,7 @@ export function SeoJobList({
 }: {
   h1: string;
   intro: string;
-  jobs: JobWithRelations[];
+  jobs: JobCardData[];
   indexable: boolean;
 }) {
   return (

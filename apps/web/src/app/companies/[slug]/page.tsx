@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { JobCard } from '@/components/job-card';
 import { JobPagination } from '@/components/job-pagination';
 import { prisma, withDb } from '@/lib/db';
-import { jobCardInclude, publicJobWhere } from '@/lib/jobs';
+import { jobCardSelect, publicJobWhere } from '@/lib/jobs';
 import { companyPageJsonLd } from '@/lib/jsonld';
 import { PAGE_SIZE } from '@/lib/site';
 
@@ -57,7 +57,7 @@ export default async function CompanyPage({
     () =>
       prisma.job.findMany({
         where,
-        include: jobCardInclude,
+        select: jobCardSelect,
         orderBy: [{ postedAt: 'desc' }, { createdAt: 'desc' }],
         skip: (page - 1) * PAGE_SIZE,
         take: PAGE_SIZE,
