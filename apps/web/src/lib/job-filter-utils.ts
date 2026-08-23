@@ -56,6 +56,11 @@ export function filtersFromSearchParams(params: Record<string, string | string[]
   };
 }
 
+/** True only for the unfiltered first page — used for indexable listing metadata. */
+export function isDefaultBoardListing(filters: JobFilters): boolean {
+  return (filters.page ?? 1) === 1 && countActiveFilters(filters) === 0;
+}
+
 export function countActiveFilters(filters: JobFilters): number {
   return (
     (filters.q ? 1 : 0) +

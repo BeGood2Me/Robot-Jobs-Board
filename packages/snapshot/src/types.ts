@@ -66,11 +66,19 @@ export type SnapshotJob = {
   seniorities: Array<{ seniority: { id: string; slug: string; label: string } }>;
 };
 
+export type SnapshotGoneJob = {
+  id: string;
+  slug: string;
+  title: string;
+  company: { name: string; slug: string };
+};
+
 export type PublicBoardSnapshot = {
   version: 1;
   generatedAt: string;
   siteUrl: string;
   jobs: SnapshotJob[];
+  goneJobs: SnapshotGoneJob[];
   companies: SnapshotCompany[];
   domains: SnapshotDomain[];
   tags: SnapshotTag[];

@@ -109,12 +109,21 @@ export async function exportPublicSnapshot(options: {
   const site = options.siteUrl.replace(/\/$/, '');
   mkdirSync(options.outDir, { recursive: true });
 
-  const [jobsRaw, companiesRaw, domainsRaw, tagsRaw, seniorities, countryGroups, cityRows, countryRows, regionRows] =
+  const [jobsRaw, goneJobsRaw, companiesRaw, domainsRaw, tagsRaw, seniorities, countryGroups, cityRows, countryRows, regionRows] =
     await Promise.all([
       prisma.job.findMany({
         where: publicJobWhere,
         select: jobDetailSelect,
         orderBy: [{ postedAt: 'desc' }, { createdAt: 'desc' }],
+      }),
+      prisma.job.findMany({
+        where: { OR: [{ isActive: false }, { isHidden: true }] },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          company: { select: { name: true, slug: true } },
+        },
       }),
       prisma.company.findMany({
         select: {
@@ -200,6 +209,7 @@ export async function exportPublicSnapshot(options: {
     generatedAt: new Date().toISOString(),
     siteUrl: site,
     jobs,
+    goneJobs: goneJobsRaw,
     companies: companiesRaw.map((company) => ({
       id: company.id,
       name: company.name,

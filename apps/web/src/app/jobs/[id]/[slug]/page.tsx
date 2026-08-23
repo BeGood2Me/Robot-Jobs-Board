@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { directApplyUrl } from '@robot-jobs-board/ingestion/apply-url';
 import { JobCard } from '@/components/job-card';
 import { jobPostingJsonLd } from '@/lib/jsonld';
-import { getJobById, relatedJobs } from '@/lib/jobs';
+import { getJobById, getGoneJobById, relatedJobs } from '@/lib/jobs';
 import { sanitizeJobHtml } from '@/lib/sanitize';
 import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
@@ -14,25 +14,39 @@ export const revalidate = 14400;
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
   const { id } = await params;
   const job = await getJobById(id);
-  if (!job || job.isHidden) return { title: 'Job not found' };
-  const canonical = jobPagePath(job);
-  const title = jobPageTitle(job);
-  const description = jobPageDescription(job);
+  if (job) {
+    const canonical = jobPagePath(job);
+    const title = jobPageTitle(job);
+    const description = jobPageDescription(job);
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        title,
+        description,
+        url: canonical,
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary',
+        title,
+        description,
+      },
+    };
+  }
+
+  const gone = await getGoneJobById(id);
+  if (gone) {
+    return {
+      title: `${gone.title} – Job closed`,
+      robots: { index: false, follow: true },
+    };
+  }
+
   return {
-    title,
-    description,
-    alternates: { canonical },
-    openGraph: {
-      title,
-      description,
-      url: canonical,
-      type: 'website',
-    },
-    twitter: {
-      card: 'summary',
-      title,
-      description,
-    },
+    title: 'Job not found',
+    robots: { index: false, follow: false },
   };
 }
 
@@ -55,7 +69,11 @@ function ApplyNowLink({ href, className }: { href: string; className?: string })
 export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[slug]'>) {
   const { id, slug } = await params;
   const job = await getJobById(id);
-  if (!job || job.isHidden) notFound();
+  if (!job) {
+    const gone = await getGoneJobById(id);
+    if (gone) permanentRedirect(`/companies/${gone.company.slug}`);
+    notFound();
+  }
   if (job.slug !== slug) permanentRedirect(`/jobs/${job.id}/${job.slug}`);
 
   const related = await relatedJobs(job);

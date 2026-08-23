@@ -413,6 +413,13 @@ function reviveJobDates<T extends {
   return { ...job, postedAt, expiresAt, createdAt };
 }
 
+export type GoneJob = {
+  id: string;
+  slug: string;
+  title: string;
+  company: { name: string; slug: string };
+};
+
 /** Dedupes metadata + page in one request; caches across crawlers. */
 export const getJobById = cache(async (id: string) => {
   const snapshot = loadPublicSnapshot();
@@ -421,7 +428,26 @@ export const getJobById = cache(async (id: string) => {
     return reviveJobDates(job) as JobWithRelations | null;
   }
   const job = await withDb(() => loadJobByIdCached(id), null);
+  if (!job || !job.isActive || job.isHidden) return null;
   return reviveJobDates(job) as JobWithRelations | null;
+});
+
+/** Closed or hidden jobs — redirect to the employer page instead of 404. */
+export const getGoneJobById = cache(async (id: string): Promise<GoneJob | null> => {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot?.goneJobs?.length) {
+    const gone = snapshot.goneJobs.find((item) => item.id === id);
+    if (gone) return gone;
+  }
+
+  const job = await withDb(() => loadJobByIdCached(id), null);
+  if (!job || (job.isActive && !job.isHidden)) return null;
+  return {
+    id: job.id,
+    slug: job.slug,
+    title: job.title,
+    company: { name: job.company.name, slug: job.company.slug },
+  };
 });
 
 const loadRelatedJobsCached = unstable_cache(

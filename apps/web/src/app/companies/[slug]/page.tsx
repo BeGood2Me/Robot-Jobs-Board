@@ -14,8 +14,13 @@ function companyJobsHref(slug: string, page = 1) {
   return page > 1 ? `/companies/${slug}?page=${page}` : `/companies/${slug}`;
 }
 
-export async function generateMetadata({ params }: PageProps<'/companies/[slug]'>): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: PageProps<'/companies/[slug]'>): Promise<Metadata> {
   const { slug } = await params;
+  const sp = await searchParams;
+  const page = Math.max(1, Number(typeof sp.page === 'string' ? sp.page : 1) || 1);
   const company = await getCompanyBySlug(slug);
   if (!company) return { title: 'Company not found' };
   const { total } = await getCompanyJobsPage(company.id, 1);
@@ -26,6 +31,7 @@ export async function generateMetadata({ params }: PageProps<'/companies/[slug]'
     title,
     description,
     alternates: { canonical },
+    robots: page > 1 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description,
