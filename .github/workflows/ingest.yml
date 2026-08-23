@@ -4,6 +4,14 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 */6 * * *"
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'apps/web/public/snapshot/**'
+
+concurrency:
+  group: ingest-jobs
+  cancel-in-progress: false
 
 permissions:
   contents: write
