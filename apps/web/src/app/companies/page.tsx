@@ -5,7 +5,7 @@ import { prisma, withDb } from '@/lib/db';
 import { publicJobWhere } from '@/lib/jobs';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export const revalidate = 900;
+export const revalidate = 14400;
 
 export const metadata: Metadata = {
   title: 'Robotics companies hiring',

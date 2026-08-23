@@ -9,7 +9,7 @@ import {
   parseDomainSlug,
 } from '@/lib/programmatic';
 
-export const revalidate = 900;
+export const revalidate = 14400;
 
 export async function generateMetadata({ params }: PageProps<'/robots/[slug]'>): Promise<Metadata> {
   const { slug } = await params;

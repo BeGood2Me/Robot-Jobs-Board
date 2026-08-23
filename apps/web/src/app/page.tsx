@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { JobBoard } from '@/components/job-board';
 
-export const revalidate = 900;
+export const revalidate = 14400;
 
 export const metadata: Metadata = {
   title: 'Robotics jobs board',

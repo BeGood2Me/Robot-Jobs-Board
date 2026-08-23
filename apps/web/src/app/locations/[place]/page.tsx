@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { SeoJobList } from '@/components/seo-job-list';
 import { listingIsIndexable, loadListing, resolvePlace } from '@/lib/programmatic';
 
-export const revalidate = 900;
+export const revalidate = 14400;
 
 function parsePlaceParam(slug: string): string | null {
   const match = slug.match(/^([a-z0-9-]+)-robotics-jobs$/);

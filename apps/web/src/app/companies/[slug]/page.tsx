@@ -8,7 +8,7 @@ import { companyPageJsonLd } from '@/lib/jsonld';
 import { companyPageDescription, companyPageIntro, companyPageTitle } from '@/lib/seo';
 import { PAGE_SIZE } from '@/lib/site';
 
-export const revalidate = 900;
+export const revalidate = 14400;
 
 function companyJobsHref(slug: string, page = 1) {
   return page > 1 ? `/companies/${slug}?page=${page}` : `/companies/${slug}`;

@@ -1,4 +1,4 @@
-import { getSiteUrl } from '@/lib/site';
+import { getSiteUrl, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 export async function GET() {
   const site = getSiteUrl();
@@ -37,7 +37,7 @@ Important notes:
   return new Response(body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=86400',
+      'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
     },
   });
 }
