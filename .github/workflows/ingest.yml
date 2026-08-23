@@ -22,6 +22,10 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Need full history so we can rebase onto main if it moved during the long ingest.
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       # Version is read from packageManager in package.json — do not also pass version: here.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -51,5 +55,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps/web/public/snapshot/
-          git diff --staged --quiet || git commit -m "chore: update public snapshot"
-          git push
+          if git diff --staged --quiet; then
+            echo "No snapshot changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: update public snapshot"
+          # main may have moved during the ~1h ingest (code pushes, other runs)
+          git pull --rebase origin main
+          git push origin HEAD:main
