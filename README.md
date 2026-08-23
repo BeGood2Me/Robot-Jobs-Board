@@ -54,11 +54,7 @@ Run once locally:
 pnpm ingest:run
 ```
 
-On Vercel, cron hits `GET /api/cron/ingest` every six hours (see `vercel.json`). Set `CRON_SECRET` in the project environment. Vercel sends `Authorization: Bearer $CRON_SECRET`.
-
-Hobby plans may only fire cron once per day. For a six hour cadence, also enable the GitHub Action.
-
-GitHub Action: `.github/workflows/ingest.yml` (every 6 hours plus manual dispatch).
+Ingest runs on GitHub Actions: `.github/workflows/ingest.yml` (once daily at 06:00 UTC, plus on pushes to `main` and manual dispatch).
 
 The runner:
 
@@ -126,7 +122,7 @@ Use Neon pooled `DATABASE_URL` in Vercel. Keep `DIRECT_URL` for any migrate step
 
 ### GitHub Actions (ingest)
 
-Workflow: `.github/workflows/ingest.yml` (every 6 hours plus manual dispatch).
+Workflow: `.github/workflows/ingest.yml` (once daily at 06:00 UTC, plus manual dispatch).
 
 Repo secrets:
 
