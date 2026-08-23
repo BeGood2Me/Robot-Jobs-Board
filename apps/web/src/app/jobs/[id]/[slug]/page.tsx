@@ -6,6 +6,7 @@ import { JobCard } from '@/components/job-card';
 import { jobPostingJsonLd } from '@/lib/jsonld';
 import { getJobById, relatedJobs } from '@/lib/jobs';
 import { sanitizeJobHtml } from '@/lib/sanitize';
+import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 
 export const revalidate = 900;
@@ -14,9 +15,24 @@ export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'
   const { id } = await params;
   const job = await getJobById(id);
   if (!job || job.isHidden) return { title: 'Job not found' };
+  const canonical = jobPagePath(job);
+  const title = jobPageTitle(job);
+  const description = jobPageDescription(job);
   return {
-    title: `${job.title} at ${job.company.name}`,
-    description: job.descriptionPlain.slice(0, 160),
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+    },
   };
 }
 

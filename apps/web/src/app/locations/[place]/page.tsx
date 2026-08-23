@@ -17,9 +17,11 @@ export async function generateMetadata({ params }: PageProps<'/locations/[place]
   const resolved = await resolvePlace(place);
   if (!resolved) return { title: 'Location jobs' };
   const indexable = await listingIsIndexable(resolved.where, `place-${place}`);
+  const canonical = `/locations/${raw}`;
   return {
     title: `${resolved.label} robotics jobs`,
     description: `Robotics jobs in ${resolved.label}, including AMR, humanoid, drone, and industrial jobs.`,
+    alternates: { canonical },
     robots: indexable ? undefined : { index: false, follow: true },
   };
 }

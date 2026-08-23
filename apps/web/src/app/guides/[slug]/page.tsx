@@ -81,8 +81,8 @@ export default async function BlogPostPage({ params }: PageProps<'/guides/[slug]
         Post a robotics job or share your ATS board
       </Link>
     ) : (
-      <Link href="/" className="underline">
-        Search live robotics jobs
+      <Link href="/?entry=1" className="underline">
+        Search entry level robotics jobs
       </Link>
     );
 
@@ -136,6 +136,35 @@ export default async function BlogPostPage({ params }: PageProps<'/guides/[slug]
       <div className="mt-10">
         <MDXRemote source={post.content} components={components} />
       </div>
+      {post.audience === 'candidate' ? (
+        <aside className="mt-12 rounded-2xl border border-line bg-card p-6">
+          <p className="font-semibold">Browse open robotics jobs</p>
+          <p className="mt-2 text-sm text-muted">
+            Filter live listings by role, location, robot type, and stack, then apply on the company&apos;s original
+            posting.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm">
+            <Link
+              href="/?entry=1"
+              className="inline-flex h-10 items-center rounded-lg bg-accent px-3 font-semibold text-accent-fg"
+            >
+              Entry level jobs
+            </Link>
+            <Link
+              href="/?tag=ros2"
+              className="inline-flex h-10 items-center rounded-lg border border-line px-3 font-semibold"
+            >
+              ROS 2 jobs
+            </Link>
+            <Link href="/robots/amr-jobs" className="inline-flex h-10 items-center rounded-lg border border-line px-3 font-semibold">
+              AMR jobs
+            </Link>
+            <Link href="/" className="inline-flex h-10 items-center rounded-lg border border-line px-3 font-semibold">
+              All jobs
+            </Link>
+          </div>
+        </aside>
+      ) : null}
       {post.faqs?.length ? (
         <section className="mt-12">
           <h2 id="faq" className="scroll-mt-28 text-2xl font-semibold">

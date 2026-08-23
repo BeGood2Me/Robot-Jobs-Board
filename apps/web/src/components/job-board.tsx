@@ -33,7 +33,7 @@ export async function JobBoard({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homePageJsonLd()) }} />
       <div>
         <h1 className="max-w-[680px] bg-gradient-to-r from-black to-[#666666] bg-clip-text text-3xl font-semibold text-balance text-transparent md:text-5xl dark:from-white dark:to-[#9B9B9B]">
-          Robotics jobs
+          Robotics jobs board
         </h1>
         <p className="mt-2 max-w-[680px] text-pretty text-sm text-muted md:mt-3 md:text-base">
           <span className="md:hidden">

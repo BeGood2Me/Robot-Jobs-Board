@@ -424,9 +424,10 @@ export function homePageJsonLd() {
       {
         '@type': 'WebSite',
         name: 'Robot Jobs Board',
+        alternateName: 'Robotics jobs board',
         url: site,
         description:
-          'Robotics jobs in the United States, United Kingdom, Canada, Australia, and Europe, sourced from company career pages.',
+          'Robotics jobs board for engineers, technicians, and operators in the United States, United Kingdom, Canada, Australia, and Europe.',
         potentialAction: {
           '@type': 'SearchAction',
           target: {
@@ -438,7 +439,7 @@ export function homePageJsonLd() {
       },
       {
         '@type': 'CollectionPage',
-        name: 'Robotics jobs',
+        name: 'Robotics jobs board',
         description:
           'Open robotics jobs for engineers, technicians, and operators. Filter by location, robot type, and experience.',
         url: site,

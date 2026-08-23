@@ -20,6 +20,18 @@ export function SiteFooter() {
           <Link href="/guides" className="hover:text-foreground">
             Guides
           </Link>
+          <Link href="/locations/united-states-robotics-jobs" className="hover:text-foreground">
+            US robotics jobs
+          </Link>
+          <Link href="/locations/united-kingdom-robotics-jobs" className="hover:text-foreground">
+            UK robotics jobs
+          </Link>
+          <Link href="/locations/canada-robotics-jobs" className="hover:text-foreground">
+            Canada robotics jobs
+          </Link>
+          <Link href="/locations/remote-robotics-jobs" className="hover:text-foreground">
+            Remote robotics jobs
+          </Link>
           <Link href="/guides/how-to-become-a-robotics-engineer" className="hover:text-foreground">
             Become a robotics engineer
           </Link>

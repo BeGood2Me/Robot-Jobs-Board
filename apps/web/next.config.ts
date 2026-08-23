@@ -32,6 +32,12 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'robotjobsboard.com' }],
+        destination: 'https://www.robotjobsboard.com/:path*',
+        permanent: true,
+      },
       { source: '/blog', destination: '/guides', permanent: true },
       { source: '/blog/:slug', destination: '/guides/:slug', permanent: true },
       { source: '/skills/:slug-jobs', destination: '/?tag=:slug', permanent: true },

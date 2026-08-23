@@ -4,14 +4,14 @@ import { JobBoard } from '@/components/job-board';
 export const revalidate = 900;
 
 export const metadata: Metadata = {
-  title: 'Robotics jobs',
+  title: 'Robotics jobs board',
   description:
-    'Find robotics jobs in the United States, United Kingdom, Canada, Australia, and Europe. Filter by location, robot type, and experience, then apply on the original posting.',
+    'Robotics jobs board with open roles in the United States, United Kingdom, Canada, Australia, and Europe. Filter by location, robot type, and experience, then apply on the original posting.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Robotics jobs',
+    title: 'Robotics jobs board',
     description:
-      'Open robotics jobs from company boards in the United States, United Kingdom, Canada, Australia, and Europe.',
+      'Open robotics jobs from company career pages in the United States, United Kingdom, Canada, Australia, and Europe.',
     url: '/',
     type: 'website',
   },

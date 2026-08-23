@@ -5,6 +5,7 @@ import { JobCard } from '@/components/job-card';
 import { JobPagination } from '@/components/job-pagination';
 import { getCompanyBySlug, getCompanyJobsPage } from '@/lib/jobs';
 import { companyPageJsonLd } from '@/lib/jsonld';
+import { companyPageDescription, companyPageIntro, companyPageTitle } from '@/lib/seo';
 import { PAGE_SIZE } from '@/lib/site';
 
 export const revalidate = 900;
@@ -18,18 +19,23 @@ export async function generateMetadata({ params }: PageProps<'/companies/[slug]'
   const company = await getCompanyBySlug(slug);
   if (!company) return { title: 'Company not found' };
   const { total } = await getCompanyJobsPage(company.id, 1);
+  const title = companyPageTitle(company.name, total);
+  const description = companyPageDescription(company.name, total, company.description);
+  const canonical = `/companies/${slug}`;
   return {
-    title: `${company.name} robotics jobs`,
-    description: `${total} open robotics job${total === 1 ? '' : 's'} at ${company.name}. ${company.description}`.slice(
-      0,
-      160,
-    ),
-    alternates: { canonical: `/companies/${slug}` },
+    title,
+    description,
+    alternates: { canonical },
     openGraph: {
-      title: `${company.name} robotics jobs`,
-      description: company.description.slice(0, 160),
-      url: `/companies/${slug}`,
+      title,
+      description,
+      url: canonical,
       type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
     },
   };
 }
@@ -73,7 +79,7 @@ export default async function CompanyPage({
         </ol>
       </nav>
       <h1 className="mt-6 max-w-[680px] text-4xl font-semibold text-balance">
-        {company.name} robotics jobs
+        {companyPageTitle(company.name, total)}
       </h1>
       {company.website ? (
         <a
@@ -85,7 +91,9 @@ export default async function CompanyPage({
           Company website
         </a>
       ) : null}
-      <p className="mt-6 max-w-[680px] text-pretty text-muted">{company.seoIntro || company.description}</p>
+      <p className="mt-6 max-w-[680px] text-pretty text-muted">
+        {companyPageIntro(company.name, total, company.description, company.seoIntro)}
+      </p>
       <p className="mt-8 font-mono text-sm text-muted">
         {total} open job{total === 1 ? '' : 's'}
       </p>
