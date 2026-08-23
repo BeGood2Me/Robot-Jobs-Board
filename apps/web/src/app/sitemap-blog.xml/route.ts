@@ -1,7 +1,13 @@
+import { readSnapshotSitemap, snapshotXmlHeaders } from '@/lib/snapshot/sitemap';
 import { getBlogPosts } from '@/lib/blog';
 import { getSiteUrl } from '@/lib/site';
 
 export async function GET() {
+  const staticXml = readSnapshotSitemap('sitemap-blog.xml');
+  if (staticXml) {
+    return new Response(staticXml, { headers: snapshotXmlHeaders() });
+  }
+
   const site = getSiteUrl();
   const posts = getBlogPosts();
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -21,5 +27,5 @@ ${posts
   })
   .join('\n')}
 </urlset>`;
-  return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
+  return new Response(xml, { headers: snapshotXmlHeaders() });
 }

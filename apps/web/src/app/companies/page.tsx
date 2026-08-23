@@ -1,13 +1,13 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
-import { unstable_cache } from 'next/cache';
+import { loadPublicSnapshot } from '@/lib/snapshot/load';
 import { prisma, withDb } from '@/lib/db';
 import { publicJobWhere } from '@/lib/jobs';
+import { unstable_cache } from 'next/cache';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 export const revalidate = 14400;
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'Robotics companies hiring',
   description: 'Company profiles for robotics teams hiring across AMRs, humanoids, drones, and more.',
 };
@@ -29,7 +29,16 @@ const loadCompaniesIndex = unstable_cache(
 );
 
 export default async function CompaniesPage() {
-  const companies = await withDb(loadCompaniesIndex, []);
+  const snapshot = loadPublicSnapshot();
+  const companies = snapshot
+    ? snapshot.companies.map((company) => ({
+        id: company.id,
+        name: company.name,
+        slug: company.slug,
+        description: company.description,
+        _count: { jobs: company.openJobCount },
+      }))
+    : await withDb(loadCompaniesIndex, []);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">

@@ -1,8 +1,13 @@
 import type { EmploymentType, Prisma, WorkplaceType } from '@robot-jobs-board/db';
+import {
+  relatedJobsFromSnapshot,
+  searchJobsFromSnapshot,
+} from '@robot-jobs-board/snapshot';
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import { prisma, withDb } from './db';
 import { type JobFilters } from './job-filter-utils';
+import { loadPublicSnapshot } from './snapshot/load';
 import { PAGE_SIZE, PUBLIC_REVALIDATE_SECONDS } from './site';
 
 export type { JobFilters } from './job-filter-utils';
@@ -285,6 +290,15 @@ export function jobWhere(filters: JobFilters, activeOnly = true): Prisma.JobWher
 }
 
 export async function searchJobs(filters: JobFilters) {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    const result = searchJobsFromSnapshot(snapshot.jobs, filters, PAGE_SIZE);
+    return {
+      ...result,
+      jobs: result.jobs.map((job) => reviveJobDates(job)) as JobCardData[],
+    };
+  }
+
   const requestedPage = Math.max(1, filters.page ?? 1);
   const cacheKey = JSON.stringify({
     q: filters.q ?? '',
@@ -401,6 +415,11 @@ function reviveJobDates<T extends {
 
 /** Dedupes metadata + page in one request; caches across crawlers. */
 export const getJobById = cache(async (id: string) => {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    const job = snapshot.jobs.find((item) => item.id === id) ?? null;
+    return reviveJobDates(job) as JobWithRelations | null;
+  }
   const job = await withDb(() => loadJobByIdCached(id), null);
   return reviveJobDates(job) as JobWithRelations | null;
 });
@@ -434,6 +453,13 @@ export async function relatedJobs(
   },
   take = 6,
 ) {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    return relatedJobsFromSnapshot(snapshot.jobs, job, take).map(
+      (item) => reviveJobDates(item),
+    ) as JobCardData[];
+  }
+
   const domainIdsKey = job.robotDomains
     .map((d) => d.domainId)
     .sort()
@@ -446,6 +472,15 @@ export async function relatedJobs(
 }
 
 export async function getTaxonomy() {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    return {
+      domains: snapshot.domains.map(({ id, slug, name }) => ({ id, slug, name })),
+      tags: snapshot.tags.map(({ id, slug, label }) => ({ id, slug, label })),
+      seniorities: snapshot.seniorities,
+    };
+  }
+
   return withDb(
     unstable_cache(
       async () => {
@@ -473,6 +508,13 @@ export async function getTaxonomy() {
 }
 
 export async function getTagFacets() {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    return snapshot.tags
+      .filter((tag) => tag.openJobCount > 0)
+      .map(({ slug, label, openJobCount }) => ({ slug, label, count: openJobCount }));
+  }
+
   return withDb(
     unstable_cache(
       async () => {
@@ -500,6 +542,9 @@ export async function getTagFacets() {
 }
 
 export async function getCountryFacets() {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) return snapshot.countryFacets;
+
   return withDb(
     unstable_cache(
       async () => {
@@ -561,9 +606,16 @@ const loadCompanyBySlugCached = unstable_cache(
   { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
-export const getCompanyBySlug = cache(async (slug: string) =>
-  withDb(() => loadCompanyBySlugCached(slug), null),
-);
+export const getCompanyBySlug = cache(async (slug: string) => {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    const company = snapshot.companies.find((item) => item.slug === slug);
+    if (!company) return null;
+    const { openJobCount: _openJobCount, ...rest } = company;
+    return rest;
+  }
+  return withDb(() => loadCompanyBySlugCached(slug), null);
+});
 
 const loadCompanyJobsPageCached = unstable_cache(
   async (companyId: string, page: number) => {
@@ -586,6 +638,23 @@ const loadCompanyJobsPageCached = unstable_cache(
 
 export async function getCompanyJobsPage(companyId: string, requestedPage: number) {
   const page = Math.max(1, requestedPage);
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    const jobs = snapshot.jobs
+      .filter((job) => job.companyId === companyId)
+      .sort((a, b) => {
+        const aTime = Date.parse(a.postedAt ?? a.createdAt);
+        const bTime = Date.parse(b.postedAt ?? b.createdAt);
+        return bTime - aTime;
+      });
+    const total = jobs.length;
+    const skip = (page - 1) * PAGE_SIZE;
+    return {
+      total,
+      jobs: jobs.slice(skip, skip + PAGE_SIZE).map((job) => reviveJobDates(job)) as JobCardData[],
+    };
+  }
+
   return withDb(
     () => loadCompanyJobsPageCached(companyId, page),
     { total: 0, jobs: [] as JobCardData[] },

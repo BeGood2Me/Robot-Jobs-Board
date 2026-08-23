@@ -1,3 +1,4 @@
+import { readSnapshotSitemap, snapshotXmlHeaders } from '@/lib/snapshot/sitemap';
 import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
 import { publicJobWhere } from '@/lib/jobs';
@@ -61,11 +62,11 @@ const loadCategorySitemapUrls = unstable_cache(
 );
 
 export async function GET() {
+  const staticXml = readSnapshotSitemap('sitemap-categories.xml');
+  if (staticXml) {
+    return new Response(staticXml, { headers: snapshotXmlHeaders() });
+  }
+
   const urls = await withDb(loadCategorySitemapUrls, []);
-  return new Response(urlset(urls), {
-    headers: {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
-    },
-  });
+  return new Response(urlset(urls), { headers: snapshotXmlHeaders() });
 }

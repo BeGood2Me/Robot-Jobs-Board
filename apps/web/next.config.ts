@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     '@robot-jobs-board/config',
     '@robot-jobs-board/ingestion',
     '@robot-jobs-board/taxonomy',
+    '@robot-jobs-board/snapshot',
   ],
   images: {
     remotePatterns: [

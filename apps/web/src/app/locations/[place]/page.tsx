@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps<'/locations/[place]
   if (!place) return { title: 'Location jobs' };
   const resolved = await resolvePlace(place);
   if (!resolved) return { title: 'Location jobs' };
-  const indexable = await listingIsIndexable(resolved.where, `place-${place}`);
+  const indexable = await listingIsIndexable(resolved.filter, `place-${place}`);
   const canonical = `/locations/${raw}`;
   return {
     title: `${resolved.label} robotics jobs`,
@@ -32,7 +32,7 @@ export default async function LocationJobsPage({ params }: PageProps<'/locations
   if (!place) notFound();
   const resolved = await resolvePlace(place);
   if (!resolved) notFound();
-  const listing = await loadListing(resolved.where, `place-${place}`);
+  const listing = await loadListing(resolved.filter, `place-${place}`);
   return (
     <SeoJobList
       h1={`${resolved.label} robotics jobs`}

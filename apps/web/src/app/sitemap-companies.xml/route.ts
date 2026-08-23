@@ -1,6 +1,8 @@
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
+import { readSnapshotSitemap, snapshotXmlHeaders } from '@/lib/snapshot/sitemap';
 import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
-import { getSiteUrl, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
+import { getSiteUrl } from '@/lib/site';
 
 const loadCompanySitemapXml = unstable_cache(
   async () => {
@@ -17,11 +19,11 @@ ${companies.map((c) => `  <url><loc>${site}/companies/${c.slug}</loc></url>`).jo
 );
 
 export async function GET() {
+  const staticXml = readSnapshotSitemap('sitemap-companies.xml');
+  if (staticXml) {
+    return new Response(staticXml, { headers: snapshotXmlHeaders() });
+  }
+
   const xml = await withDb(loadCompanySitemapXml, '');
-  return new Response(xml, {
-    headers: {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
-    },
-  });
+  return new Response(xml, { headers: snapshotXmlHeaders() });
 }

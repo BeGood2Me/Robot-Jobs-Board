@@ -1,8 +1,15 @@
 import type { Prisma } from '@robot-jobs-board/db';
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
+import {
+  countListingJobs,
+  filterListingJobs,
+  type ListingFilter,
+} from '@robot-jobs-board/snapshot';
 import { prisma, withDb } from './db';
 import { jobCardSelect, type JobCardData } from './jobs';
+import { loadPublicSnapshot } from './snapshot/load';
+import { listingFilterToPrisma } from './snapshot/listing-filter';
 import { INDEX_JOB_THRESHOLD, PUBLIC_REVALIDATE_SECONDS, slugify } from './site';
 
 export type ProgrammaticKind = 'domain' | 'skill' | 'location' | 'combo';
@@ -13,7 +20,7 @@ export type ProgrammaticPage = {
   description: string;
   h1: string;
   intro: string;
-  where: Prisma.JobWhereInput;
+  filter: ListingFilter;
   canonicalPath: string;
 };
 
@@ -54,19 +61,29 @@ const loadPlaceIndex = unstable_cache(
 
 export const resolvePlace = cache(async (place: string): Promise<{
   label: string;
-  where: Prisma.JobWhereInput;
+  filter: ListingFilter;
 } | null> => {
   if (place === 'remote') {
-    return { label: 'Remote', where: { isRemote: true } };
+    return { label: 'Remote', filter: { kind: 'remote' } };
   }
-  const companies = await withDb(loadPlaceIndex, { cities: [], countries: [], regions: [] });
 
-  const city = companies.cities.find((row) => slugify(row.city ?? '') === place);
-  if (city?.city) return { label: city.city, where: { city: city.city } };
-  const region = companies.regions.find((row) => slugify(row.region ?? '') === place);
-  if (region?.region) return { label: region.region, where: { region: region.region } };
-  const country = companies.countries.find((row) => slugify(row.country ?? '') === place);
-  if (country?.country) return { label: country.country, where: { country: country.country } };
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    const city = snapshot.places.cities.find((value) => slugify(value) === place);
+    if (city) return { label: city, filter: { kind: 'city', value: city } };
+    const region = snapshot.places.regions.find((value) => slugify(value) === place);
+    if (region) return { label: region, filter: { kind: 'region', value: region } };
+    const country = snapshot.places.countries.find((value) => slugify(value) === place);
+    if (country) return { label: country, filter: { kind: 'country', value: country } };
+  } else {
+    const places = await withDb(loadPlaceIndex, { cities: [], countries: [], regions: [] });
+    const city = places.cities.find((row) => slugify(row.city ?? '') === place);
+    if (city?.city) return { label: city.city, filter: { kind: 'city', value: city.city } };
+    const region = places.regions.find((row) => slugify(row.region ?? '') === place);
+    if (region?.region) return { label: region.region, filter: { kind: 'region', value: region.region } };
+    const country = places.countries.find((row) => slugify(row.country ?? '') === place);
+    if (country?.country) return { label: country.country, filter: { kind: 'country', value: country.country } };
+  }
 
   const pretty = place
     .split('-')
@@ -74,10 +91,11 @@ export const resolvePlace = cache(async (place: string): Promise<{
     .join(' ');
   return {
     label: pretty,
-    where: {
-      OR: [
-        { city: { equals: pretty, mode: 'insensitive' } },
-        { country: { equals: pretty, mode: 'insensitive' } },
+    filter: {
+      kind: 'or',
+      filters: [
+        { kind: 'city', value: pretty },
+        { kind: 'country', value: pretty },
       ],
     },
   };
@@ -107,30 +125,41 @@ export function skillCopy(label: string): { h1: string; title: string; descripti
 }
 
 const loadListingCached = unstable_cache(
-  async (cacheKey: string, whereJson: string) => {
-    const where = JSON.parse(whereJson) as Prisma.JobWhereInput;
+  async (cacheKey: string, filterJson: string) => {
+    const filter = JSON.parse(filterJson) as ListingFilter;
+    const where = listingFilterToPrisma(filter);
     const jobs = await prisma.job.findMany({
       where: { isActive: true, isHidden: false, ...where },
       select: jobCardSelect,
       orderBy: { postedAt: 'desc' },
       take: 50,
     });
-    return { jobs, total: jobs.length, indexable: jobs.length >= INDEX_JOB_THRESHOLD };
+    const count = await prisma.job.count({
+      where: { isActive: true, isHidden: false, ...where },
+    });
+    return { jobs, total: jobs.length, indexable: count >= INDEX_JOB_THRESHOLD };
   },
   ['seo-listing'],
   { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
-export async function loadListing(where: Prisma.JobWhereInput, cacheKey: string) {
+export async function loadListing(filter: ListingFilter, cacheKey: string) {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    const jobs = filterListingJobs(snapshot.jobs, filter);
+    const count = countListingJobs(snapshot.jobs, filter);
+    return { jobs: jobs as JobCardData[], total: jobs.length, indexable: count >= INDEX_JOB_THRESHOLD };
+  }
   return withDb(
-    () => loadListingCached(cacheKey, JSON.stringify(where)),
+    () => loadListingCached(cacheKey, JSON.stringify(filter)),
     { jobs: [] as JobCardData[], total: 0, indexable: false },
   );
 }
 
 const listingIndexableCached = unstable_cache(
-  async (cacheKey: string, whereJson: string) => {
-    const where = JSON.parse(whereJson) as Prisma.JobWhereInput;
+  async (cacheKey: string, filterJson: string) => {
+    const filter = JSON.parse(filterJson) as ListingFilter;
+    const where = listingFilterToPrisma(filter);
     const count = await prisma.job.count({
       where: { isActive: true, isHidden: false, ...where },
     });
@@ -140,29 +169,43 @@ const listingIndexableCached = unstable_cache(
   { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
-/** Metadata-only: count instead of fetching 50 job cards. */
-export async function listingIsIndexable(where: Prisma.JobWhereInput, cacheKey: string) {
-  return withDb(() => listingIndexableCached(cacheKey, JSON.stringify(where)), false);
+export async function listingIsIndexable(filter: ListingFilter, cacheKey: string) {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    return countListingJobs(snapshot.jobs, filter) >= INDEX_JOB_THRESHOLD;
+  }
+  return withDb(() => listingIndexableCached(cacheKey, JSON.stringify(filter)), false);
 }
 
-export const getDomainBySlug = cache(async (slug: string) =>
-  withDb(
+export const getDomainBySlug = cache(async (slug: string) => {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    return snapshot.domains.find((domain) => domain.slug === slug) ?? null;
+  }
+  return withDb(
     () =>
       prisma.robotDomain.findUnique({
         where: { slug },
         select: { id: true, slug: true, name: true, description: true },
       }),
     null,
-  ),
-);
+  );
+});
 
-export const getTagBySlug = cache(async (slug: string) =>
-  withDb(
+export const getTagBySlug = cache(async (slug: string) => {
+  const snapshot = loadPublicSnapshot();
+  if (snapshot) {
+    return snapshot.tags.find((tag) => tag.slug === slug) ?? null;
+  }
+  return withDb(
     () =>
       prisma.techTag.findUnique({
         where: { slug },
         select: { id: true, slug: true, label: true },
       }),
     null,
-  ),
-);
+  );
+});
+
+/** @deprecated Use ListingFilter in new code. */
+export type LegacyProgrammaticWhere = Prisma.JobWhereInput;
