@@ -156,6 +156,12 @@ importers:
       '@robot-jobs-board/db':
         specifier: workspace:*
         version: link:../db
+      '@robot-jobs-board/ingestion':
+        specifier: workspace:*
+        version: link:../../apps/ingestion
+      '@robot-jobs-board/taxonomy':
+        specifier: workspace:*
+        version: link:../taxonomy
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1

@@ -39,16 +39,15 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
       - run: pnpm ingest:run
+        continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
           INGEST_INACTIVE_AFTER_DAYS: "1"
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
-      - run: pnpm snapshot:export
+      - run: pnpm snapshot:export:feeds
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
       - name: Commit public snapshot

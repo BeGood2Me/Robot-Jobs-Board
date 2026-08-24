@@ -421,10 +421,13 @@ export type GoneJob = {
 };
 
 /** Dedupes metadata + page in one request; caches across crawlers. */
-export const getJobById = cache(async (id: string) => {
+export const getJobById = cache(async (id: string, slug?: string) => {
   const snapshot = loadPublicSnapshot();
   if (snapshot) {
-    const job = snapshot.jobs.find((item) => item.id === id) ?? null;
+    let job = snapshot.jobs.find((item) => item.id === id) ?? null;
+    if (!job && slug) {
+      job = snapshot.jobs.find((item) => item.slug === slug) ?? null;
+    }
     return reviveJobDates(job) as JobWithRelations | null;
   }
   const job = await withDb(() => loadJobByIdCached(id), null);

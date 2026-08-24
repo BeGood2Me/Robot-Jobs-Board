@@ -8,11 +8,14 @@
   },
   "scripts": {
     "export": "tsx src/cli.ts",
+    "export:feeds": "tsx src/cli.ts --from-feeds",
     "test": "vitest run",
     "lint": "echo \"no lint\""
   },
   "dependencies": {
     "@robot-jobs-board/db": "workspace:*",
+    "@robot-jobs-board/ingestion": "workspace:*",
+    "@robot-jobs-board/taxonomy": "workspace:*",
     "dotenv": "^16.6.1"
   },
   "devDependencies": {

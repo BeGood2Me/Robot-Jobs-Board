@@ -12,8 +12,8 @@ import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@
 export const revalidate = 14400;
 
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
-  const { id } = await params;
-  const job = await getJobById(id);
+  const { id, slug } = await params;
+  const job = await getJobById(id, slug);
   if (job) {
     const canonical = jobPagePath(job);
     const title = jobPageTitle(job);
@@ -68,13 +68,13 @@ function ApplyNowLink({ href, className }: { href: string; className?: string })
 
 export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[slug]'>) {
   const { id, slug } = await params;
-  const job = await getJobById(id);
+  const job = await getJobById(id, slug);
   if (!job) {
     const gone = await getGoneJobById(id);
     if (gone) permanentRedirect(`/companies/${gone.company.slug}`);
     notFound();
   }
-  if (job.slug !== slug) permanentRedirect(`/jobs/${job.id}/${job.slug}`);
+  if (job.slug !== slug || job.id !== id) permanentRedirect(`/jobs/${job.id}/${job.slug}`);
 
   const related = await relatedJobs(job);
   const html = sanitizeJobHtml(job.descriptionHtml || `<p>${job.descriptionPlain}</p>`);

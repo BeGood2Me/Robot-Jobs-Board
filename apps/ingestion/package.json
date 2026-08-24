@@ -6,7 +6,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./apply-url": "./src/apply-url.ts",
-    "./html": "./src/html.ts"
+    "./html": "./src/html.ts",
+    "./feeds": "./src/feeds.ts",
+    "./normalize": "./src/normalize.ts",
+    "./region": "./src/region.ts"
   },
   "scripts": {
     "ingest:run": "tsx src/cli.ts run",

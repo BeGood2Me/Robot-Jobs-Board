@@ -21,6 +21,7 @@
     "ingest:cron": "pnpm --filter @robot-jobs-board/ingestion ingest:cron",
     "ingest:reclassify": "pnpm --filter @robot-jobs-board/ingestion ingest:reclassify",
     "snapshot:export": "pnpm --filter @robot-jobs-board/snapshot export",
+    "snapshot:export:feeds": "pnpm --filter @robot-jobs-board/snapshot export:feeds",
     "postinstall": "pnpm db:generate"
   },
   "devDependencies": {
