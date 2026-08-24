@@ -1,5 +1,5 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { prisma } from '@robot-jobs-board/db';
 import type { PublicBoardSnapshot, SnapshotJob } from './types';
@@ -322,9 +322,22 @@ ${posts
   return { jobCount: jobs.length, generatedAt: snapshot.generatedAt };
 }
 
+function findMonorepoRoot(start: string): string {
+  let dir = resolve(start);
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml')) && existsSync(join(dir, 'apps', 'web'))) {
+      return dir;
+    }
+    const parent = resolve(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return resolve(start);
+}
+
 export function defaultSnapshotOutDir(cwd = process.cwd()) {
-  const webRoot = cwd.endsWith('apps\\web') || cwd.endsWith('apps/web') ? cwd : join(cwd, 'apps', 'web');
-  return join(webRoot, 'public', 'snapshot');
+  const root = findMonorepoRoot(cwd);
+  return join(root, 'apps', 'web', 'public', 'snapshot');
 }
 
 export async function exportPublicSnapshotToDefaultDir(siteUrl: string) {
