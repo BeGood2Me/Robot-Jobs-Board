@@ -3,7 +3,7 @@ import { getBlogPosts } from '@/lib/blog';
 import { getSiteUrl } from '@/lib/site';
 
 export async function GET() {
-  const staticXml = readSnapshotSitemap('sitemap-blog.xml');
+  const staticXml = await readSnapshotSitemap('sitemap-blog.xml');
   if (staticXml) {
     return new Response(staticXml, { headers: snapshotXmlHeaders() });
   }

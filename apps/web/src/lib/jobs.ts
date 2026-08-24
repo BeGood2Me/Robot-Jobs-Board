@@ -290,7 +290,7 @@ export function jobWhere(filters: JobFilters, activeOnly = true): Prisma.JobWher
 }
 
 export async function searchJobs(filters: JobFilters) {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     const result = searchJobsFromSnapshot(snapshot.jobs, filters, PAGE_SIZE);
     return {
@@ -422,7 +422,7 @@ export type GoneJob = {
 
 /** Dedupes metadata + page in one request; caches across crawlers. */
 export const getJobById = cache(async (id: string, slug?: string) => {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     let job = snapshot.jobs.find((item) => item.id === id) ?? null;
     if (!job && slug) {
@@ -437,7 +437,7 @@ export const getJobById = cache(async (id: string, slug?: string) => {
 
 /** Closed or hidden jobs — redirect to the employer page instead of 404. */
 export const getGoneJobById = cache(async (id: string): Promise<GoneJob | null> => {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot?.goneJobs?.length) {
     const gone = snapshot.goneJobs.find((item) => item.id === id);
     if (gone) return gone;
@@ -482,7 +482,7 @@ export async function relatedJobs(
   },
   take = 6,
 ) {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     return relatedJobsFromSnapshot(snapshot.jobs, job, take).map(
       (item) => reviveJobDates(item),
@@ -501,7 +501,7 @@ export async function relatedJobs(
 }
 
 export async function getTaxonomy() {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     return {
       domains: snapshot.domains.map(({ id, slug, name }) => ({ id, slug, name })),
@@ -537,7 +537,7 @@ export async function getTaxonomy() {
 }
 
 export async function getTagFacets() {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     return snapshot.tags
       .filter((tag) => tag.openJobCount > 0)
@@ -571,7 +571,7 @@ export async function getTagFacets() {
 }
 
 export async function getCountryFacets() {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) return snapshot.countryFacets;
 
   return withDb(
@@ -636,7 +636,7 @@ const loadCompanyBySlugCached = unstable_cache(
 );
 
 export const getCompanyBySlug = cache(async (slug: string) => {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     const company = snapshot.companies.find((item) => item.slug === slug);
     if (!company) return null;
@@ -667,7 +667,7 @@ const loadCompanyJobsPageCached = unstable_cache(
 
 export async function getCompanyJobsPage(companyId: string, requestedPage: number) {
   const page = Math.max(1, requestedPage);
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     const jobs = snapshot.jobs
       .filter((job) => job.companyId === companyId)

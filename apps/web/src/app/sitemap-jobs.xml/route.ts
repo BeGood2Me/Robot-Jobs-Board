@@ -24,7 +24,7 @@ const loadJobSitemapUrls = unstable_cache(
 );
 
 export async function GET() {
-  const staticXml = readSnapshotSitemap('sitemap-jobs.xml');
+  const staticXml = await readSnapshotSitemap('sitemap-jobs.xml');
   if (staticXml) {
     return new Response(staticXml, { headers: snapshotXmlHeaders() });
   }

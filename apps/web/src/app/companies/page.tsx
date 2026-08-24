@@ -29,7 +29,7 @@ const loadCompaniesIndex = unstable_cache(
 );
 
 export default async function CompaniesPage() {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   const companies = snapshot
     ? snapshot.companies.map((company) => ({
         id: company.id,

@@ -8,6 +8,6 @@ export function snapshotXmlHeaders() {
   };
 }
 
-export function readSnapshotSitemap(name: string): string | null {
+export async function readSnapshotSitemap(name: string): Promise<string | null> {
   return readStaticSnapshotFile(name);
 }

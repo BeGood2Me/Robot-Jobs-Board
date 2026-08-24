@@ -67,7 +67,7 @@ export const resolvePlace = cache(async (place: string): Promise<{
     return { label: 'Remote', filter: { kind: 'remote' } };
   }
 
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     const city = snapshot.places.cities.find((value) => slugify(value) === place);
     if (city) return { label: city, filter: { kind: 'city', value: city } };
@@ -144,7 +144,7 @@ const loadListingCached = unstable_cache(
 );
 
 export async function loadListing(filter: ListingFilter, cacheKey: string) {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     const jobs = filterListingJobs(snapshot.jobs, filter);
     const count = countListingJobs(snapshot.jobs, filter);
@@ -170,7 +170,7 @@ const listingIndexableCached = unstable_cache(
 );
 
 export async function listingIsIndexable(filter: ListingFilter, cacheKey: string) {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     return countListingJobs(snapshot.jobs, filter) >= INDEX_JOB_THRESHOLD;
   }
@@ -178,7 +178,7 @@ export async function listingIsIndexable(filter: ListingFilter, cacheKey: string
 }
 
 export const getDomainBySlug = cache(async (slug: string) => {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     return snapshot.domains.find((domain) => domain.slug === slug) ?? null;
   }
@@ -193,7 +193,7 @@ export const getDomainBySlug = cache(async (slug: string) => {
 });
 
 export const getTagBySlug = cache(async (slug: string) => {
-  const snapshot = loadPublicSnapshot();
+  const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     return snapshot.tags.find((tag) => tag.slug === slug) ?? null;
   }

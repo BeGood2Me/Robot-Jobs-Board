@@ -19,7 +19,7 @@ ${companies.map((c) => `  <url><loc>${site}/companies/${c.slug}</loc></url>`).jo
 );
 
 export async function GET() {
-  const staticXml = readSnapshotSitemap('sitemap-companies.xml');
+  const staticXml = await readSnapshotSitemap('sitemap-companies.xml');
   if (staticXml) {
     return new Response(staticXml, { headers: snapshotXmlHeaders() });
   }

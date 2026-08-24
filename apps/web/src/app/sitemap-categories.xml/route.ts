@@ -62,7 +62,7 @@ const loadCategorySitemapUrls = unstable_cache(
 );
 
 export async function GET() {
-  const staticXml = readSnapshotSitemap('sitemap-categories.xml');
+  const staticXml = await readSnapshotSitemap('sitemap-categories.xml');
   if (staticXml) {
     return new Response(staticXml, { headers: snapshotXmlHeaders() });
   }
