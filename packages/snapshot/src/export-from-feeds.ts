@@ -223,6 +223,9 @@ export async function exportPublicSnapshotFromFeeds(options: {
   };
 
   writePublicSnapshotFiles(snapshot, options.outDir);
+  if (jobs.length === 0) {
+    throw new Error('Feed snapshot export produced zero jobs');
+  }
   return { jobCount: jobs.length, generatedAt: snapshot.generatedAt };
 }
 

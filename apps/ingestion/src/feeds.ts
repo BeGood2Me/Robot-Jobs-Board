@@ -9,7 +9,6 @@ import { fetchWorkdayJobs } from './connectors/workday';
 import type { FeedConfigJson, NormalizedJob } from './types';
 
 export async function jobsForFeed(sourceSystem: SourceSystem, config: FeedConfigJson): Promise<NormalizedJob[]> {
-  const env = loadEnv();
   switch (sourceSystem) {
     case 'ashby': {
       const name = config.jobBoardName ?? config.site ?? config.boardToken;
@@ -38,12 +37,14 @@ export async function jobsForFeed(sourceSystem: SourceSystem, config: FeedConfig
       if (!account) throw new Error('Workable feed missing site');
       return fetchWorkableJobs(account);
     }
-    case 'joblistingsapi':
+    case 'joblistingsapi': {
+      const env = loadEnv();
       return fetchAggregatorJobs({
         apiKey: env.JOB_LISTINGS_API_KEY,
         baseUrl: env.JOB_LISTINGS_API_BASE_URL,
         sourceFilter: config.sourceFilter,
       });
+    }
     default:
       throw new Error(`Unsupported source ${sourceSystem}`);
   }
