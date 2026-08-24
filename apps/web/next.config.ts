@@ -18,6 +18,10 @@ loadEnvConfig(monorepoRoot());
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  // Vercel serverless bundles exclude public/ by default; include snapshot for SSR reads.
+  outputFileTracingIncludes: {
+    '/*': ['./public/snapshot/**/*'],
+  },
   transpilePackages: [
     '@robot-jobs-board/db',
     '@robot-jobs-board/config',
