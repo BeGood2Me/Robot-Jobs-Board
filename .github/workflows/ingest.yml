@@ -3,12 +3,16 @@ name: ingest-jobs
 on:
   workflow_dispatch:
   schedule:
-    # Once daily at 06:00 UTC — keeps Neon egress low on free tier.
-    - cron: "0 6 * * *"
+    # GitHub cron is best-effort and often drops jobs at :00. Offset minutes + a
+    # backup slot so a missed morning run is still picked up the same day.
+    - cron: "23 7 * * *"   # ~07:23 UTC primary
+    - cron: "41 19 * * *"  # ~19:41 UTC backup
   push:
     branches: [main]
     paths-ignore:
       - 'apps/web/public/snapshot/**'
+  repository_dispatch:
+    types: [ingest-jobs]
 
 concurrency:
   group: ingest-jobs
@@ -27,18 +31,44 @@ jobs:
           # Need full history so we can rebase onto main if it moved during the long ingest.
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip schedule if snapshot is already fresh
+        id: freshness
+        if: github.event_name == 'schedule'
+        run: |
+          MANIFEST="apps/web/public/snapshot/manifest.json"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "No manifest yet — running"
+            exit 0
+          fi
+          AGE_HOURS=$(node -e "const m=require('./$MANIFEST'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
+          echo "Snapshot age: ${AGE_HOURS}h"
+          if node -e "const m=require('./$MANIFEST'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 14 ? 0 : 1)"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Snapshot already fresh (<14h) — skipping duplicate schedule run"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Snapshot older than 14h — running"
+          fi
+
       # Version is read from packageManager in package.json — do not also pass version: here.
       - uses: pnpm/action-setup@v4
+        if: steps.freshness.outputs.skip != 'true'
       - uses: actions/setup-node@v4
+        if: steps.freshness.outputs.skip != 'true'
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
+        if: steps.freshness.outputs.skip != 'true'
       - run: pnpm db:generate
+        if: steps.freshness.outputs.skip != 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
       - run: pnpm ingest:run
+        if: steps.freshness.outputs.skip != 'true'
         continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -47,15 +77,22 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
       - run: pnpm snapshot:export:feeds
+        if: steps.freshness.outputs.skip != 'true'
         env:
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
       - name: Commit public snapshot
+        if: steps.freshness.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ ! -f apps/web/public/snapshot/board.json.gz ]; then
             echo "Snapshot export did not write apps/web/public/snapshot/board.json.gz"
+            exit 1
+          fi
+          JOB_COUNT=$(node -e "console.log(require('./apps/web/public/snapshot/manifest.json').jobCount)")
+          if [ "$JOB_COUNT" -lt 1 ]; then
+            echo "Refusing to commit empty snapshot (jobCount=$JOB_COUNT)"
             exit 1
           fi
           git add apps/web/public/snapshot/

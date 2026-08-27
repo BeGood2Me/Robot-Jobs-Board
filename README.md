@@ -54,7 +54,7 @@ Run once locally:
 pnpm ingest:run
 ```
 
-Ingest runs on GitHub Actions: `.github/workflows/ingest.yml` (once daily at 06:00 UTC, plus on pushes to `main` and manual dispatch).
+Ingest runs on GitHub Actions: `.github/workflows/ingest.yml` (primary ~07:23 UTC, backup ~19:41 UTC if the morning slot is skipped; also on pushes to `main` and manual dispatch). GitHub’s built-in cron is best-effort and can silently drop top-of-hour jobs, so the workflow uses offset minutes plus a same-day backup.
 
 The runner:
 
@@ -122,7 +122,7 @@ Use Neon pooled `DATABASE_URL` in Vercel. Keep `DIRECT_URL` for any migrate step
 
 ### GitHub Actions (ingest)
 
-Workflow: `.github/workflows/ingest.yml` (once daily at 06:00 UTC, plus manual dispatch).
+Workflow: `.github/workflows/ingest.yml` (~07:23 UTC primary, ~19:41 UTC backup, plus manual dispatch).
 
 Repo secrets:
 
