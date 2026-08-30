@@ -3,10 +3,13 @@ name: ingest-jobs
 on:
   workflow_dispatch:
   schedule:
-    # GitHub cron is best-effort and often drops jobs at :00. Offset minutes + a
-    # backup slot so a missed morning run is still picked up the same day.
-    - cron: "23 7 * * *"   # ~07:23 UTC primary
-    - cron: "41 19 * * *"  # ~19:41 UTC backup
+    # GitHub cron is best-effort and can silently drop runs (esp. at :00).
+    # Several offset slots/day; freshness gate below skips duplicates.
+    # Vercel Cron also dispatches this workflow once daily as a hard backup.
+    - cron: "17 1 * * *"
+    - cron: "23 7 * * *"
+    - cron: "41 13 * * *"
+    - cron: "53 19 * * *"
   push:
     branches: [main]
     paths-ignore:

@@ -54,7 +54,9 @@ Run once locally:
 pnpm ingest:run
 ```
 
-Ingest runs on GitHub Actions: `.github/workflows/ingest.yml` (primary ~07:23 UTC, backup ~19:41 UTC if the morning slot is skipped; also on pushes to `main` and manual dispatch). GitHub’s built-in cron is best-effort and can silently drop top-of-hour jobs, so the workflow uses offset minutes plus a same-day backup.
+Ingest runs on GitHub Actions: `.github/workflows/ingest.yml` (several offset schedule slots per day with a freshness skip, plus pushes to `main` and manual/`repository_dispatch`).
+
+GitHub’s built-in cron is best-effort and can silently skip runs. A Vercel Cron (Hobby: once daily at ~08:17 UTC) hits `GET /api/cron/ingest`, which dispatches the same workflow via the GitHub API. Set `CRON_SECRET` and `INGEST_DISPATCH_TOKEN` (GitHub PAT with `repo` + `workflow`) on Vercel Production.
 
 The runner:
 
@@ -116,13 +118,13 @@ Covers taxonomy rules and ATS field mappers.
 - Root of the repo (pnpm workspace)
 - Build command: `pnpm db:generate && pnpm --filter web build`
 - Output: Next.js default for `apps/web`
-- Environment: `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`, `ADMIN_SECRET`
+- Environment: `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`, `ADMIN_SECRET`, `INGEST_DISPATCH_TOKEN`
 
 Use Neon pooled `DATABASE_URL` in Vercel. Keep `DIRECT_URL` for any migrate step you run locally or in CI, not on the serverless app.
 
 ### GitHub Actions (ingest)
 
-Workflow: `.github/workflows/ingest.yml` (~07:23 UTC primary, ~19:41 UTC backup, plus manual dispatch).
+Workflow: `.github/workflows/ingest.yml` (multi-slot GitHub schedule + Vercel Cron dispatch + manual).
 
 Repo secrets:
 
