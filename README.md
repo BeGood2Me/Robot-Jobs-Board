@@ -54,22 +54,11 @@ Run once locally:
 pnpm ingest:run
 ```
 
-Ingest runs on GitHub Actions: `.github/workflows/ingest.yml` (several offset schedule slots per day with a freshness skip, plus pushes to `main` and manual/`repository_dispatch`).
+Ingest for the **public site** does not use Neon. GitHub Actions runs `pnpm snapshot:export:feeds` (~1–2 min): it pulls employer ATS feeds (Greenhouse, Lever, Ashby, Workday, Workable) and commits `apps/web/public/snapshot/`.
 
-GitHub’s built-in cron is best-effort and can silently skip runs. A Vercel Cron (Hobby: once daily at ~08:17 UTC) hits `GET /api/cron/ingest`, which dispatches the same workflow via the GitHub API. Set `CRON_SECRET` and `INGEST_DISPATCH_TOKEN` (GitHub PAT with `repo` + `workflow`) on Vercel Production.
+Vercel Cron (Hobby, once daily ~08:17 UTC) hits `GET /api/cron/ingest` with `CRON_SECRET` and dispatches that workflow. GitHub’s own schedule is only a backup (it can skip).
 
-The runner:
-
-- Loads active `SourceFeedConfig` rows
-- Dispatches to Ashby, Greenhouse, Lever, Workday, Workable, or the optional aggregator
-- Skips catch-all resume inboxes and jobs outside the USA, UK, and Europe
-- Upserts jobs on `(sourceSystem, externalId)`
-- Re-applies taxonomy tags
-- Leaves founder-hidden jobs hidden
-- Hard-deletes jobs that disappear from an employer ATS feed on the next successful sync for that board
-- Deletes stale rows if a feed sync fails and `lastSeenAt` is older than `INGEST_INACTIVE_AFTER_DAYS` (default 1)
-
-Logs are JSON lines with `fetched`, `created`, `updated`, `skipped`, and `deleted` counts.
+Optional Neon ingest (`pnpm ingest:run`) is for admin/DB tooling when the database is available — it is not required for the live board.
 
 You can also click **Sync boards now** on `/admin/jobs`.
 
@@ -118,20 +107,11 @@ Covers taxonomy rules and ATS field mappers.
 - Root of the repo (pnpm workspace)
 - Build command: `pnpm db:generate && pnpm --filter web build`
 - Output: Next.js default for `apps/web`
-- Environment: `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`, `ADMIN_SECRET`, `INGEST_DISPATCH_TOKEN`
+- Environment: `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET`, `ADMIN_SECRET`, `INGEST_DISPATCH_TOKEN`
 
-Use Neon pooled `DATABASE_URL` in Vercel. Keep `DIRECT_URL` for any migrate step you run locally or in CI, not on the serverless app.
+### GitHub Actions (public snapshot)
 
-### GitHub Actions (ingest)
-
-Workflow: `.github/workflows/ingest.yml` (multi-slot GitHub schedule + Vercel Cron dispatch + manual).
-
-Repo secrets:
-
-- `DATABASE_URL`
-- `DIRECT_URL`
-- `NEXT_PUBLIC_SITE_URL`
-- optional `JOB_LISTINGS_API_KEY` and `JOB_LISTINGS_API_BASE_URL`
+Workflow: `.github/workflows/ingest.yml` — feed snapshot only (no Neon). Triggered by Vercel Cron dispatch, two GitHub schedule backups, and manual run.
 
 ### Google Search Console
 

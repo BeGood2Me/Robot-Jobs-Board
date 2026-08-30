@@ -3,17 +3,10 @@ name: ingest-jobs
 on:
   workflow_dispatch:
   schedule:
-    # GitHub cron is best-effort and can silently drop runs (esp. at :00).
-    # Several offset slots/day; freshness gate below skips duplicates.
-    # Vercel Cron also dispatches this workflow once daily as a hard backup.
-    - cron: "17 1 * * *"
+    # GitHub cron is best-effort. Offset slots are a backup; Vercel Cron is the
+    # reliable daily trigger (dispatches this workflow, no Neon).
     - cron: "23 7 * * *"
-    - cron: "41 13 * * *"
     - cron: "53 19 * * *"
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'apps/web/public/snapshot/**'
   repository_dispatch:
     types: [ingest-jobs]
 
@@ -23,15 +16,15 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
-  ingest:
+  snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          # Need full history so we can rebase onto main if it moved during the long ingest.
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -42,20 +35,17 @@ jobs:
           MANIFEST="apps/web/public/snapshot/manifest.json"
           if [ ! -f "$MANIFEST" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "No manifest yet — running"
             exit 0
           fi
           AGE_HOURS=$(node -e "const m=require('./$MANIFEST'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
           echo "Snapshot age: ${AGE_HOURS}h"
           if node -e "const m=require('./$MANIFEST'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 14 ? 0 : 1)"; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Snapshot already fresh (<14h) — skipping duplicate schedule run"
+            echo "Snapshot already fresh (<14h) — skipping"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "Snapshot older than 14h — running"
           fi
 
-      # Version is read from packageManager in package.json — do not also pass version: here.
       - uses: pnpm/action-setup@v4
         if: steps.freshness.outputs.skip != 'true'
       - uses: actions/setup-node@v4
@@ -65,20 +55,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
         if: steps.freshness.outputs.skip != 'true'
+      # Local codegen only — does not connect to Neon.
       - run: pnpm db:generate
         if: steps.freshness.outputs.skip != 'true'
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      - run: pnpm ingest:run
-        if: steps.freshness.outputs.skip != 'true'
-        continue-on-error: true
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          INGEST_INACTIVE_AFTER_DAYS: "1"
-          NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
-          NODE_ENV: production
       - run: pnpm snapshot:export:feeds
         if: steps.freshness.outputs.skip != 'true'
         env:
@@ -104,6 +83,5 @@ jobs:
             exit 0
           fi
           git commit -m "chore: update public snapshot"
-          # main may have moved during the ~1h ingest (code pushes, other runs)
           git pull --rebase origin main
           git push origin HEAD:main
