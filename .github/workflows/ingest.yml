@@ -64,10 +64,12 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
       - name: Commit public snapshot
+        id: commit
         if: steps.freshness.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "pushed=false" >> "$GITHUB_OUTPUT"
           if [ ! -f apps/web/public/snapshot/board.json.gz ]; then
             echo "Snapshot export did not write apps/web/public/snapshot/board.json.gz"
             exit 1
@@ -85,3 +87,22 @@ jobs:
           git commit -m "chore: update public snapshot"
           git pull --rebase origin main
           git push origin HEAD:main
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # GitHub→Vercel webhooks can miss bot pushes (seen 2026-09-11). Always
+      # trigger a production deploy hook after a successful snapshot push.
+      - name: Trigger Vercel production deploy
+        if: steps.freshness.outputs.skip != 'true' && steps.commit.outputs.pushed == 'true'
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "VERCEL_DEPLOY_HOOK_URL secret is not set"
+            exit 1
+          fi
+          # Give Git a moment to expose the new commit to Vercel's Git integration.
+          sleep 8
+          echo "Triggering Vercel deploy hook…"
+          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          echo
+          echo "Deploy hook accepted"

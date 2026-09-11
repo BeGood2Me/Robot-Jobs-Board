@@ -113,6 +113,8 @@ Covers taxonomy rules and ATS field mappers.
 
 Workflow: `.github/workflows/ingest.yml` — feed snapshot only (no Neon). Triggered by Vercel Cron dispatch, two GitHub schedule backups, and manual run.
 
+After a successful snapshot push, the workflow POSTs `VERCEL_DEPLOY_HOOK_URL` (repo secret) so production always redeploys even if the GitHub→Vercel webhook misses a bot commit. Create the hook in Vercel → Project → Settings → Git → Deploy Hooks (`main`), or `vercel deploy-hooks create gha-snapshot --ref main`.
+
 ### Google Search Console
 
 1. Deploy with a real `NEXT_PUBLIC_SITE_URL`.
