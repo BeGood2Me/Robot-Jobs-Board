@@ -17,6 +17,7 @@ export const jobCardSelect = {
   id: true,
   slug: true,
   title: true,
+  url: true,
   city: true,
   country: true,
   locationRaw: true,

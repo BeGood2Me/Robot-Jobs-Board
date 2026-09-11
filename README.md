@@ -115,6 +115,35 @@ Workflow: `.github/workflows/ingest.yml` — feed snapshot only (no Neon). Trigg
 
 After a successful snapshot push, the workflow POSTs `VERCEL_DEPLOY_HOOK_URL` (repo secret) so production always redeploys even if the GitHub→Vercel webhook misses a bot commit. Create the hook in Vercel → Project → Settings → Git → Deploy Hooks (`main`), or `vercel deploy-hooks create gha-snapshot --ref main`.
 
+### MCP (agents)
+
+Package: `@robot-jobs-board/mcp` — stdio MCP server for Cursor / Claude Desktop / other MCP clients.
+
+Tools: `search_jobs`, `get_job`, `list_companies`, `get_company`, `list_facets`.
+
+```bash
+pnpm install
+pnpm mcp
+```
+
+Cursor MCP config example (`ROBOT_JOBS_BOARD_URL` optional, defaults to production):
+
+```json
+{
+  "mcpServers": {
+    "robot-jobs-board": {
+      "command": "pnpm",
+      "args": ["--dir", "C:/Users/YOU/Desktop/Projects/Robot Jobs Board", "mcp"],
+      "env": {
+        "ROBOT_JOBS_BOARD_URL": "https://www.robotjobsboard.com"
+      }
+    }
+  }
+}
+```
+
+Public JSON used by the server: `/api/jobs`, `/api/jobs/[id]`, `/api/companies`, `/api/companies/[slug]`, `/api/facets` (with snapshot fallback when those routes are not yet deployed).
+
 ### Google Search Console
 
 1. Deploy with a real `NEXT_PUBLIC_SITE_URL`.
@@ -133,4 +162,6 @@ apps/ingestion    ATS connectors and runner
 packages/db       Prisma schema, client, seed
 packages/taxonomy Keyword classifier
 packages/config   Typed env
+packages/snapshot Public board export
+packages/mcp      MCP server for agent job search
 ```
