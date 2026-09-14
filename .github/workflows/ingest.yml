@@ -12,7 +12,9 @@ on:
 
 concurrency:
   group: ingest-jobs
-  cancel-in-progress: false
+  # One export at a time. Overlapping runs previously conflicted on board.json.gz
+  # during `git pull --rebase` and failed the job.
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -67,6 +69,7 @@ jobs:
         id: commit
         if: steps.freshness.outputs.skip != 'true'
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           echo "pushed=false" >> "$GITHUB_OUTPUT"
@@ -79,15 +82,38 @@ jobs:
             echo "Refusing to commit empty snapshot (jobCount=$JOB_COUNT)"
             exit 1
           fi
-          git add apps/web/public/snapshot/
-          if git diff --staged --quiet; then
-            echo "No snapshot changes to commit"
-            exit 0
-          fi
-          git commit -m "chore: update public snapshot"
-          git pull --rebase origin main
-          git push origin HEAD:main
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+          # Keep a copy of the freshly exported snapshot. Binary gzip files do not
+          # rebase cleanly when another ingest lands on main mid-push.
+          SNAPSHOT_BACKUP=$(mktemp -d)
+          cp -a apps/web/public/snapshot/. "$SNAPSHOT_BACKUP/"
+
+          restore_snapshot() {
+            rm -rf apps/web/public/snapshot
+            mkdir -p apps/web/public/snapshot
+            cp -a "$SNAPSHOT_BACKUP"/. apps/web/public/snapshot/
+          }
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            restore_snapshot
+            git add apps/web/public/snapshot/
+            if git diff --staged --quiet; then
+              echo "No snapshot changes to commit"
+              exit 0
+            fi
+            git commit -m "chore: update public snapshot"
+            if git push origin HEAD:main; then
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}/5); retrying on latest main"
+            sleep $((attempt * 2))
+          done
+
+          echo "Failed to push snapshot after retries"
+          exit 1
 
       # GitHub→Vercel webhooks can miss bot pushes (seen 2026-09-11). Always
       # trigger a production deploy hook after a successful snapshot push.
