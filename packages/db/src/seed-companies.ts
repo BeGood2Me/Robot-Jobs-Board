@@ -424,6 +424,33 @@ export const seedCompanies: SeedCompany[] = [
     'Ambi Robotics is a Berkeley company deploying high speed picking robots for logistics operators. Software, hardware, and operations teams hire in California. Robot Jobs Board lists Ambi Robotics warehouse picking jobs in the USA, UK, and Europe.',
     'ambirobotics',
   ),
+  greenhouse(
+    'Agile Robots',
+    'agile-robots',
+    'https://www.agile-robots.com',
+    'Agile Robots builds AI powered robots and automation systems for industrial and service applications.',
+    'Agile Robots is a Munich robotics company developing intelligent robot systems for manufacturing and service work. Hardware, software, and commissioning teams hire across Germany. Browse Robot Jobs Board for Agile Robots industrial robotics jobs in the USA, UK, and Europe.',
+    'agilerobotsse',
+  ),
+  ashby(
+    'Humanoid',
+    'humanoid',
+    'https://www.thehumanoid.ai',
+    'Humanoid builds commercially scalable humanoid robots, including the HMND-01 platform.',
+    'Humanoid is a London based humanoid robotics company with engineering hubs in the United Kingdom and the United States. Roles cover AI, controls, hardware, and manufacturing for industrial humanoid deployments. Robot Jobs Board lists Humanoid jobs in the USA, UK, and Europe.',
+    'humanoid',
+  ),
+  {
+    name: 'NEURA Robotics',
+    slug: 'neura-robotics',
+    website: 'https://www.neura-robotics.com',
+    description: 'NEURA Robotics builds cognitive collaborative robots and humanoids including 4NE1, MAiRA, and MiPA.',
+    seoIntro:
+      'NEURA Robotics is a German humanoid and collaborative robotics company based near Stuttgart, with sites across Germany, Switzerland, and the United States. Engineering, AI, and production teams hire for perception, manipulation, and robot operations. Search Robot Jobs Board for NEURA Robotics jobs in the USA, UK, and Europe.',
+    sourceSystem: SourceSystem.jobshop,
+    sourceIdentifier: 'neura-robotics',
+    config: { site: 'https://jobs.neura-robotics.com' },
+  },
   {
     name: 'Boston Dynamics',
     slug: 'boston-dynamics',

@@ -1,4 +1,11 @@
-export type SourceSystemName = 'greenhouse' | 'lever' | 'ashby' | 'joblistingsapi' | 'workday' | 'workable';
+export type SourceSystemName =
+  | 'greenhouse'
+  | 'lever'
+  | 'ashby'
+  | 'joblistingsapi'
+  | 'workday'
+  | 'workable'
+  | 'jobshop';
 
 export type NormalizedWorkplace = 'ONSITE' | 'REMOTE' | 'HYBRID';
 export type NormalizedEmployment =

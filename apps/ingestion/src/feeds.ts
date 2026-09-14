@@ -3,6 +3,7 @@ import type { SourceSystem } from '@robot-jobs-board/db';
 import { fetchAggregatorJobs } from './connectors/aggregator';
 import { fetchAshbyJobs } from './connectors/ashby';
 import { fetchGreenhouseJobs } from './connectors/greenhouse';
+import { fetchJobShopJobs } from './connectors/jobshop';
 import { fetchLeverJobs } from './connectors/lever';
 import { fetchWorkableJobs } from './connectors/workable';
 import { fetchWorkdayJobs } from './connectors/workday';
@@ -36,6 +37,11 @@ export async function jobsForFeed(sourceSystem: SourceSystem, config: FeedConfig
       const account = config.site ?? config.boardToken ?? config.jobBoardName;
       if (!account) throw new Error('Workable feed missing site');
       return fetchWorkableJobs(account);
+    }
+    case 'jobshop': {
+      const site = config.site ?? config.host;
+      if (!site) throw new Error('JobShop feed missing site');
+      return fetchJobShopJobs({ site });
     }
     case 'joblistingsapi': {
       const env = loadEnv();
