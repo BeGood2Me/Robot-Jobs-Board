@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { prisma } from '@robot-jobs-board/db';
+import { buildCountryFacets } from './filter';
 import type { PublicBoardSnapshot, SnapshotJob } from './types';
 import { writePublicSnapshotFiles } from './write-snapshot';
 
@@ -62,7 +63,7 @@ export async function exportPublicSnapshot(options: {
   const site = options.siteUrl.replace(/\/$/, '');
   mkdirSync(options.outDir, { recursive: true });
 
-  const [jobsRaw, goneJobsRaw, companiesRaw, domainsRaw, tagsRaw, seniorities, countryGroups, cityRows, countryRows, regionRows] =
+  const [jobsRaw, goneJobsRaw, companiesRaw, domainsRaw, tagsRaw, seniorities, cityRows, countryRows, regionRows] =
     await Promise.all([
       prisma.job.findMany({
         where: publicJobWhere,
@@ -114,11 +115,6 @@ export async function exportPublicSnapshot(options: {
         orderBy: { label: 'asc' },
         select: { id: true, slug: true, label: true },
       }),
-      prisma.job.groupBy({
-        by: ['country'],
-        where: { ...publicJobWhere, country: { not: null } },
-        _count: { _all: true },
-      }),
       prisma.job.findMany({
         where: { ...publicJobWhere, city: { not: null } },
         distinct: ['city'],
@@ -147,15 +143,7 @@ export async function exportPublicSnapshot(options: {
     'France',
     'Switzerland',
   ];
-  const countryFacets = countryGroups
-    .filter((row) => row.country)
-    .map((row) => ({ country: row.country as string, count: row._count._all }))
-    .sort((a, b) => {
-      const ai = preferred.indexOf(a.country);
-      const bi = preferred.indexOf(b.country);
-      if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      return b.count - a.count;
-    });
+  const countryFacets = buildCountryFacets(jobs, preferred);
 
   const snapshot: PublicBoardSnapshot = {
     version: 1,

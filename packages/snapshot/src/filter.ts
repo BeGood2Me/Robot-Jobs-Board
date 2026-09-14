@@ -89,11 +89,35 @@ function entryLevelJob(job: SnapshotJob): boolean {
   return !experiencedTitle(job);
 }
 
-function countryMatches(job: SnapshotJob, country: string): boolean {
+export function countryMatches(job: SnapshotJob, country: string): boolean {
   if (job.country && job.country.toLowerCase() === country.toLowerCase()) return true;
   if (job.country) return false;
   const aliases = COUNTRY_LOCATION_ALIASES[country] ?? [country];
   return aliases.some((alias) => includesInsensitive(job.locationRaw, alias));
+}
+
+/** Facet counts must use the same matching as `matchesJobFilters` (incl. locationRaw aliases). */
+export function buildCountryFacets(
+  jobs: SnapshotJob[],
+  preferredCountries: string[] = [],
+): Array<{ country: string; count: number }> {
+  const countries = new Set<string>(Object.keys(COUNTRY_LOCATION_ALIASES));
+  for (const job of jobs) {
+    if (job.country) countries.add(job.country);
+  }
+
+  return [...countries]
+    .map((country) => ({
+      country,
+      count: jobs.reduce((n, job) => n + (countryMatches(job, country) ? 1 : 0), 0),
+    }))
+    .filter((row) => row.count > 0)
+    .sort((a, b) => {
+      const ai = preferredCountries.indexOf(a.country);
+      const bi = preferredCountries.indexOf(b.country);
+      if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      return b.count - a.count;
+    });
 }
 
 export function expandSearchTerms(q: string): string[] {

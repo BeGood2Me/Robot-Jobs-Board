@@ -5,6 +5,7 @@ import { slugify } from '@robot-jobs-board/ingestion/normalize';
 import { shouldIngestJob } from '@robot-jobs-board/ingestion/region';
 import { isRobotRole, RuleBasedClassifier } from '@robot-jobs-board/taxonomy';
 import { defaultSnapshotOutDir } from './export';
+import { buildCountryFacets } from './filter';
 import { stableEntityId } from './stable-id';
 import type { PublicBoardSnapshot, SnapshotJob } from './types';
 import { writePublicSnapshotFiles } from './write-snapshot';
@@ -159,7 +160,6 @@ export async function exportPublicSnapshotFromFeeds(options: {
   const companyCounts = new Map<string, number>();
   const domainCounts = new Map<string, number>();
   const tagCounts = new Map<string, number>();
-  const countryCounts = new Map<string, number>();
   const cities = new Set<string>();
   const countries = new Set<string>();
   const regions = new Set<string>();
@@ -172,22 +172,12 @@ export async function exportPublicSnapshotFromFeeds(options: {
     for (const { techTag } of job.techTags) {
       tagCounts.set(techTag.id, (tagCounts.get(techTag.id) ?? 0) + 1);
     }
-    if (job.country) {
-      countryCounts.set(job.country, (countryCounts.get(job.country) ?? 0) + 1);
-      countries.add(job.country);
-    }
+    if (job.country) countries.add(job.country);
     if (job.city) cities.add(job.city);
     if (job.region) regions.add(job.region);
   }
 
-  const countryFacets = [...countryCounts.entries()]
-    .map(([country, count]) => ({ country, count }))
-    .sort((a, b) => {
-      const ai = preferredCountries.indexOf(a.country);
-      const bi = preferredCountries.indexOf(b.country);
-      if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      return b.count - a.count;
-    });
+  const countryFacets = buildCountryFacets(jobs, preferredCountries);
 
   const snapshot: PublicBoardSnapshot = {
     version: 1,

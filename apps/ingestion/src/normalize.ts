@@ -29,6 +29,13 @@ function looksLikeEscapedHtml(value: string): boolean {
 /** Greenhouse and others often store job HTML as `&lt;p&gt;...` instead of real tags. */
 export function decodeJobHtml(html: string): string {
   let current = html ?? '';
+  // JobShop JSON-LD (e.g. NEURA) sometimes embeds the characters `\n` as text, not real newlines.
+  // Turn those into actual whitespace so they don't render as visible "\n\n" on job pages.
+  current = current
+    .replace(/^\uFEFF/, '')
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t');
   for (let i = 0; i < 3; i++) {
     if (!looksLikeEscapedHtml(current)) break;
     current = decodeHtmlEntities(current);

@@ -1,5 +1,6 @@
 import type { EmploymentType, Prisma, WorkplaceType } from '@robot-jobs-board/db';
 import {
+  buildCountryFacets,
   relatedJobsFromSnapshot,
   searchJobsFromSnapshot,
 } from '@robot-jobs-board/snapshot';
@@ -505,7 +506,9 @@ export async function getTaxonomy() {
   const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     return {
-      domains: snapshot.domains.map(({ id, slug, name }) => ({ id, slug, name })),
+      domains: snapshot.domains
+        .filter((domain) => domain.openJobCount > 0)
+        .map(({ id, slug, name }) => ({ id, slug, name })),
       tags: snapshot.tags.map(({ id, slug, label }) => ({ id, slug, label })),
       seniorities: snapshot.seniorities,
     };
@@ -573,7 +576,19 @@ export async function getTagFacets() {
 
 export async function getCountryFacets() {
   const snapshot = await loadPublicSnapshot();
-  if (snapshot) return snapshot.countryFacets;
+  if (snapshot) {
+    // Recompute from jobs so facet counts match filter matching (locationRaw aliases).
+    return buildCountryFacets(snapshot.jobs, [
+      'United States',
+      'United Kingdom',
+      'Canada',
+      'Australia',
+      'Ireland',
+      'Germany',
+      'France',
+      'Switzerland',
+    ]);
+  }
 
   return withDb(
     unstable_cache(
