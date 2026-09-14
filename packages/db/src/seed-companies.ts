@@ -352,6 +352,14 @@ export const seedCompanies: SeedCompany[] = [
     'Serve Robotics operates autonomous sidewalk robots in US cities, with hardware and software teams in the Bay Area. Robotics, embedded, and operations jobs hire in the United States. Browse Robot Jobs Board for Serve delivery robot jobs.',
     'serverobotics',
   ),
+  ashby(
+    'Collaborative Robotics',
+    'collaborative-robotics',
+    'https://www.collaborativerobotics.com',
+    'Collaborative Robotics builds Proxie, a collaborative mobile robot for human-centered workplaces.',
+    'Collaborative Robotics (Cobot) is a Santa Clara company building Proxie for logistics and commercial environments where people and robots share space. Hardware, software, and deployment teams hire in California and related US sites. Robot Jobs Board lists Collaborative Robotics jobs in the USA, UK, and Europe.',
+    'cobot',
+  ),
   lever(
     'Shield AI',
     'shield-ai',
@@ -399,6 +407,22 @@ export const seedCompanies: SeedCompany[] = [
     'Waabi builds generative AI for autonomous trucking and virtual testing.',
     'Waabi trains autonomy models in simulation and on public roads, with teams in Toronto, San Francisco, and Pittsburgh. Research and engineering jobs hire in Canada and the United States. Robot Jobs Board lists Waabi AV jobs in the USA, UK, Canada, and Europe.',
     'waabi',
+  ),
+  lever(
+    'Pickle Robot',
+    'pickle-robot',
+    'https://www.picklerobot.com',
+    'Pickle Robot builds AI robots that unload trucks and containers in warehouses.',
+    'Pickle Robot is a Boston warehouse robotics company whose systems unload trailers alongside human teams. Perception, motion planning, and hardware engineers hire in Massachusetts. Search Robot Jobs Board for Pickle Robot truck unloading and logistics robotics jobs in the United States.',
+    'picklerobot',
+  ),
+  lever(
+    'Ambi Robotics',
+    'ambi-robotics',
+    'https://www.ambirobotics.com',
+    'Ambi Robotics builds AI powered robotic picking systems for parcel and e-commerce fulfillment.',
+    'Ambi Robotics is a Berkeley company deploying high speed picking robots for logistics operators. Software, hardware, and operations teams hire in California. Robot Jobs Board lists Ambi Robotics warehouse picking jobs in the USA, UK, and Europe.',
+    'ambirobotics',
   ),
   {
     name: 'Boston Dynamics',

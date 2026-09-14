@@ -60,5 +60,6 @@ describe('region filter', () => {
     expect(isAllowedJobLocation(parseLocation('San Francisco'))).toBe(true);
     expect(isAllowedJobLocation(parseLocation('NYC | SF'))).toBe(true);
     expect(isAllowedJobLocation(parseLocation('Fremont'))).toBe(true);
+    expect(isAllowedJobLocation(parseLocation('Santa Clara'))).toBe(true);
   });
 });

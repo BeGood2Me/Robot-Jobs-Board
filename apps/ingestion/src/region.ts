@@ -325,6 +325,7 @@ const US_PLACE_TERMS = [
   'mountain view',
   'palo alto',
   'sunnyvale',
+  'santa clara',
   'redwood city',
   'waltham',
   'austin',
