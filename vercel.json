@@ -3,6 +3,7 @@
   "outputDirectory": "apps/web/.next",
   "buildCommand": "pnpm db:generate && pnpm --filter web build",
   "installCommand": "pnpm install",
+  "ignoreCommand": "node -e \"process.exit(/^chore: update public snapshot/.test(process.env.VERCEL_GIT_COMMIT_MESSAGE||'') ? 0 : 1)\"",
   "crons": [
     {
       "path": "/api/cron/ingest",

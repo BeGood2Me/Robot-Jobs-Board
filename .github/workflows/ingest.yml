@@ -119,8 +119,9 @@ jobs:
           echo "Failed to push snapshot after retries"
           exit 1
 
-      # GitHub→Vercel webhooks can miss bot pushes (seen 2026-09-11). Always
-      # trigger a production deploy hook after a successful snapshot push.
+      # Snapshot commits are ignored by Vercel Git (see vercel.json ignoreCommand)
+      # so this hook is the single production deploy for ingest — avoids double
+      # Function Storage growth from Git webhook + deploy hook on the same SHA.
       - name: Trigger Vercel production deploy
         if: steps.freshness.outputs.skip != 'true' && steps.commit.outputs.pushed == 'true'
         env:
