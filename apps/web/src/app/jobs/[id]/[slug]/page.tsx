@@ -84,7 +84,6 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
     workplaceLabel(job.workplaceType, job.isRemote),
     employmentLabel(job.employmentType),
     job.department,
-    job.compensationText,
   ].filter(Boolean);
 
   return (
@@ -97,6 +96,9 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
       </p>
       <h1 className="mt-2 max-w-[680px] text-4xl font-semibold">{job.title}</h1>
       <p className="mt-4 text-muted">{facts.join(' · ')}</p>
+      {job.compensationText ? (
+        <p className="mt-2 text-base font-medium text-foreground">{job.compensationText}</p>
+      ) : null}
       <p className="mt-2 font-mono text-xs text-muted">{formatPosted(job.postedAt)}</p>
       <div className="mt-6 flex flex-wrap gap-2">
         {job.robotDomains.map(({ domain }) => (

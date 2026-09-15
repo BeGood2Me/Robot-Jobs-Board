@@ -65,12 +65,20 @@ export function formatLeverSalary(range: LeverPosting['salaryRange']): string | 
   return `${amount}${period}`;
 }
 
-/** Lever keeps the numeric range in `salaryRange` and only a prose blurb in `salaryDescription`. */
+/** Lever keeps the numeric range in `salaryRange` and often only prose in `salaryDescription`. */
 function leverSalaryHtml(posting: LeverPosting): string {
   const amount = formatLeverSalary(posting.salaryRange);
   const description = (posting.salaryDescription ?? '').trim();
   if (!amount && !description) return '';
   if (!amount) return description;
+
+  const normalizedDescription = description.replace(/,/g, '');
+  const min = posting.salaryRange?.min;
+  const max = posting.salaryRange?.max;
+  const alreadyPresent =
+    (typeof min === 'number' && normalizedDescription.includes(String(min))) ||
+    (typeof max === 'number' && normalizedDescription.includes(String(max)));
+  if (alreadyPresent) return description;
 
   const amountBlock = `<p><strong>${escapeHtmlText(amount)}</strong></p>`;
   if (/base\s+salary\s+range/i.test(description)) {
@@ -80,7 +88,8 @@ function leverSalaryHtml(posting: LeverPosting): string {
     );
     if (injected !== description) return injected;
   }
-  return `<h3>Base Salary Range</h3>\n${amountBlock}\n${description}`;
+  // Any other salary blurb (or none): put the structured range first so every page shows pay.
+  return `<h3>Compensation</h3>\n${amountBlock}\n${description}`;
 }
 
 export function mapLeverJob(posting: LeverPosting): NormalizedJob {

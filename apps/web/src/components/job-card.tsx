@@ -44,6 +44,9 @@ export function JobCard({ job }: { job: JobCardData }) {
               <Clock size={16} className="text-accent" />
               {typeLabel}
             </span>
+            {job.compensationText ? (
+              <span className="inline-flex items-center gap-2 font-medium text-foreground">{job.compensationText}</span>
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-stretch gap-2 md:items-end">

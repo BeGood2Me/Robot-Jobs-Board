@@ -138,6 +138,16 @@ describe('ATS mappers', () => {
     expect(job.url).toBe('https://jobs.lever.co/example/lev-9');
   });
 
+  it('does not duplicate Lever salary when the description already includes the range', () => {
+    const job = mapLeverJob({
+      ...leverFixture,
+      salaryRange: { min: 120000, max: 160000, currency: 'USD', interval: 'per-year-salary' },
+      salaryDescription: '<p>The annual base salary range for this position is from $120,000 to $160,000.</p>',
+    });
+    expect(job.compensationText).toBe('$120,000–$160,000 / year');
+    expect(job.descriptionHtml.match(/\$120,000/g)?.length).toBe(1);
+  });
+
   it('maps aggregator jobs with source filter fields', () => {
     const job = mapAggregatorJob({
       id: 'agg-1',

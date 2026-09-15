@@ -25,6 +25,7 @@ export const jobCardSelect = {
   isRemote: true,
   workplaceType: true,
   employmentType: true,
+  compensationText: true,
   postedAt: true,
   company: { select: { name: true, slug: true } },
 } satisfies Prisma.JobSelect;
