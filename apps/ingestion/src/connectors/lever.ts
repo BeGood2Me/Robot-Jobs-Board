@@ -65,9 +65,27 @@ export function formatLeverSalary(range: LeverPosting['salaryRange']): string | 
   return `${amount}${period}`;
 }
 
+/** Lever keeps the numeric range in `salaryRange` and only a prose blurb in `salaryDescription`. */
+function leverSalaryHtml(posting: LeverPosting): string {
+  const amount = formatLeverSalary(posting.salaryRange);
+  const description = (posting.salaryDescription ?? '').trim();
+  if (!amount && !description) return '';
+  if (!amount) return description;
+
+  const amountBlock = `<p><strong>${escapeHtmlText(amount)}</strong></p>`;
+  if (/base\s+salary\s+range/i.test(description)) {
+    const injected = description.replace(
+      /(base\s+salary\s+range\s*<\/(?:strong|b|span)>\s*<\/div>)\s*(?:<div>&nbsp;<\/div>\s*)?/i,
+      (_match, heading: string) => `${heading}\n${amountBlock}\n`,
+    );
+    if (injected !== description) return injected;
+  }
+  return `<h3>Base Salary Range</h3>\n${amountBlock}\n${description}`;
+}
+
 export function mapLeverJob(posting: LeverPosting): NormalizedJob {
   const html = decodeJobHtml(
-    [posting.description, leverListsHtml(posting.lists), posting.salaryDescription, posting.additional]
+    [posting.description, leverListsHtml(posting.lists), leverSalaryHtml(posting), posting.additional]
       .filter(Boolean)
       .join('\n'),
   );

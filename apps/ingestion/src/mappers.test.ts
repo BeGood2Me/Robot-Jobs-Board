@@ -133,6 +133,7 @@ describe('ATS mappers', () => {
     expect(job.compensationText).toBe('$169,000–$203,000 / year');
     expect(job.descriptionHtml).toContain('Qualifications');
     expect(job.descriptionHtml).toContain('Base Salary Range');
+    expect(job.descriptionHtml).toContain('$169,000–$203,000 / year');
     expect(job.workplaceType).toBe('REMOTE');
     expect(job.url).toBe('https://jobs.lever.co/example/lev-9');
   });
