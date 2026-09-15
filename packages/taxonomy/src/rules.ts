@@ -161,20 +161,53 @@ export const COMPANY_DOMAIN_HINTS: Record<string, RobotDomainSlug[]> = {
 };
 
 export const TECH_TAG_RULES: KeywordRule<TechTagSlug>[] = [
-  { slug: 'ros2', keywords: ['ros 2', 'ros2', 'humble', 'jazzy', 'iron ros'] },
-  { slug: 'ros1', keywords: [' ros ', 'ros1', 'robot operating system'] },
+  // Distro names alone ("humble", "jazzy") match English copy — require ROS context.
+  {
+    slug: 'ros2',
+    keywords: [
+      'ros 2',
+      'ros2',
+      'ros humble',
+      'humble hawksbill',
+      'ros jazzy',
+      'jazzy jalisco',
+      'ros iron',
+      'iron irwini',
+      'iron ros',
+    ],
+  },
+  { slug: 'ros1', keywords: ['ros1', 'ros 1', 'robot operating system', 'ros'] },
   { slug: 'cpp', keywords: ['c++', 'cpp', 'cplusplus'] },
   { slug: 'python', keywords: ['python'] },
-  { slug: 'plc', keywords: ['plc', 'ladder logic', 'siemens tia'] },
+  { slug: 'plc', keywords: ['plc', 'plc programming', 'ladder logic', 'siemens tia', 'allen-bradley', 'allen bradley'] },
   { slug: 'px4', keywords: ['px4', 'pixhawk', 'ardupilot'] },
   { slug: 'isaac-sim', keywords: ['isaac sim', 'isaacsim', 'nvidia isaac'] },
   { slug: 'gazebo', keywords: ['gazebo', 'gz sim'] },
-  { slug: 'moveit', keywords: ['moveit', 'move it'] },
+  // Do not match English "move it".
+  { slug: 'moveit', keywords: ['moveit', 'moveit2'] },
   { slug: 'linux', keywords: ['linux', 'ubuntu', 'embedded linux'] },
   { slug: 'cuda', keywords: ['cuda', 'gpu inference'] },
-  { slug: 'pytorch', keywords: ['pytorch', 'torch'] },
-  { slug: 'slam', keywords: ['slam', 'localization and mapping', 'vio'] },
-  { slug: 'controls', keywords: ['controls', 'control theory', 'mpc', 'pid control'] },
+  // Bare "torch" matches acetylene torch tests — keep ML-specific forms.
+  { slug: 'pytorch', keywords: ['pytorch', 'libtorch', 'torchvision', 'torch.compile', 'torch.nn'] },
+  { slug: 'slam', keywords: ['slam', 'localization and mapping', 'vio', 'vslam'] },
+  // Bare "controls" matches "access controls" / team mentions too loosely.
+  {
+    slug: 'controls',
+    keywords: [
+      'controls engineer',
+      'control engineer',
+      'control systems',
+      'motion control',
+      'feedback control',
+      'motor control',
+      'vehicle controls',
+      'flight controls',
+      'control theory',
+      'model predictive',
+      'mpc',
+      'pid control',
+    ],
+  },
   { slug: 'embedded', keywords: ['embedded', 'firmware', 'rtos', 'bare metal'] },
 ];
 

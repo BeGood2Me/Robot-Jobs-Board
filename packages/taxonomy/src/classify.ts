@@ -28,8 +28,16 @@ export interface Classifier {
   classify(job: ClassifiableJob): Promise<ClassificationResult> | ClassificationResult;
 }
 
-function haystack(job: ClassifiableJob): string {
+function domainHaystack(job: ClassifiableJob): string {
   return [job.title, job.descriptionPlain, job.department, job.companyName]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+/** Skills come from the posting text only — company legal names (e.g. "… plc") must not invent tags. */
+function techHaystack(job: ClassifiableJob): string {
+  return [job.title, job.descriptionPlain]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
@@ -42,7 +50,7 @@ function includesKeyword(text: string, keyword: string): boolean {
 }
 
 export function classifyDomains(job: ClassifiableJob): RobotDomainSlug[] {
-  const text = haystack(job);
+  const text = domainHaystack(job);
   const matched = new Set<RobotDomainSlug>();
 
   for (const rule of ROBOT_DOMAIN_RULES) {
@@ -64,16 +72,15 @@ export function classifyDomains(job: ClassifiableJob): RobotDomainSlug[] {
 }
 
 export function classifyTechTags(job: ClassifiableJob): TechTagSlug[] {
-  const text = haystack(job);
+  const text = techHaystack(job);
   const matched = new Set<TechTagSlug>();
   for (const rule of TECH_TAG_RULES) {
     if (rule.keywords.some((keyword) => includesKeyword(text, keyword))) {
       matched.add(rule.slug);
     }
   }
-  if (matched.has('pytorch') && !matched.has('python')) {
-    matched.add('python');
-  }
+  // "ROS 2" also contains the token "ros"; prefer the more specific tag.
+  if (matched.has('ros2')) matched.delete('ros1');
   return [...matched];
 }
 

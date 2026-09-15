@@ -30,6 +30,65 @@ describe('RuleBasedClassifier', () => {
       descriptionPlain: 'We use ROS 2, C++, Python, and Gazebo. Linux required.',
     });
     expect(result.techTags).toEqual(expect.arrayContaining(['ros2', 'cpp', 'python', 'gazebo', 'linux']));
+    expect(result.techTags).not.toContain('ros1');
+  });
+
+  it('does not tag ROS 2 from English humble/jazzy copy', () => {
+    const result = classifier.classify({
+      title: 'Senior Machine Learning Engineer',
+      descriptionPlain: 'We aim high and stay humble in our pursuit of excellence.',
+    });
+    expect(result.techTags).not.toContain('ros2');
+  });
+
+  it('tags ROS 2 humble when the distro is explicit', () => {
+    const result = classifier.classify({
+      title: 'Robotics Software Engineer',
+      descriptionPlain: 'Experience with ROS Humble and nav2 preferred.',
+    });
+    expect(result.techTags).toContain('ros2');
+  });
+
+  it('does not tag MoveIt from English "move it"', () => {
+    const result = classifier.classify({
+      title: 'Manufacturing Engineer',
+      descriptionPlain: 'Help move it from design to prototype to rate.',
+    });
+    expect(result.techTags).not.toContain('moveit');
+  });
+
+  it('does not tag PyTorch from acetylene torch testing', () => {
+    const result = classifier.classify({
+      title: 'Materials Engineer',
+      descriptionPlain: 'Oxy-acetylene torch testing and thermal diffusivity.',
+    });
+    expect(result.techTags).not.toContain('pytorch');
+  });
+
+  it('does not tag controls from generic team mentions alone', () => {
+    const result = classifier.classify({
+      title: 'Senior Firmware Engineer',
+      descriptionPlain: 'Work closely with electrical, mechanical, controls, and software engineers.',
+    });
+    expect(result.techTags).not.toContain('controls');
+  });
+
+  it('does not tag PLC from a UK company legal name', () => {
+    const result = classifier.classify({
+      title: 'Robotics Software Engineer',
+      descriptionPlain: 'Build autonomy software in C++ and Python.',
+      companyName: 'Ocado Group plc',
+    });
+    expect(result.techTags).not.toContain('plc');
+    expect(result.techTags).toEqual(expect.arrayContaining(['cpp', 'python']));
+  });
+
+  it('tags PLC from industrial automation language', () => {
+    const result = classifier.classify({
+      title: 'Controls Engineer',
+      descriptionPlain: 'Ladder logic and Allen-Bradley PLC programming on the line.',
+    });
+    expect(result.techTags).toEqual(expect.arrayContaining(['plc', 'controls']));
   });
 
   it('maps intern titles to junior', () => {
