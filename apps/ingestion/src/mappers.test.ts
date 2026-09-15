@@ -114,6 +114,26 @@ describe('ATS mappers', () => {
     expect(job.sourceSystem).toBe('lever');
     expect(job.isRemote).toBe(true);
     expect(job.workplaceType).toBe('REMOTE');
+    expect(job.country).toBe('United States');
+    expect(job.compensationText).toBeNull();
+  });
+
+  it('maps Lever salary ranges and list sections into the description', () => {
+    const job = mapLeverJob({
+      ...leverFixture,
+      lists: [
+        {
+          text: 'Qualifications',
+          content: '<li>C++ and PX4 experience</li>',
+        },
+      ],
+      salaryRange: { min: 169000, max: 203000, currency: 'USD', interval: 'per-year-salary' },
+      salaryDescription: '<div><strong>Base Salary Range</strong></div>',
+    });
+    expect(job.compensationText).toBe('$169,000–$203,000 / year');
+    expect(job.descriptionHtml).toContain('Qualifications');
+    expect(job.descriptionHtml).toContain('Base Salary Range');
+    expect(job.workplaceType).toBe('REMOTE');
     expect(job.url).toBe('https://jobs.lever.co/example/lev-9');
   });
 

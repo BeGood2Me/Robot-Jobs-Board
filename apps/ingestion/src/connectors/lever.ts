@@ -28,9 +28,48 @@ function leverListsHtml(lists: LeverPosting['lists']): string {
     .join('\n');
 }
 
+function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount}`;
+  }
+}
+
+export function formatLeverSalary(range: LeverPosting['salaryRange']): string | null {
+  if (!range) return null;
+  const min = typeof range.min === 'number' ? range.min : null;
+  const max = typeof range.max === 'number' ? range.max : null;
+  if (min == null && max == null) return null;
+
+  const currency = (range.currency ?? 'USD').toUpperCase();
+  const minText = min != null ? formatMoney(min, currency) : null;
+  const maxText = max != null ? formatMoney(max, currency) : null;
+  const amount = minText && maxText && min !== max ? `${minText}–${maxText}` : (minText ?? maxText)!;
+
+  const interval = (range.interval ?? '').toLowerCase();
+  const period = interval.includes('hour')
+    ? ' / hour'
+    : interval.includes('month')
+      ? ' / month'
+      : interval.includes('week')
+        ? ' / week'
+        : interval.includes('year') || interval.includes('salary')
+          ? ' / year'
+          : '';
+
+  return `${amount}${period}`;
+}
+
 export function mapLeverJob(posting: LeverPosting): NormalizedJob {
   const html = decodeJobHtml(
-    [posting.description, leverListsHtml(posting.lists), posting.additional].filter(Boolean).join('\n'),
+    [posting.description, leverListsHtml(posting.lists), posting.salaryDescription, posting.additional]
+      .filter(Boolean)
+      .join('\n'),
   );
   // Prefer HTML→plain. Some Zoox postings ship an internal template in descriptionPlain.
   const plain = htmlToPlain(html);
@@ -64,7 +103,7 @@ export function mapLeverJob(posting: LeverPosting): NormalizedJob {
     workplaceType,
     employmentType: mapEmployment(posting.categories?.commitment),
     department: posting.categories?.department ?? posting.categories?.team ?? null,
-    compensationText: null,
+    compensationText: formatLeverSalary(posting.salaryRange),
     postedAt: created,
   };
 }

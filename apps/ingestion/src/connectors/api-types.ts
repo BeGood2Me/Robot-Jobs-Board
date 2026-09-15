@@ -76,6 +76,14 @@ export type LeverPosting = {
   additionalPlain?: string | null;
   /** Lever stores responsibilities / qualifications as separate titled list blocks. */
   lists?: Array<{ text?: string | null; content?: string | null }> | null;
+  salaryRange?: {
+    min?: number | null;
+    max?: number | null;
+    currency?: string | null;
+    interval?: string | null;
+  } | null;
+  salaryDescription?: string | null;
+  salaryDescriptionPlain?: string | null;
   hostedUrl?: string | null;
   applyUrl?: string | null;
   createdAt?: number | string | null;
