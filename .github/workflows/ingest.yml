@@ -3,8 +3,9 @@ name: ingest-jobs
 on:
   workflow_dispatch:
   schedule:
-    # GitHub cron is best-effort. Offset slots are a backup; Vercel Cron is the
-    # reliable daily trigger (dispatches this workflow, no Neon).
+    # Full board refresh (every seeded company in one export). GitHub cron is
+    # best-effort; Vercel Cron (~08:17 UTC) is the reliable daily trigger.
+    # Morning + evening so US and EU posting windows both land the same day.
     - cron: "23 7 * * *"
     - cron: "53 19 * * *"
   repository_dispatch:
@@ -12,8 +13,8 @@ on:
 
 concurrency:
   group: ingest-jobs
-  # One export at a time. Overlapping runs previously conflicted on board.json.gz
-  # during `git pull --rebase` and failed the job.
+  # One full export at a time. Overlapping runs previously conflicted on
+  # board.json.gz during `git pull --rebase` and failed the job.
   cancel-in-progress: true
 
 permissions:
@@ -30,7 +31,10 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Skip schedule if snapshot is already fresh
+      # Only skip near-duplicate *schedule* collisions (e.g. GitHub + Vercel
+      # within minutes). The old 14h window skipped the evening refresh entirely
+      # after a morning run, so US afternoon posts lagged a full day.
+      - name: Skip schedule if snapshot was just rebuilt
         id: freshness
         if: github.event_name == 'schedule'
         run: |
@@ -41,9 +45,9 @@ jobs:
           fi
           AGE_HOURS=$(node -e "const m=require('./$MANIFEST'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
           echo "Snapshot age: ${AGE_HOURS}h"
-          if node -e "const m=require('./$MANIFEST'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 14 ? 0 : 1)"; then
+          if node -e "const m=require('./$MANIFEST'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 2 ? 0 : 1)"; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Snapshot already fresh (<14h) — skipping"
+            echo "Snapshot just rebuilt (<2h) — skipping duplicate schedule"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi

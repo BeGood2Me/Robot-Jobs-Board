@@ -56,7 +56,7 @@ pnpm ingest:run
 
 Ingest for the **public site** does not use Neon. GitHub Actions runs `pnpm snapshot:export:feeds` (~1–2 min): it pulls employer ATS feeds (Greenhouse, Lever, Ashby, Workday, Workable) and commits `apps/web/public/snapshot/`.
 
-Vercel Cron (Hobby, once daily ~08:17 UTC) hits `GET /api/cron/ingest` with `CRON_SECRET` and dispatches that workflow. GitHub’s own schedule is only a backup (it can skip).
+Vercel Cron (Hobby, once daily ~08:17 UTC) hits `GET /api/cron/ingest` with `CRON_SECRET` and dispatches that workflow for a **full** board rebuild (every company feed in one run). GitHub also schedules morning (~07:23 UTC) and evening (~19:53 UTC) backups; scheduled runs only skip if a snapshot was rebuilt in the last 2 hours (to avoid near-duplicate collisions).
 
 Optional Neon ingest (`pnpm ingest:run`) is for admin/DB tooling when the database is available — it is not required for the live board.
 
