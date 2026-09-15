@@ -2,10 +2,38 @@ import type { LeverPosting } from './api-types';
 import { decodeJobHtml, htmlToPlain, mapEmployment, parseLocation } from '../normalize';
 import type { NormalizedJob } from '../types';
 
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Lever puts role bullets in `lists[]` (not in `description`). Omit them and postings look truncated. */
+function leverListsHtml(lists: LeverPosting['lists']): string {
+  if (!lists?.length) return '';
+  return lists
+    .map((list) => {
+      const heading = list.text?.trim();
+      let content = (list.content ?? '').trim();
+      if (!heading && !content) return '';
+      if (content.includes('<li') && !/<ul[\s>]/i.test(content)) {
+        content = `<ul>${content}</ul>`;
+      }
+      const title = heading ? `<h3>${escapeHtmlText(heading)}</h3>` : '';
+      return `${title}${content}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
 export function mapLeverJob(posting: LeverPosting): NormalizedJob {
-  const html = decodeJobHtml([posting.description, posting.additional].filter(Boolean).join('\n'));
-  const plain =
-    [posting.descriptionPlain, posting.additionalPlain].filter(Boolean).join('\n') || htmlToPlain(html);
+  const html = decodeJobHtml(
+    [posting.description, leverListsHtml(posting.lists), posting.additional].filter(Boolean).join('\n'),
+  );
+  // Prefer HTML→plain. Some Zoox postings ship an internal template in descriptionPlain.
+  const plain = htmlToPlain(html);
   const locationRaw = posting.categories?.location ?? '';
   const parsed = parseLocation(locationRaw);
   const workplaceHint = (posting.workplaceType ?? posting.categories?.workplaceType ?? '').toLowerCase();

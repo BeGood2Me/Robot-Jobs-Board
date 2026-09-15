@@ -74,6 +74,8 @@ export type LeverPosting = {
   descriptionPlain?: string | null;
   additional?: string | null;
   additionalPlain?: string | null;
+  /** Lever stores responsibilities / qualifications as separate titled list blocks. */
+  lists?: Array<{ text?: string | null; content?: string | null }> | null;
   hostedUrl?: string | null;
   applyUrl?: string | null;
   createdAt?: number | string | null;
