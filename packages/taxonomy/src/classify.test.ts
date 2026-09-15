@@ -112,13 +112,55 @@ describe('RuleBasedClassifier', () => {
         title: 'Director of University Partnerships',
         descriptionPlain: 'Hire robotics talent.',
       }).seniority,
-    ).toBe('lead');
+    ).toBe('mid');
     expect(
       classifier.classify({
         title: 'Senior Software Engineer',
         descriptionPlain: 'C++ and Linux on the robot.',
       }).seniority,
     ).toBe('senior');
+  });
+
+  it('maps engineering managers to lead without tagging every manager', () => {
+    expect(
+      classifier.classify({
+        title: 'Engineering Manager, Autonomy',
+        descriptionPlain: 'Lead a robotics software team.',
+      }).seniority,
+    ).toBe('lead');
+    expect(
+      classifier.classify({
+        title: 'Program Manager',
+        descriptionPlain: 'Coordinate robotics programs.',
+      }).seniority,
+    ).toBe('mid');
+  });
+
+  it('does not tag Wayve AV roles as field from the company hint', () => {
+    const result = classifier.classify({
+      title: 'Senior Machine Learning Engineer - AV Core',
+      descriptionPlain: 'We aim high and stay humble building mapless autonomy.',
+      companyName: 'Wayve',
+    });
+    expect(result.domains).not.toContain('field');
+    expect(result.techTags).not.toContain('ros2');
+  });
+
+  it('does not tag hazardous material handling as AMR', () => {
+    const result = classifier.classify({
+      title: 'Manufacturing Engineer',
+      descriptionPlain: 'Hazardous material handling for energetic compounds.',
+      companyName: 'Anduril',
+    });
+    expect(result.domains).not.toContain('amr');
+  });
+
+  it('tags pick and place industrial roles', () => {
+    const result = classifier.classify({
+      title: 'Applications Engineer',
+      descriptionPlain: 'Deploy pick and place cells with collaborative robots.',
+    });
+    expect(result.domains).toContain('industrial');
   });
 
   it('maps new grad titles to junior', () => {

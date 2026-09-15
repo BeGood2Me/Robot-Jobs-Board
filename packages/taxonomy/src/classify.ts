@@ -1,4 +1,4 @@
-import { isInternshipTitle } from './entry-level';
+import { isEntryLevelRole, isInternshipTitle } from './entry-level';
 import {
   COMPANY_DOMAIN_HINTS,
   ROBOT_DOMAIN_RULES,
@@ -90,7 +90,9 @@ export function classifySeniority(job: ClassifiableJob): SenioritySlug {
   const ranked = SENIORITY_RULES.filter((rule) =>
     rule.keywords.some((keyword) => includesKeyword(title, keyword)),
   ).sort((a, b) => b.priority - a.priority);
-  return ranked[0]?.slug ?? 'mid';
+  if (ranked[0]) return ranked[0].slug;
+  if (isEntryLevelRole({ title: job.title })) return 'junior';
+  return 'mid';
 }
 
 export class RuleBasedClassifier implements Classifier {
