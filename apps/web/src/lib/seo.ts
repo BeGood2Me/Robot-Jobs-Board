@@ -35,12 +35,12 @@ export function jobPageDescription(job: JobSeoFields): string {
 
 export function companyPageTitle(name: string, total: number): string {
   const roles = total === 1 ? '1 open role' : `${total} open roles`;
-  return `${name} robotics jobs (${roles})`;
+  return `${name} jobs & careers (${roles})`;
 }
 
 export function companyPageDescription(name: string, total: number, description: string): string {
   const roles = total === 1 ? '1 live robotics job' : `${total} live robotics jobs`;
-  const lead = `Browse ${roles} at ${name}. Filter by role, location, and stack, then apply on the company's original posting.`;
+  const lead = `${name} careers: browse ${roles} on Robot Jobs Board. Compare titles and locations, then apply on the company's original posting.`;
   const tail = description.replace(/\s+/g, ' ').trim();
   return `${lead} ${tail}`.slice(0, 160);
 }

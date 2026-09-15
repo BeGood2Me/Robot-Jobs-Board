@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { SeoJobList } from '@/components/seo-job-list';
-import { listingIsIndexable, loadListing, resolvePlace } from '@/lib/programmatic';
+import { listingIsIndexable, loadListing, locationPageCopy, resolvePlace } from '@/lib/programmatic';
 
 export const revalidate = 14400;
 
@@ -16,13 +16,21 @@ export async function generateMetadata({ params }: PageProps<'/locations/[place]
   if (!place) return { title: 'Location jobs' };
   const resolved = await resolvePlace(place);
   if (!resolved) return { title: 'Location jobs' };
-  const indexable = await listingIsIndexable(resolved.filter, `place-${place}`);
+  const listing = await loadListing(resolved.filter, `place-${place}`);
+  const copy = locationPageCopy(place, resolved.label, listing.total);
+  const indexable = listing.indexable || (await listingIsIndexable(resolved.filter, `place-${place}`));
   const canonical = `/locations/${raw}`;
   return {
-    title: `${resolved.label} robotics jobs`,
-    description: `Robotics jobs in ${resolved.label}, including AMR, humanoid, drone, and industrial jobs.`,
+    title: copy.title,
+    description: copy.description,
     alternates: { canonical },
     robots: indexable ? undefined : { index: false, follow: true },
+    openGraph: {
+      title: copy.title,
+      description: copy.description,
+      url: canonical,
+      type: 'website',
+    },
   };
 }
 
@@ -33,12 +41,6 @@ export default async function LocationJobsPage({ params }: PageProps<'/locations
   const resolved = await resolvePlace(place);
   if (!resolved) notFound();
   const listing = await loadListing(resolved.filter, `place-${place}`);
-  return (
-    <SeoJobList
-      h1={`${resolved.label} robotics jobs`}
-      intro={`${resolved.label} is a recurring location in robotics hiring, from warehouse AMR deployments to humanoid labs and drone programs. This page collects live jobs tied to that city, region, or country so you can compare teams without bouncing between boards. Typical stacks include C++, Python, and ROS 2, with on site hardware work more common than fully remote software. Check related domain pages if you already know the robot type you want.`}
-      jobs={listing.jobs}
-      indexable={listing.indexable}
-    />
-  );
+  const copy = locationPageCopy(place, resolved.label, listing.total);
+  return <SeoJobList h1={copy.h1} intro={copy.intro} jobs={listing.jobs} indexable={listing.indexable} />;
 }
