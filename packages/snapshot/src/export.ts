@@ -78,6 +78,8 @@ export async function exportPublicSnapshot(options: {
           title: true,
           company: { select: { name: true, slug: true } },
         },
+        orderBy: { lastSeenAt: 'desc' },
+        take: 3000,
       }),
       prisma.company.findMany({
         select: {

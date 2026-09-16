@@ -26,24 +26,29 @@ export type RunMetrics = {
   robotDeleted: number;
 };
 
-async function deleteJobFromFeed(job: NormalizedJob): Promise<void> {
-  await prisma.job.deleteMany({
+async function deactivateJobFromFeed(job: NormalizedJob): Promise<void> {
+  await prisma.job.updateMany({
     where: {
       sourceSystem: job.sourceSystem,
       externalId: job.externalId,
+      isActive: true,
     },
+    data: { isActive: false },
   });
 }
 
-async function deleteJobsMissingFromFeed(
+async function deactivateJobsMissingFromFeed(
   companyId: string,
   sourceSystem: SourceSystem,
   seenExternalIds: string[],
 ): Promise<number> {
   const where = seenExternalIds.length
-    ? { companyId, sourceSystem, externalId: { notIn: seenExternalIds } }
-    : { companyId, sourceSystem };
-  const result = await prisma.job.deleteMany({ where });
+    ? { companyId, sourceSystem, isActive: true, externalId: { notIn: seenExternalIds } }
+    : { companyId, sourceSystem, isActive: true };
+  const result = await prisma.job.updateMany({
+    where,
+    data: { isActive: false },
+  });
   return result.count;
 }
 
@@ -58,14 +63,14 @@ export async function upsertNormalizedJob(
         externalId: job.externalId,
       },
     },
-    select: { id: true, isHidden: true },
+    select: { id: true, isHidden: true, slug: true },
   });
 
-  const slug = slugify(job.title);
+  // Keep the first slug forever so Google doesn't see redirect churn on title tweaks.
+  const slug = existing?.slug ?? slugify(job.title);
   const payload = {
     companyId,
     title: job.title,
-    slug,
     descriptionHtml: job.descriptionHtml,
     descriptionPlain: job.descriptionPlain,
     url: job.url,
@@ -94,6 +99,7 @@ export async function upsertNormalizedJob(
     create: {
       externalId: job.externalId,
       sourceSystem: job.sourceSystem,
+      slug,
       ...payload,
     },
     update: payload,
@@ -295,18 +301,26 @@ export async function reclassifyActiveJobs(): Promise<{ classified: number; loca
 export async function deleteStaleJobs(inactiveAfterDays: number): Promise<number> {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - inactiveAfterDays);
-  const result = await prisma.job.deleteMany({
+  const result = await prisma.job.updateMany({
     where: {
       isActive: true,
       lastSeenAt: { lt: cutoff },
     },
+    data: { isActive: false },
   });
   return result.count;
 }
 
-export async function purgeInactiveJobs(): Promise<number> {
+/** Hard-delete soft-closed jobs after the retention window (GSC redirects need the row meanwhile). */
+export async function purgeInactiveJobs(purgeAfterDays?: number): Promise<number> {
+  const days = purgeAfterDays ?? loadEnv().INGEST_PURGE_AFTER_DAYS;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
   const result = await prisma.job.deleteMany({
-    where: { isActive: false },
+    where: {
+      isActive: false,
+      lastSeenAt: { lt: cutoff },
+    },
   });
   return result.count;
 }
@@ -324,8 +338,9 @@ export async function expireNonRobotJobs(): Promise<number> {
   let count = 0;
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
-    const result = await prisma.job.deleteMany({
+    const result = await prisma.job.updateMany({
       where: { id: { in: chunk } },
+      data: { isActive: false },
     });
     count += result.count;
   }
@@ -347,8 +362,9 @@ export async function expireOutOfRegionJobs(): Promise<number> {
   });
   const ids = active.filter((job) => !shouldIngestJob(job)).map((job) => job.id);
   if (!ids.length) return 0;
-  const result = await prisma.job.deleteMany({
+  const result = await prisma.job.updateMany({
     where: { id: { in: ids } },
+    data: { isActive: false },
   });
   return result.count;
 }
@@ -381,19 +397,19 @@ export async function runIngestion(): Promise<RunMetrics> {
       for (const job of jobs) {
         if (!shouldIngestJob(job)) {
           metrics.skipped += 1;
-          await deleteJobFromFeed(job);
+          await deactivateJobFromFeed(job);
           continue;
         }
         if (!isRobotRole(job)) {
           metrics.skipped += 1;
-          await deleteJobFromFeed(job);
+          await deactivateJobFromFeed(job);
           continue;
         }
         const result = await upsertNormalizedJob(feed.companyId, job);
         if (result === 'created') metrics.created += 1;
         else metrics.updated += 1;
       }
-      metrics.deleted = await deleteJobsMissingFromFeed(feed.companyId, feed.sourceSystem, seenExternalIds);
+      metrics.deleted = await deactivateJobsMissingFromFeed(feed.companyId, feed.sourceSystem, seenExternalIds);
     } catch (error) {
       metrics.errors.push(error instanceof Error ? error.message : String(error));
     }
@@ -411,7 +427,7 @@ export async function runIngestion(): Promise<RunMetrics> {
     deleteStaleJobs(env.INGEST_INACTIVE_AFTER_DAYS),
     expireOutOfRegionJobs(),
     expireNonRobotJobs(),
-    purgeInactiveJobs(),
+    purgeInactiveJobs(env.INGEST_PURGE_AFTER_DAYS),
   ]);
   const deleted = feedDeleted + staleDeleted + legacyDeleted;
   const summary: RunMetrics = { sources, deleted, geoDeleted, robotDeleted };

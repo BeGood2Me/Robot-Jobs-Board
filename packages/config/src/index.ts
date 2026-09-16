@@ -5,6 +5,8 @@ const envSchema = z.object({
   DIRECT_URL: z.string().min(1).optional(),
   NEXT_PUBLIC_SITE_URL: z.string().url().default('http://localhost:3000'),
   INGEST_INACTIVE_AFTER_DAYS: z.coerce.number().int().positive().default(1),
+  /** Hard-delete soft-closed jobs after this many days (keeps GSC redirects working meanwhile). */
+  INGEST_PURGE_AFTER_DAYS: z.coerce.number().int().positive().default(30),
   JOB_LISTINGS_API_KEY: z.string().optional().default(''),
   JOB_LISTINGS_API_BASE_URL: z.string().url().optional().default('https://api.joblistingsapi.com/v1'),
   OPENAI_API_KEY: z.string().optional().default(''),

@@ -91,6 +91,7 @@ function toSnapshotJob(
   companyId: string,
   job: Awaited<ReturnType<typeof jobsForFeed>>[number],
   taxonomy: ReturnType<typeof buildTaxonomy>,
+  previousSlugById: Map<string, string>,
 ): SnapshotJob {
   const classification = classifier.classify({
     title: job.title,
@@ -100,10 +101,11 @@ function toSnapshotJob(
     companyName: company.name,
   });
 
+  const id = stableEntityId('job', `${job.sourceSystem}:${job.externalId}`);
   const now = new Date().toISOString();
   return {
-    id: stableEntityId('job', `${job.sourceSystem}:${job.externalId}`),
-    slug: slugify(job.title),
+    id,
+    slug: previousSlugById.get(id) ?? slugify(job.title),
     title: job.title,
     descriptionHtml: job.descriptionHtml,
     descriptionPlain: job.descriptionPlain,
@@ -153,6 +155,9 @@ export async function exportPublicSnapshotFromFeeds(options: {
 }): Promise<{ jobCount: number; generatedAt: string }> {
   const site = options.siteUrl.replace(/\/$/, '');
   const previous = readPreviousSnapshot(options.outDir);
+  const previousSlugById = new Map(
+    (previous?.jobs ?? []).map((job) => [job.id, job.slug] as const),
+  );
   const taxonomy = buildTaxonomy();
   const jobs: SnapshotJob[] = [];
   const seen = new Set<string>();
@@ -174,7 +179,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
         const key = `${job.sourceSystem}:${job.externalId}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        jobs.push(toSnapshotJob(company, companyId, job, taxonomy));
+        jobs.push(toSnapshotJob(company, companyId, job, taxonomy, previousSlugById));
       }
     } catch (error) {
       console.warn(
