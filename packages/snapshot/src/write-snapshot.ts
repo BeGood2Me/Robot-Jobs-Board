@@ -52,13 +52,12 @@ export function writePublicSnapshotFiles(snapshot: PublicBoardSnapshot, outDir: 
   mkdirSync(outDir, { recursive: true });
 
   writeFileSync(join(outDir, 'board.json.gz'), gzipSync(Buffer.from(JSON.stringify(snapshot), 'utf8')));
-  writeFileSync(
-    join(outDir, 'sitemap-jobs.xml'),
-    urlset(jobs.map((job) => `${site}/jobs/${job.id}/${job.slug}`)),
-    'utf8',
-  );
 
-  const categoryUrls = [`${site}/`];
+  // Job URLs are ephemeral and flood crawl budget (GSC "Discovered – not indexed").
+  // Keep them discoverable via company pages; only sitemap durable hub URLs here.
+  writeFileSync(join(outDir, 'sitemap-jobs.xml'), urlset([]), 'utf8');
+
+  const categoryUrls = [`${site}/`, `${site}/jobs`];
   for (const domain of snapshot.domains) {
     if (domain.openJobCount >= INDEX_JOB_THRESHOLD) {
       categoryUrls.push(`${site}/robots/${domain.slug}-jobs`);

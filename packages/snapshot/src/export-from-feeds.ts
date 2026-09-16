@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import { seedCompanies } from '@robot-jobs-board/db/seed-companies';
 import { taxonomySeed } from '@robot-jobs-board/db/taxonomy-seed';
 import { jobsForFeed } from '@robot-jobs-board/ingestion/feeds';
@@ -7,10 +10,11 @@ import { isRobotRole, RuleBasedClassifier } from '@robot-jobs-board/taxonomy';
 import { defaultSnapshotOutDir } from './export';
 import { buildCountryFacets } from './filter';
 import { stableEntityId } from './stable-id';
-import type { PublicBoardSnapshot, SnapshotJob } from './types';
+import type { PublicBoardSnapshot, SnapshotGoneJob, SnapshotJob } from './types';
 import { writePublicSnapshotFiles } from './write-snapshot';
 
 const classifier = new RuleBasedClassifier();
+const MAX_GONE_JOBS = 3000;
 
 const preferredCountries = [
   'United States',
@@ -23,6 +27,38 @@ const preferredCountries = [
   'Switzerland',
 ];
 
+function readPreviousSnapshot(outDir: string): PublicBoardSnapshot | null {
+  const path = join(outDir, 'board.json.gz');
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(gunzipSync(readFileSync(path)).toString('utf8')) as PublicBoardSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+/** Closed roles redirect to the company page instead of hard 404s in GSC. */
+function buildGoneJobs(previous: PublicBoardSnapshot | null, activeJobs: SnapshotJob[]): SnapshotGoneJob[] {
+  if (!previous) return [];
+  const activeIds = new Set(activeJobs.map((job) => job.id));
+  const next = new Map<string, SnapshotGoneJob>();
+
+  for (const job of previous.jobs) {
+    if (activeIds.has(job.id)) continue;
+    next.set(job.id, {
+      id: job.id,
+      slug: job.slug,
+      title: job.title,
+      company: { name: job.company.name, slug: job.company.slug },
+    });
+  }
+  for (const gone of previous.goneJobs ?? []) {
+    if (activeIds.has(gone.id) || next.has(gone.id)) continue;
+    next.set(gone.id, gone);
+  }
+
+  return [...next.values()].slice(0, MAX_GONE_JOBS);
+}
 function buildTaxonomy() {
   const domains = taxonomySeed.domains.map((domain) => ({
     id: stableEntityId('domain', domain.slug),
@@ -116,6 +152,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
   siteUrl: string;
 }): Promise<{ jobCount: number; generatedAt: string }> {
   const site = options.siteUrl.replace(/\/$/, '');
+  const previous = readPreviousSnapshot(options.outDir);
   const taxonomy = buildTaxonomy();
   const jobs: SnapshotJob[] = [];
   const seen = new Set<string>();
@@ -184,7 +221,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     generatedAt: new Date().toISOString(),
     siteUrl: site,
     jobs,
-    goneJobs: [],
+    goneJobs: buildGoneJobs(previous, jobs),
     companies: seedCompanies.map((company) => ({
       id: stableEntityId('company', company.slug),
       name: company.name,
