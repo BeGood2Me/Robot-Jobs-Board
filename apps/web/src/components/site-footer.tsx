@@ -20,6 +20,15 @@ export function SiteFooter() {
           <Link href="/guides" className="hover:text-foreground">
             Guides
           </Link>
+          <Link href="/robots/amr-jobs" className="hover:text-foreground">
+            AMR jobs
+          </Link>
+          <Link href="/robots/humanoid-jobs" className="hover:text-foreground">
+            Humanoid jobs
+          </Link>
+          <Link href="/robots/drone-jobs" className="hover:text-foreground">
+            Drone jobs
+          </Link>
           <Link href="/locations/united-states-robotics-jobs" className="hover:text-foreground">
             US robotics jobs
           </Link>

@@ -102,7 +102,7 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
       <p className="mt-2 font-mono text-xs text-muted">{formatPosted(job.postedAt)}</p>
       <div className="mt-6 flex flex-wrap gap-2">
         {job.robotDomains.map(({ domain }) => (
-          <Link key={domain.id} href={`/?domain=${domain.slug}`} className="rounded-lg bg-chip px-3 py-1 text-sm">
+          <Link key={domain.id} href={`/robots/${domain.slug}-jobs`} className="rounded-lg bg-chip px-3 py-1 text-sm">
             {domain.name}
           </Link>
         ))}

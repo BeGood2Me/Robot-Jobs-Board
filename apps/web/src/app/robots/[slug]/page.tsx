@@ -19,10 +19,18 @@ export async function generateMetadata({ params }: PageProps<'/robots/[slug]'>):
   const filter = { kind: 'domain' as const, domainId: domain.id };
   const indexable = await listingIsIndexable(filter, `domain-${domain.id}`);
   const copy = domainCopy(domain.name, domain.description);
+  const canonical = `/robots/${slug}`;
   return {
     title: copy.title,
     description: copy.description,
+    alternates: { canonical },
     robots: indexable ? undefined : { index: false, follow: true },
+    openGraph: {
+      title: copy.title,
+      description: copy.description,
+      url: canonical,
+      type: 'website',
+    },
   };
 }
 

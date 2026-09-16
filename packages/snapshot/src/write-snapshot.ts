@@ -57,7 +57,7 @@ export function writePublicSnapshotFiles(snapshot: PublicBoardSnapshot, outDir: 
   // Keep them discoverable via company pages; only sitemap durable hub URLs here.
   writeFileSync(join(outDir, 'sitemap-jobs.xml'), urlset([]), 'utf8');
 
-  const categoryUrls = [`${site}/`, `${site}/jobs`];
+  const categoryUrls = [`${site}/`];
   for (const domain of snapshot.domains) {
     if (domain.openJobCount >= INDEX_JOB_THRESHOLD) {
       categoryUrls.push(`${site}/robots/${domain.slug}-jobs`);

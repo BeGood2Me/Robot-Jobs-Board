@@ -57,10 +57,18 @@ export async function generateMetadata({
   const resolved = await resolveCombo(place, combo);
   if (!resolved) return { title: 'Robotics jobs' };
   const indexable = await listingIsIndexable(resolved.filter, `${resolved.cacheKey}-meta`);
+  const canonical = `/locations/${place}/${combo}`;
   return {
     title: resolved.h1,
     description: `Open ${resolved.introFocus} jobs in ${resolved.placeLabel}.`,
+    alternates: { canonical },
     robots: indexable ? undefined : { index: false, follow: true },
+    openGraph: {
+      title: resolved.h1,
+      description: `Open ${resolved.introFocus} jobs in ${resolved.placeLabel}.`,
+      url: canonical,
+      type: 'website',
+    },
   };
 }
 
