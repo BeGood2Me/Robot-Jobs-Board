@@ -8,7 +8,8 @@ const REPO = process.env.INGEST_GITHUB_REPO ?? 'BeGood2Me/Robot-Jobs-Board';
 const WORKFLOW = process.env.INGEST_GITHUB_WORKFLOW ?? 'ingest.yml';
 
 /**
- * Vercel Cron (Hobby: once/day) triggers the GitHub Actions ingest workflow.
+ * Vercel Cron triggers the GitHub Actions ingest workflow once daily.
+ * Schedule is 07:00 UTC = 08:00 Ireland during IST (see vercel.json).
  * GitHub's own `schedule` cron is best-effort and can silently drop runs.
  */
 async function handle(request: Request) {

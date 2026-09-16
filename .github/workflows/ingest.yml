@@ -4,9 +4,11 @@ on:
   workflow_dispatch:
   schedule:
     # Full board refresh (every seeded company in one export). GitHub cron is
-    # best-effort; Vercel Cron (~08:17 UTC) is the reliable daily trigger.
-    # Morning + evening so US and EU posting windows both land the same day.
-    - cron: "23 7 * * *"
+    # best-effort; Vercel Cron is the reliable morning trigger (see vercel.json).
+    # Morning = 08:00 Ireland (IST): 07:00 UTC. In winter (GMT) this is 07:00 local —
+    # bump both crons to "0 8 * * *" after clocks go back if you want 08:00 year-round.
+    # Evening keeps a second pass for US afternoon postings.
+    - cron: "0 7 * * *"
     - cron: "53 19 * * *"
   repository_dispatch:
     types: [ingest-jobs]
