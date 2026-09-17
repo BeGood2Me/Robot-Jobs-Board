@@ -32,7 +32,7 @@ export function isRobotRole(job: Pick<ClassifiableJob, 'title' | 'department'>):
 }
 
 /** Prefer interns/new grads and robotics-core titles when a company exceeds the board cap. */
-export function boardRelevanceScore(job: Pick<ClassifiableJob, 'title' | 'postedAt'>): number {
+export function boardRelevanceScore(job: { title: string; postedAt?: Date | string | null }): number {
   const title = job.title ?? '';
   let score = 0;
   if (EARLY_CAREER_TITLE.test(title)) score += 100;
@@ -40,7 +40,8 @@ export function boardRelevanceScore(job: Pick<ClassifiableJob, 'title' | 'posted
   if (/\b(?:software|firmware|embedded|hardware|mechanical|electrical|systems|perception|controls|gnc)\b/i.test(title)) {
     score += 15;
   }
-  const posted = job.postedAt ? new Date(job.postedAt).getTime() : 0;
+  const postedAt = job.postedAt;
+  const posted = postedAt ? new Date(postedAt).getTime() : 0;
   if (posted > 0) {
     // Up to ~10 points for roles posted in the last ~100 days.
     const ageDays = Math.max(0, (Date.now() - posted) / 86_400_000);
@@ -60,8 +61,10 @@ export function capJobsPerCompany<T extends { title: string; postedAt?: Date | s
     .sort((a, b) => {
       const scoreDelta = boardRelevanceScore(b) - boardRelevanceScore(a);
       if (scoreDelta !== 0) return scoreDelta;
-      const aTime = a.postedAt ? new Date(a.postedAt).getTime() : 0;
-      const bTime = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+      const aPosted = a.postedAt;
+      const bPosted = b.postedAt;
+      const aTime = aPosted ? new Date(aPosted).getTime() : 0;
+      const bTime = bPosted ? new Date(bPosted).getTime() : 0;
       return bTime - aTime;
     })
     .slice(0, limit);
