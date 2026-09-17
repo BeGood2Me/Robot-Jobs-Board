@@ -30,12 +30,22 @@ export type SnapshotSeniority = {
   label: string;
 };
 
+/** Full description payload stored per job under `snapshot/jobs/{id}.json.gz`. */
+export type SnapshotJobBody = {
+  descriptionHtml: string;
+  descriptionPlain: string;
+};
+
+/**
+ * Board index job. Descriptions are omitted from `board.json.gz` to keep listing/
+ * facet/ISR paths cheap; load them via `snapshot/jobs/{id}.json.gz` on detail pages.
+ */
 export type SnapshotJob = {
   id: string;
   slug: string;
   title: string;
-  descriptionHtml: string;
-  descriptionPlain: string;
+  descriptionHtml?: string;
+  descriptionPlain?: string;
   url: string;
   locationRaw: string | null;
   country: string | null;
@@ -119,3 +129,4 @@ export type JobFilters = {
 
 export const SNAPSHOT_DIR = 'public/snapshot';
 export const SNAPSHOT_BOARD_FILE = 'board.json.gz';
+export const SNAPSHOT_JOBS_DIR = 'jobs';

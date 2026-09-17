@@ -1,9 +1,9 @@
 export const INDEX_JOB_THRESHOLD = 5;
 export const PAGE_SIZE = 10;
 
-/** Public board freshness (seconds). Ingest runs daily; 4 hours cuts Neon egress during crawls.
- *  Page `export const revalidate` must use the literal `14400` — Next cannot analyze imported values. */
-export const PUBLIC_REVALIDATE_SECONDS = 14400;
+/** Public board freshness (seconds). Ingest runs daily; 24h matches freshness and cuts ISR CPU.
+ *  Page `export const revalidate` must use the literal `86400` — Next cannot analyze imported values. */
+export const PUBLIC_REVALIDATE_SECONDS = 86400;
 
 export function getSiteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '');

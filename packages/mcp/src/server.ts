@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { ApiError, apiGet, getSiteUrl } from './api.js';
 import { errorResult, jsonResult, summarizeJob } from './format.js';
-import { loadBoardSnapshot } from './snapshot.js';
+import { loadBoardSnapshot, loadJobWithDescription } from './snapshot.js';
 
 const listSchema = z.union([z.string(), z.array(z.string())]).optional();
 
@@ -186,9 +186,9 @@ export function createServer() {
         }
 
         const site = getSiteUrl();
-        const board = await loadBoardSnapshot();
-        const job = board.jobs.find((item) => item.id === id);
+        const job = await loadJobWithDescription(id);
         if (!job) return errorResult(new Error(`Job not found: ${id}`));
+        const board = await loadBoardSnapshot();
         const related = board.jobs
           .filter((item) => item.id !== job.id && item.companyId === job.companyId)
           .slice(0, 6)

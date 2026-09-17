@@ -273,7 +273,7 @@ function employmentSchema(type: string): string {
 
 export function jobPostingJsonLd(job: JobWithRelations) {
   const site = getSiteUrl();
-  const description = job.descriptionPlain.slice(0, 5000);
+  const description = (job.descriptionPlain ?? '').slice(0, 5000);
   const postedAt = asDate(job.postedAt);
   const createdAt = asDateRequired(job.createdAt);
   const expiresAt = asDate(job.expiresAt);

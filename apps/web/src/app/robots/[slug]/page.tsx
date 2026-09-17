@@ -8,8 +8,14 @@ import {
   loadListing,
   parseDomainSlug,
 } from '@/lib/programmatic';
+import { domainStaticParams } from '@/lib/snapshot/static-params';
 
-export const revalidate = 14400;
+export const revalidate = 86400;
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return domainStaticParams();
+}
 
 export async function generateMetadata({ params }: PageProps<'/robots/[slug]'>): Promise<Metadata> {
   const { slug } = await params;

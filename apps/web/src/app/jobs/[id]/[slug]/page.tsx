@@ -10,7 +10,7 @@ import { sanitizeJobHtml } from '@/lib/sanitize';
 import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 
-export const revalidate = 14400;
+export const revalidate = 86400;
 
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
   const { id, slug } = await params;

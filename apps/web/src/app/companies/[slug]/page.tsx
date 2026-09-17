@@ -6,9 +6,15 @@ import { JobPagination } from '@/components/job-pagination';
 import { getCompanyBySlug, getCompanyJobsPage } from '@/lib/jobs';
 import { companyPageJsonLd } from '@/lib/jsonld';
 import { companyPageDescription, companyPageIntro, companyPageTitle } from '@/lib/seo';
+import { companyStaticParams } from '@/lib/snapshot/static-params';
 import { PAGE_SIZE } from '@/lib/site';
 
-export const revalidate = 14400;
+export const revalidate = 86400;
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return companyStaticParams();
+}
 
 function companyJobsHref(slug: string, page = 1) {
   return page > 1 ? `/companies/${slug}?page=${page}` : `/companies/${slug}`;

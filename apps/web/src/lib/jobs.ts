@@ -8,7 +8,7 @@ import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 import { prisma, withDb } from './db';
 import { type JobFilters } from './job-filter-utils';
-import { loadPublicSnapshot } from './snapshot/load';
+import { loadJobBody, loadPublicSnapshot } from './snapshot/load';
 import { PAGE_SIZE, PUBLIC_REVALIDATE_SECONDS } from './site';
 
 export type { JobFilters } from './job-filter-utils';
@@ -431,7 +431,13 @@ export const getJobById = cache(async (id: string, slug?: string) => {
     if (!job && slug) {
       job = snapshot.jobs.find((item) => item.slug === slug) ?? null;
     }
-    return reviveJobDates(job) as JobWithRelations | null;
+    if (!job) return null;
+    const body = await loadJobBody(job.id);
+    return reviveJobDates({
+      ...job,
+      descriptionHtml: body?.descriptionHtml ?? job.descriptionHtml ?? '',
+      descriptionPlain: body?.descriptionPlain ?? job.descriptionPlain ?? '',
+    }) as unknown as JobWithRelations | null;
   }
   const job = await withDb(() => loadJobByIdCached(id), null);
   if (!job || !job.isActive || job.isHidden) return null;

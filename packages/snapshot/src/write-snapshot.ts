@@ -1,7 +1,8 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import type { PublicBoardSnapshot } from './types';
+import type { PublicBoardSnapshot, SnapshotJob, SnapshotJobBody } from './types';
+import { SNAPSHOT_JOBS_DIR } from './types';
 
 const INDEX_JOB_THRESHOLD = 5;
 
@@ -46,12 +47,51 @@ ${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
 </urlset>`;
 }
 
+function toIndexJob(job: SnapshotJob): SnapshotJob {
+  const { descriptionHtml: _html, descriptionPlain: _plain, ...rest } = job;
+  return rest;
+}
+
+function jobBody(job: SnapshotJob): SnapshotJobBody {
+  return {
+    descriptionHtml: job.descriptionHtml ?? '',
+    descriptionPlain: job.descriptionPlain ?? '',
+  };
+}
+
+function writeJobBodies(jobs: SnapshotJob[], outDir: string): void {
+  const jobsDir = join(outDir, SNAPSHOT_JOBS_DIR);
+  mkdirSync(jobsDir, { recursive: true });
+  const activeIds = new Set(jobs.map((job) => job.id));
+
+  if (existsSync(jobsDir)) {
+    for (const file of readdirSync(jobsDir)) {
+      if (!file.endsWith('.json.gz')) continue;
+      const id = file.slice(0, -'.json.gz'.length);
+      if (!activeIds.has(id)) unlinkSync(join(jobsDir, file));
+    }
+  }
+
+  for (const job of jobs) {
+    writeFileSync(
+      join(jobsDir, `${job.id}.json.gz`),
+      gzipSync(Buffer.from(JSON.stringify(jobBody(job)), 'utf8')),
+    );
+  }
+}
+
+/** Board index without descriptions + per-job body files under `jobs/`. */
 export function writePublicSnapshotFiles(snapshot: PublicBoardSnapshot, outDir: string): void {
   const site = snapshot.siteUrl.replace(/\/$/, '');
   const jobs = snapshot.jobs;
   mkdirSync(outDir, { recursive: true });
 
-  writeFileSync(join(outDir, 'board.json.gz'), gzipSync(Buffer.from(JSON.stringify(snapshot), 'utf8')));
+  const indexSnapshot: PublicBoardSnapshot = {
+    ...snapshot,
+    jobs: jobs.map(toIndexJob),
+  };
+  writeFileSync(join(outDir, 'board.json.gz'), gzipSync(Buffer.from(JSON.stringify(indexSnapshot), 'utf8')));
+  writeJobBodies(jobs, outDir);
 
   // Job URLs are ephemeral and flood crawl budget (GSC "Discovered – not indexed").
   // Keep them discoverable via company pages; only sitemap durable hub URLs here.
@@ -118,6 +158,7 @@ ${posts
         siteUrl: site,
         jobCount: jobs.length,
         companyCount: snapshot.companies.length,
+        boardIncludesDescriptions: false,
       },
       null,
       2,

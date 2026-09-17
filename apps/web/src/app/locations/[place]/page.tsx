@@ -2,8 +2,14 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { SeoJobList } from '@/components/seo-job-list';
 import { listingIsIndexable, loadListing, locationPageCopy, resolvePlace } from '@/lib/programmatic';
+import { placeStaticParams } from '@/lib/snapshot/static-params';
 
-export const revalidate = 14400;
+export const revalidate = 86400;
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return placeStaticParams();
+}
 
 function parsePlaceParam(slug: string): string | null {
   const match = slug.match(/^([a-z0-9-]+)-robotics-jobs$/);
