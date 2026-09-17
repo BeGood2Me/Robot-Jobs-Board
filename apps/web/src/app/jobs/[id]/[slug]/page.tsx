@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { directApplyUrl } from '@robot-jobs-board/ingestion/apply-url';
+import { ApplyNowLink } from '@/components/apply-now-link';
 import { JobCard } from '@/components/job-card';
 import { jobPostingJsonLd } from '@/lib/jsonld';
 import { getJobById, getGoneJobById, relatedJobs } from '@/lib/jobs';
@@ -50,22 +51,6 @@ export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'
   };
 }
 
-function ApplyNowLink({ href, className }: { href: string; className?: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={
-        className ??
-        'inline-flex h-10 items-center rounded-lg bg-accent px-3 text-base font-semibold text-accent-fg transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]'
-      }
-    >
-      Apply now
-    </a>
-  );
-}
-
 export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[slug]'>) {
   const { id, slug } = await params;
   const job = await getJobById(id, slug);
@@ -79,6 +64,13 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
   const related = await relatedJobs(job);
   const html = sanitizeJobHtml(job.descriptionHtml || `<p>${job.descriptionPlain}</p>`);
   const applyHref = directApplyUrl(job);
+  const applyProps = {
+    href: applyHref,
+    jobId: job.id,
+    jobTitle: job.title,
+    companySlug: job.company.slug,
+    companyName: job.company.name,
+  };
   const facts = [
     job.locationRaw,
     workplaceLabel(job.workplaceType, job.isRemote),
@@ -126,11 +118,11 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
         ))}
       </div>
       <div className="mt-8">
-        <ApplyNowLink href={applyHref} />
+        <ApplyNowLink {...applyProps} />
       </div>
       <article className="job-html mt-12 max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
       <div className="mt-12">
-        <ApplyNowLink href={applyHref} />
+        <ApplyNowLink {...applyProps} />
       </div>
       <section className="mt-16">
         <h2 className="text-2xl font-semibold">Related jobs</h2>
