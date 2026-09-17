@@ -10,7 +10,8 @@ import { isRobotRole, RuleBasedClassifier } from '@robot-jobs-board/taxonomy';
 import { defaultSnapshotOutDir } from './export';
 import { buildCountryFacets } from './filter';
 import { stableEntityId } from './stable-id';
-import type { PublicBoardSnapshot, SnapshotGoneJob, SnapshotJob } from './types';
+import type { PublicBoardSnapshot, SnapshotGoneJob, SnapshotJob, SnapshotJobBody } from './types';
+import { SNAPSHOT_JOBS_DIR } from './types';
 import { writePublicSnapshotFiles } from './write-snapshot';
 
 const classifier = new RuleBasedClassifier();
@@ -37,14 +38,52 @@ function readPreviousSnapshot(outDir: string): PublicBoardSnapshot | null {
   }
 }
 
-/** Closed roles redirect to the company page instead of hard 404s in GSC. */
-function buildGoneJobs(previous: PublicBoardSnapshot | null, activeJobs: SnapshotJob[]): SnapshotGoneJob[] {
+function readJobBody(outDir: string, jobId: string): SnapshotJobBody | null {
+  const path = join(outDir, SNAPSHOT_JOBS_DIR, `${jobId}.json.gz`);
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(gunzipSync(readFileSync(path)).toString('utf8')) as SnapshotJobBody;
+  } catch {
+    return null;
+  }
+}
+
+/** Rehydrate index rows with description bodies so a rewrite does not wipe them. */
+export function carryForwardCompanyJobs(
+  previous: PublicBoardSnapshot | null,
+  companySlug: string,
+  outDir: string,
+): SnapshotJob[] {
+  if (!previous) return [];
+  return previous.jobs
+    .filter((job) => job.company.slug === companySlug)
+    .map((job) => {
+      if (job.descriptionHtml != null && job.descriptionPlain != null) return job;
+      const body = readJobBody(outDir, job.id);
+      return {
+        ...job,
+        descriptionHtml: body?.descriptionHtml ?? job.descriptionHtml ?? '',
+        descriptionPlain: body?.descriptionPlain ?? job.descriptionPlain ?? '',
+      };
+    });
+}
+
+/**
+ * Closed roles redirect to the company page instead of hard 404s in GSC.
+ * Jobs from companies whose feeds failed this run stay active and are excluded.
+ */
+export function buildGoneJobs(
+  previous: PublicBoardSnapshot | null,
+  activeJobs: SnapshotJob[],
+  retainedCompanySlugs: ReadonlySet<string> = new Set(),
+): SnapshotGoneJob[] {
   if (!previous) return [];
   const activeIds = new Set(activeJobs.map((job) => job.id));
   const next = new Map<string, SnapshotGoneJob>();
 
   for (const job of previous.jobs) {
     if (activeIds.has(job.id)) continue;
+    if (retainedCompanySlugs.has(job.company.slug)) continue;
     next.set(job.id, {
       id: job.id,
       slug: job.slug,
@@ -54,11 +93,14 @@ function buildGoneJobs(previous: PublicBoardSnapshot | null, activeJobs: Snapsho
   }
   for (const gone of previous.goneJobs ?? []) {
     if (activeIds.has(gone.id) || next.has(gone.id)) continue;
+    // Drop gone entries that we carried forward again after a feed outage.
+    if (retainedCompanySlugs.has(gone.company.slug)) continue;
     next.set(gone.id, gone);
   }
 
   return [...next.values()].slice(0, MAX_GONE_JOBS);
 }
+
 function buildTaxonomy() {
   const domains = taxonomySeed.domains.map((domain) => ({
     id: stableEntityId('domain', domain.slug),
@@ -149,6 +191,18 @@ function toSnapshotJob(
   };
 }
 
+function mergeCarriedJobs(jobs: SnapshotJob[], carried: SnapshotJob[], seen: Set<string>): number {
+  let added = 0;
+  for (const job of carried) {
+    const key = `${job.sourceSystem}:${job.externalId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    jobs.push(job);
+    added += 1;
+  }
+  return added;
+}
+
 export async function exportPublicSnapshotFromFeeds(options: {
   outDir: string;
   siteUrl: string;
@@ -158,11 +212,17 @@ export async function exportPublicSnapshotFromFeeds(options: {
   const previousSlugById = new Map(
     (previous?.jobs ?? []).map((job) => [job.id, job.slug] as const),
   );
+  const previousCountByCompany = new Map<string, number>();
+  for (const job of previous?.jobs ?? []) {
+    previousCountByCompany.set(job.company.slug, (previousCountByCompany.get(job.company.slug) ?? 0) + 1);
+  }
   const taxonomy = buildTaxonomy();
   const jobs: SnapshotJob[] = [];
   const seen = new Set<string>();
+  const retainedCompanySlugs = new Set<string>();
 
   for (const company of seedCompanies) {
+    const previousCount = previousCountByCompany.get(company.slug) ?? 0;
     try {
       const fetched = await jobsForFeed(company.sourceSystem, company.config);
       console.log(
@@ -173,6 +233,25 @@ export async function exportPublicSnapshotFromFeeds(options: {
           fetched: fetched.length,
         }),
       );
+
+      // Empty success after a non-empty board usually means a broken/blocked feed, not a mass layoff.
+      if (fetched.length === 0 && previousCount > 0) {
+        const carried = carryForwardCompanyJobs(previous, company.slug, options.outDir);
+        const added = mergeCarriedJobs(jobs, carried, seen);
+        retainedCompanySlugs.add(company.slug);
+        console.warn(
+          JSON.stringify({
+            event: 'snapshot.feed.retained',
+            company: company.name,
+            source: company.sourceSystem,
+            reason: 'empty_fetch',
+            retained: added,
+            previousCount,
+          }),
+        );
+        continue;
+      }
+
       const companyId = stableEntityId('company', company.slug);
       for (const job of fetched) {
         if (!shouldIngestJob(job) || !isRobotRole(job)) continue;
@@ -182,12 +261,17 @@ export async function exportPublicSnapshotFromFeeds(options: {
         jobs.push(toSnapshotJob(company, companyId, job, taxonomy, previousSlugById));
       }
     } catch (error) {
+      const carried = carryForwardCompanyJobs(previous, company.slug, options.outDir);
+      const added = mergeCarriedJobs(jobs, carried, seen);
+      if (added > 0) retainedCompanySlugs.add(company.slug);
       console.warn(
         JSON.stringify({
           event: 'snapshot.feed.error',
           company: company.name,
           source: company.sourceSystem,
           error: error instanceof Error ? error.message : String(error),
+          retained: added,
+          previousCount,
         }),
       );
     }
@@ -226,7 +310,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     generatedAt: new Date().toISOString(),
     siteUrl: site,
     jobs,
-    goneJobs: buildGoneJobs(previous, jobs),
+    goneJobs: buildGoneJobs(previous, jobs, retainedCompanySlugs),
     companies: seedCompanies.map((company) => ({
       id: stableEntityId('company', company.slug),
       name: company.name,
