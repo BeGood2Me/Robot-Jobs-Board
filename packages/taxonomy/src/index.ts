@@ -14,4 +14,4 @@ export {
   defaultClassifier,
 } from './classify';
 export { isEntryLevelRole, isInternshipTitle } from './entry-level';
-export { isRobotRole } from './is-robot-role';
+export { isRobotRole, boardRelevanceScore, capJobsPerCompany, MAX_JOBS_PER_COMPANY } from './is-robot-role';

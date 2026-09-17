@@ -6,7 +6,7 @@ import { taxonomySeed } from '@robot-jobs-board/db/taxonomy-seed';
 import { jobsForFeed } from '@robot-jobs-board/ingestion/feeds';
 import { slugify } from '@robot-jobs-board/ingestion/normalize';
 import { shouldIngestJob } from '@robot-jobs-board/ingestion/region';
-import { isRobotRole, RuleBasedClassifier } from '@robot-jobs-board/taxonomy';
+import { isRobotRole, RuleBasedClassifier, capJobsPerCompany } from '@robot-jobs-board/taxonomy';
 import { defaultSnapshotOutDir } from './export';
 import { buildCountryFacets } from './filter';
 import { stableEntityId } from './stable-id';
@@ -236,7 +236,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
 
       // Empty success after a non-empty board usually means a broken/blocked feed, not a mass layoff.
       if (fetched.length === 0 && previousCount > 0) {
-        const carried = carryForwardCompanyJobs(previous, company.slug, options.outDir);
+        const carried = capJobsPerCompany(carryForwardCompanyJobs(previous, company.slug, options.outDir));
         const added = mergeCarriedJobs(jobs, carried, seen);
         retainedCompanySlugs.add(company.slug);
         console.warn(
@@ -253,15 +253,34 @@ export async function exportPublicSnapshotFromFeeds(options: {
       }
 
       const companyId = stableEntityId('company', company.slug);
+      const companyJobs = [];
       for (const job of fetched) {
         if (!shouldIngestJob(job) || !isRobotRole(job)) continue;
         const key = `${job.sourceSystem}:${job.externalId}`;
         if (seen.has(key)) continue;
+        companyJobs.push(job);
+      }
+
+      const capped = capJobsPerCompany(companyJobs);
+      if (capped.length < companyJobs.length) {
+        console.warn(
+          JSON.stringify({
+            event: 'snapshot.feed.capped',
+            company: company.name,
+            source: company.sourceSystem,
+            before: companyJobs.length,
+            after: capped.length,
+          }),
+        );
+      }
+
+      for (const job of capped) {
+        const key = `${job.sourceSystem}:${job.externalId}`;
         seen.add(key);
         jobs.push(toSnapshotJob(company, companyId, job, taxonomy, previousSlugById));
       }
     } catch (error) {
-      const carried = carryForwardCompanyJobs(previous, company.slug, options.outDir);
+      const carried = capJobsPerCompany(carryForwardCompanyJobs(previous, company.slug, options.outDir));
       const added = mergeCarriedJobs(jobs, carried, seen);
       if (added > 0) retainedCompanySlugs.add(company.slug);
       console.warn(
