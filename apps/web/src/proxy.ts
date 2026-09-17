@@ -14,7 +14,7 @@ function paramsFromSearch(searchParams: URLSearchParams): Record<string, string 
   return params;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const ua = request.headers.get('user-agent') ?? '';
   if (BLOCKED_BOTS.test(ua)) {
     return new NextResponse('Blocked', { status: 403 });

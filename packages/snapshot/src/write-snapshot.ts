@@ -165,4 +165,18 @@ ${posts
     ),
     'utf8',
   );
+
+  const places = new Set<string>(['remote-robotics-jobs']);
+  for (const city of snapshot.places.cities) places.add(`${slugify(city)}-robotics-jobs`);
+  for (const country of snapshot.places.countries) places.add(`${slugify(country)}-robotics-jobs`);
+  for (const region of snapshot.places.regions) places.add(`${slugify(region)}-robotics-jobs`);
+
+  const staticParams = {
+    companies: snapshot.companies.map((company) => ({ slug: company.slug })),
+    domains: snapshot.domains.map((domain) => ({ slug: `${domain.slug}-jobs` })),
+    places: [...places].map((place) => ({ place })),
+  };
+  // Written next to the importer so Next can bundle a fixed JSON module (no fs tracing).
+  const staticParamsPath = join(outDir, '..', '..', 'src', 'lib', 'snapshot', 'static-params.json');
+  writeFileSync(staticParamsPath, `${JSON.stringify(staticParams)}\n`, 'utf8');
 }
