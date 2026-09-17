@@ -141,3 +141,31 @@ jobs:
           curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
           echo "Deploy hook accepted"
+
+      - name: Revalidate Next.js board cache
+        if: steps.freshness.outputs.skip != 'true' && steps.commit.outputs.pushed == 'true'
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: https://www.robotjobsboard.com
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET secret is not set — skipping on-demand revalidate"
+            exit 0
+          fi
+          # Wait for the deploy hook build to finish promoting static snapshot files.
+          echo "Waiting for production deploy before cache bust…"
+          sleep 90
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS -X POST "$SITE_URL/api/revalidate" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              -H "Content-Type: application/json"; then
+              echo
+              echo "Board cache revalidated"
+              exit 0
+            fi
+            echo "Revalidate attempt ${attempt}/5 failed; retrying…"
+            sleep $((attempt * 15))
+          done
+          echo "Revalidate did not succeed (deploy may still be building); Data Cache TTL will expire within an hour"
+          exit 0

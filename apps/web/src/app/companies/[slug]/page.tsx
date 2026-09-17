@@ -9,7 +9,7 @@ import { companyPageDescription, companyPageIntro, companyPageTitle } from '@/li
 import { companyStaticParams } from '@/lib/snapshot/static-params';
 import { PAGE_SIZE } from '@/lib/site';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 export const dynamicParams = false;
 
 export function generateStaticParams() {

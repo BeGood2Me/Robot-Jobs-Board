@@ -4,7 +4,7 @@ import { SeoJobList } from '@/components/seo-job-list';
 import { listingIsIndexable, loadListing, locationPageCopy, resolvePlace } from '@/lib/programmatic';
 import { placeStaticParams } from '@/lib/snapshot/static-params';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 export const dynamicParams = false;
 
 export function generateStaticParams() {

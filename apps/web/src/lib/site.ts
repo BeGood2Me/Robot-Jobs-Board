@@ -1,9 +1,10 @@
 export const INDEX_JOB_THRESHOLD = 5;
 export const PAGE_SIZE = 10;
 
-/** Public board freshness (seconds). Ingest runs daily; 24h matches freshness and cuts ISR CPU.
- *  Page `export const revalidate` must use the literal `86400` — Next cannot analyze imported values. */
-export const PUBLIC_REVALIDATE_SECONDS = 86400;
+/** Public board freshness (seconds). Ingest is daily; 1h keeps CPU low but picks up board refreshes.
+ *  Page `export const revalidate` must use the literal `3600` — Next cannot analyze imported values.
+ *  Ingest also calls /api/revalidate to bust the Data Cache immediately. */
+export const PUBLIC_REVALIDATE_SECONDS = 3600;
 
 export function getSiteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '');

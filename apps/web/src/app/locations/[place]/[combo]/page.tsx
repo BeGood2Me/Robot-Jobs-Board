@@ -10,7 +10,7 @@ import {
   resolvePlace,
 } from '@/lib/programmatic';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 async function resolveCombo(place: string, combo: string) {
   const resolved = await resolvePlace(place);
