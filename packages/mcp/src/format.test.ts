@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeJob } from './format.js';
+import { summarizeJob } from './format';
 
 describe('summarizeJob', () => {
   it('keeps card fields compact for agents', () => {

@@ -1,0 +1,3 @@
+[mcp_servers.robot-jobs-board]
+url = "https://www.robotjobsboard.com/api/mcp"
+startup_timeout_sec = 60

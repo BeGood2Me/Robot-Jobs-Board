@@ -1,5 +1,5 @@
 import { gunzipSync } from 'node:zlib';
-import { getSiteUrl } from './api.js';
+import { getSiteUrl } from './api';
 
 export type SnapshotJob = {
   id: string;

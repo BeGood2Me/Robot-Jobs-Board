@@ -117,23 +117,51 @@ After a successful snapshot push, the workflow POSTs `VERCEL_DEPLOY_HOOK_URL` (r
 
 ### MCP (agents)
 
-Package: `@robot-jobs-board/mcp` — stdio MCP server for Cursor / Claude Desktop / other MCP clients.
+Public Streamable HTTP endpoint (no API key):
+
+`https://www.robotjobsboard.com/api/mcp`
+
+Docs page: [`/mcp`](https://www.robotjobsboard.com/mcp)
 
 Tools: `search_jobs`, `get_job`, `list_companies`, `get_company`, `list_facets`.
 
-```bash
-pnpm install
-pnpm mcp
-```
-
-Cursor MCP config example (`ROBOT_JOBS_BOARD_URL` optional, defaults to production):
+**Cursor / Claude Desktop** — add to MCP config:
 
 ```json
 {
   "mcpServers": {
     "robot-jobs-board": {
-      "command": "pnpm",
-      "args": ["--dir", "C:/Users/YOU/Desktop/Projects/Robot Jobs Board", "mcp"],
+      "url": "https://www.robotjobsboard.com/api/mcp"
+    }
+  }
+}
+```
+
+**Grok Bot / Grok CLI** — project or user config:
+
+```toml
+[mcp_servers.robot-jobs-board]
+url = "https://www.robotjobsboard.com/api/mcp"
+startup_timeout_sec = 60
+```
+
+Local stdio (optional, for development):
+
+```bash
+pnpm install
+pnpm run mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "robot-jobs-board": {
+      "command": "C:/Program Files/nodejs/node.exe",
+      "args": [
+        "C:/Users/YOU/Desktop/Projects/Robot Jobs Board/node_modules/tsx/dist/cli.mjs",
+        "C:/Users/YOU/Desktop/Projects/Robot Jobs Board/packages/mcp/src/index.ts"
+      ],
+      "cwd": "C:/Users/YOU/Desktop/Projects/Robot Jobs Board/packages/mcp",
       "env": {
         "ROBOT_JOBS_BOARD_URL": "https://www.robotjobsboard.com"
       }

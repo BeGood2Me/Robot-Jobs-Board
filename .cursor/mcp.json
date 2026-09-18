@@ -1,11 +1,7 @@
 {
   "mcpServers": {
     "robot-jobs-board": {
-      "command": "pnpm",
-      "args": ["mcp"],
-      "env": {
-        "ROBOT_JOBS_BOARD_URL": "https://www.robotjobsboard.com"
-      }
+      "url": "https://www.robotjobsboard.com/api/mcp"
     }
   }
 }

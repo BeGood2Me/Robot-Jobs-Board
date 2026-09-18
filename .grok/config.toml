@@ -1,0 +1,6 @@
+# Grok Bot / Grok CLI — public Robot Jobs Board MCP
+# Restart Grok Bot after changing this file.
+
+[mcp_servers.robot-jobs-board]
+url = "https://www.robotjobsboard.com/api/mcp"
+startup_timeout_sec = 60

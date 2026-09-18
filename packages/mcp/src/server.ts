@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { ApiError, apiGet, getSiteUrl } from './api.js';
-import { errorResult, jsonResult, summarizeJob } from './format.js';
-import { loadBoardSnapshot, loadJobWithDescription } from './snapshot.js';
+import { ApiError, apiGet, getSiteUrl } from './api';
+import { errorResult, jsonResult, summarizeJob } from './format';
+import { loadBoardSnapshot, loadJobWithDescription } from './snapshot';
 
 const listSchema = z.union([z.string(), z.array(z.string())]).optional();
 
@@ -95,7 +95,12 @@ export function createServer() {
     name: 'robot-jobs-board',
     version: '0.1.0',
   });
+  registerRobotJobsBoard(server);
+  return server;
+}
 
+/** Register the public Robot Jobs Board tools/resources on an existing MCP server. */
+export function registerRobotJobsBoard(server: McpServer) {
   server.registerTool(
     'search_jobs',
     {
@@ -408,5 +413,4 @@ export function createServer() {
     },
   );
 
-  return server;
 }
