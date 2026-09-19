@@ -45,26 +45,7 @@ export async function JobBoard({
           Robotics jobs board
         </h1>
         <p className="mt-2 max-w-[680px] text-pretty text-sm text-muted md:mt-3 md:text-base">
-          <span className="md:hidden">
-            {total > 0 ? `${total.toLocaleString('en-US')} open roles. ` : null}
-            Updated daily from company ATS boards.{' '}
-            <Link href="/companies" className="underline">
-              Companies hiring
-            </Link>
-            . Tap Filters to narrow by location or robot type.
-          </span>
-          <span className="hidden md:inline">
-            {total > 0 ? `${total.toLocaleString('en-US')} open robotics roles. ` : null}
-            Updated daily from public company ATS boards — US, UK, Canada, and remote. Browse{' '}
-            <Link href="/companies" className="underline">
-              companies hiring
-            </Link>
-            , filter by robot type and skill, or read the{' '}
-            <Link href="/guides" className="underline">
-              robotics career guides
-            </Link>
-            .
-          </span>
+          Updated daily from public company ATS boards — US, UK, Canada, and remote.
         </p>
         <nav aria-label="Popular job hubs" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
           <Link href="/locations/united-states-robotics-jobs" className="underline">
