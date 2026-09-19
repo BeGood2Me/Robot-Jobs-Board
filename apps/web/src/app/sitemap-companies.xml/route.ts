@@ -7,11 +7,30 @@ import { getSiteUrl } from '@/lib/site';
 const loadCompanySitemapXml = unstable_cache(
   async () => {
     const site = getSiteUrl();
-    const companies = await prisma.company.findMany({ select: { slug: true } });
+    const companies = await prisma.company.findMany({
+      select: {
+        slug: true,
+        jobs: {
+          where: { isActive: true, isHidden: false },
+          select: { postedAt: true },
+          orderBy: { postedAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = [
+      `  <url><loc>${site}/companies</loc><lastmod>${today}</lastmod></url>`,
+      ...companies.map((c) => {
+        const lastmod = c.jobs[0]?.postedAt
+          ? new Date(c.jobs[0].postedAt).toISOString().slice(0, 10)
+          : today;
+        return `  <url><loc>${site}/companies/${c.slug}</loc><lastmod>${lastmod}</lastmod></url>`;
+      }),
+    ];
     return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>${site}/companies</loc></url>
-${companies.map((c) => `  <url><loc>${site}/companies/${c.slug}</loc></url>`).join('\n')}
+${rows.join('\n')}
 </urlset>`;
   },
   ['sitemap-companies'],

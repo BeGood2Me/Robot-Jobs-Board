@@ -77,12 +77,18 @@ export default async function ComboJobsPage({ params }: PageProps<'/locations/[p
   const resolved = await resolveCombo(place, combo);
   if (!resolved) notFound();
   const listing = await loadListing(resolved.filter, resolved.cacheKey);
+  const path = `/locations/${place}/${combo}`;
+  const description = `Open ${resolved.introFocus} jobs in ${resolved.placeLabel}.`;
   return (
     <SeoJobList
       h1={resolved.h1}
       intro={`This combination page lists ${resolved.introFocus} jobs tied to ${resolved.placeLabel}. Use it when you already know both the robot type or stack and the city. Typical work mixes software (often C++ or Python) with on site bring up for hardware programs. Apply on the original ATS listing from each card. If the set is still small, widen to the location or domain page.`}
       jobs={listing.jobs}
       indexable={listing.indexable}
+      total={listing.total}
+      breadcrumbLabel={resolved.h1}
+      path={path}
+      description={description}
     />
   );
 }

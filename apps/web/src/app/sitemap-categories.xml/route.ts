@@ -4,10 +4,11 @@ import { prisma, withDb } from '@/lib/db';
 import { publicJobWhere } from '@/lib/jobs';
 import { INDEX_JOB_THRESHOLD, getSiteUrl, PUBLIC_REVALIDATE_SECONDS, slugify } from '@/lib/site';
 
-function urlset(urls: string[]) {
+function urlset(urls: string[], lastmod?: string) {
+  const mod = lastmod ? `<lastmod>${lastmod}</lastmod>` : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
+${urls.map((url) => `  <url><loc>${url}</loc>${mod}</url>`).join('\n')}
 </urlset>`;
 }
 
@@ -68,5 +69,6 @@ export async function GET() {
   }
 
   const urls = await withDb(loadCategorySitemapUrls, []);
-  return new Response(urlset(urls), { headers: snapshotXmlHeaders() });
+  const lastmod = new Date().toISOString().slice(0, 10);
+  return new Response(urlset(urls, lastmod), { headers: snapshotXmlHeaders() });
 }

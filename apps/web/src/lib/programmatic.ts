@@ -127,47 +127,54 @@ export function skillCopy(label: string): { h1: string; title: string; descripti
 /** Search-intent titles for high-volume location slugs (matches footer link wording). */
 const LOCATION_SEO: Record<
   string,
-  { titleLabel: string; h1: string; description: (count: number) => string; intro: string }
+  {
+    titleLabel: (count: number) => string;
+    h1: string;
+    description: (count: number) => string;
+    intro: string;
+  }
 > = {
   remote: {
-    titleLabel: 'Remote robotics jobs',
+    titleLabel: (count) =>
+      count > 0 ? `Remote robotics jobs (${count} open)` : 'Remote robotics jobs',
     h1: 'Remote robotics jobs',
     description: (count) =>
       count > 0
-        ? `${count} remote and work-from-home robotics jobs across software, autonomy, and operations. Updated daily from company ATS boards.`
-        : 'Remote and work-from-home robotics jobs across software, autonomy, and operations. Updated daily from company ATS boards.',
+        ? `${count} remote robotics jobs — autonomy, simulation, perception, and fleet ops. Updated daily from public company ATS boards on Robot Jobs Board.`
+        : 'Remote robotics jobs across autonomy, simulation, perception, and fleet ops. Updated daily from public company ATS boards.',
     intro:
-      'Remote robotics roles are usually software-heavy: autonomy stacks, simulation, perception, tooling, and fleet ops that do not need daily lab access. Hardware bring-up and field deployment stay on site more often. This page lists live remote openings pulled from public employer boards so you can compare companies without hopping between Greenhouse, Lever, and Ashby.',
+      'Remote robotics roles are usually software-heavy: autonomy stacks, simulation, perception, tooling, and fleet ops that do not need daily lab access. Hardware bring-up and field deployment stay on site more often. This page lists live remote openings pulled from public employer boards so you can compare companies without hopping between Greenhouse, Lever, and Ashby. Pair it with the US or UK hubs if you also want on-site lab roles.',
   },
   'united-kingdom': {
-    titleLabel: 'UK robotics jobs',
+    titleLabel: (count) => (count > 0 ? `UK robotics jobs (${count} open)` : 'UK robotics jobs'),
     h1: 'UK robotics jobs',
     description: (count) =>
       count > 0
-        ? `${count} robotics jobs in the United Kingdom — London, Oxford, Cambridge, and beyond. AMR, humanoid, drone, and autonomy roles updated daily.`
-        : 'Robotics jobs in the United Kingdom — London, Oxford, Cambridge, and beyond. AMR, humanoid, drone, and autonomy roles updated daily.',
+        ? `${count} UK robotics jobs in London, Oxford, Cambridge, and beyond — AMR, humanoid, drone, and autonomy. Updated daily on Robot Jobs Board.`
+        : 'UK robotics jobs in London, Oxford, Cambridge, and beyond — AMR, humanoid, drone, and autonomy. Updated daily on Robot Jobs Board.',
     intro:
-      'The UK robotics market spans warehouse automation, autonomous vehicles, drones, and humanoid research, with clusters in London, Oxford, Cambridge, and other tech hubs. This page collects live UK robotics jobs from public company career pages so you can compare teams, stacks, and locations in one place. Typical requirements include C++, Python, and ROS 2, with a mix of on site and hybrid roles.',
+      'The UK robotics market spans warehouse automation, autonomous vehicles, drones, and humanoid research, with clusters in London, Oxford, Cambridge, Bristol, and Edinburgh. This page collects live UK robotics jobs from public company career pages so you can compare teams, stacks, and locations in one place. Typical requirements include C++, Python, and ROS 2, with a mix of on-site and hybrid roles. For fully remote software roles, see the remote robotics jobs hub.',
   },
   'united-states': {
-    titleLabel: 'US robotics jobs',
+    titleLabel: (count) => (count > 0 ? `US robotics jobs (${count} open)` : 'US robotics jobs'),
     h1: 'US robotics jobs',
     description: (count) =>
       count > 0
-        ? `${count} robotics jobs in the United States across Bay Area, Boston, Seattle, and more. Updated daily from employer ATS boards.`
-        : 'Robotics jobs in the United States across Bay Area, Boston, Seattle, and more. Updated daily from employer ATS boards.',
+        ? `${count} US robotics jobs across Bay Area, Boston, Seattle, Austin, and more. Humanoids, AMRs, drones — updated daily on Robot Jobs Board.`
+        : 'US robotics jobs across Bay Area, Boston, Seattle, Austin, and more. Humanoids, AMRs, drones — updated daily on Robot Jobs Board.',
     intro:
-      'US robotics hiring is concentrated in the Bay Area, Boston, Seattle, Austin, and defense-heavy hubs. This page lists live United States robotics jobs from public ATS feeds — humanoids, AMRs, drones, and industrial automation — so you can scan titles and locations without checking each company board separately.',
+      'US robotics hiring concentrates in the Bay Area, Boston, Seattle, Austin, Pittsburgh, and defense-heavy hubs. This page lists live United States robotics jobs from public ATS feeds — humanoids, AMRs, drones, industrial automation, and AV stacks — so you can scan titles and locations without checking each company board separately. Filter further by company or jump to remote robotics jobs for software-only openings.',
   },
   canada: {
-    titleLabel: 'Canada robotics jobs',
+    titleLabel: (count) =>
+      count > 0 ? `Canada robotics jobs (${count} open)` : 'Canada robotics jobs',
     h1: 'Canada robotics jobs',
     description: (count) =>
       count > 0
-        ? `${count} robotics jobs in Canada, including Toronto, Vancouver, and Montreal. Updated daily from company career pages.`
-        : 'Robotics jobs in Canada, including Toronto, Vancouver, and Montreal. Updated daily from company career pages.',
+        ? `${count} Canada robotics jobs in Toronto, Montreal, Vancouver, and Waterloo. Updated daily from company ATS boards.`
+        : 'Canada robotics jobs in Toronto, Montreal, Vancouver, and Waterloo. Updated daily from company ATS boards.',
     intro:
-      'Canadian robotics hiring sits mainly in Toronto, Montreal, Vancouver, and Waterloo, spanning AV software, warehouse robots, and research labs. This page aggregates live Canada robotics jobs from public employer boards so you can compare openings without hopping between ATS sites.',
+      'Canadian robotics hiring sits mainly in Toronto, Montreal, Vancouver, and Waterloo, spanning AV software, warehouse robots, and research labs. This page aggregates live Canada robotics jobs from public employer boards so you can compare openings without hopping between ATS sites. Cross-check the US hub if you are also open to Bay Area or Boston roles.',
   },
 };
 
@@ -179,7 +186,7 @@ export function locationPageCopy(
   const preset = LOCATION_SEO[placeSlug];
   if (preset) {
     return {
-      title: preset.titleLabel,
+      title: preset.titleLabel(jobCount),
       h1: preset.h1,
       description: preset.description(jobCount).slice(0, 160),
       intro: preset.intro,
@@ -187,13 +194,13 @@ export function locationPageCopy(
   }
   const roles = jobCount === 1 ? '1 live robotics job' : jobCount > 0 ? `${jobCount} live robotics jobs` : 'Live robotics jobs';
   return {
-    title: `${fallbackLabel} robotics jobs`,
+    title: jobCount > 0 ? `${fallbackLabel} robotics jobs (${jobCount} open)` : `${fallbackLabel} robotics jobs`,
     h1: `${fallbackLabel} robotics jobs`,
     description: `${roles} in ${fallbackLabel}, including AMR, humanoid, drone, and industrial roles. Updated from public company boards.`.slice(
       0,
       160,
     ),
-    intro: `${fallbackLabel} is a recurring location in robotics hiring, from warehouse AMR deployments to humanoid labs and drone programs. This page collects live jobs tied to that city, region, or country so you can compare teams without bouncing between boards. Typical stacks include C++, Python, and ROS 2, with on site hardware work more common than fully remote software.`,
+    intro: `${fallbackLabel} is a recurring location in robotics hiring, from warehouse AMR deployments to humanoid labs and drone programs. This page collects live jobs tied to that city, region, or country so you can compare teams without bouncing between boards. Typical stacks include C++, Python, and ROS 2, with on-site hardware work more common than fully remote software.`,
   };
 }
 

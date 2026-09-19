@@ -1,0 +1,28 @@
+Robot Jobs Board — off-site impressions checklist
+=================================================
+
+Run weekly after the board ingest deploys. Prefer hub URLs (homepage, /companies/{slug},
+/locations/united-states-robotics-jobs) over deep job URLs.
+
+1) Social (3–5 posts / week)
+   - LinkedIn + X: share US or company hubs with framing like
+     "Live robotics jobs aggregated from public ATS boards — US / UK / remote."
+   - Example: https://www.robotjobsboard.com/locations/united-states-robotics-jobs
+   - Example: https://www.robotjobsboard.com/companies/figure
+   - Example: https://www.robotjobsboard.com/
+
+2) Niche links (1–2 solid placements beat mass directories)
+   - Robotics Discord / Slack career channels: pin or post the US + remote hubs.
+   - University robotics club career pages: offer a "live robotics jobs" link.
+   - Niche job/tool directories that accept aggregators (only reputable ones).
+
+3) After posting
+   - Note the URL and date here or in your notes.
+   - Recheck GSC impressions in 2–4 weeks for company + location hubs.
+
+Draft post copy
+---------------
+Looking for robotics roles without hopping ATS boards? Robot Jobs Board lists live
+openings from companies like Figure, Waymo, and Agility — filter US, UK, or remote:
+
+https://www.robotjobsboard.com/

@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: '%s – Robot Jobs Board',
   },
   description:
-    'Robotics jobs board for engineers, technicians, and operators in the United States, United Kingdom, Canada, Australia, and Europe.',
+    'Robotics jobs board for engineers, technicians, and operators — United States, United Kingdom, Canada, and remote roles updated from company ATS boards.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   icons: {
     icon: [

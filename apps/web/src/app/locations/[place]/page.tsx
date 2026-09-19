@@ -48,5 +48,17 @@ export default async function LocationJobsPage({ params }: PageProps<'/locations
   if (!resolved) notFound();
   const listing = await loadListing(resolved.filter, `place-${place}`);
   const copy = locationPageCopy(place, resolved.label, listing.total);
-  return <SeoJobList h1={copy.h1} intro={copy.intro} jobs={listing.jobs} indexable={listing.indexable} />;
+  const path = `/locations/${raw}`;
+  return (
+    <SeoJobList
+      h1={copy.h1}
+      intro={copy.intro}
+      jobs={listing.jobs}
+      indexable={listing.indexable}
+      total={listing.total}
+      breadcrumbLabel={copy.h1}
+      path={path}
+      description={copy.description}
+    />
+  );
 }

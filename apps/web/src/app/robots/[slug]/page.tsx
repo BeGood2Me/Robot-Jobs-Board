@@ -49,5 +49,17 @@ export default async function DomainJobsPage({ params }: PageProps<'/robots/[slu
   const filter = { kind: 'domain' as const, domainId: domain.id };
   const listing = await loadListing(filter, `domain-${domain.id}`);
   const copy = domainCopy(domain.name, domain.description);
-  return <SeoJobList h1={copy.h1} intro={copy.intro} jobs={listing.jobs} indexable={listing.indexable} />;
+  const path = `/robots/${slug}`;
+  return (
+    <SeoJobList
+      h1={copy.h1}
+      intro={copy.intro}
+      jobs={listing.jobs}
+      indexable={listing.indexable}
+      total={listing.total}
+      breadcrumbLabel={copy.h1}
+      path={path}
+      description={copy.description}
+    />
+  );
 }

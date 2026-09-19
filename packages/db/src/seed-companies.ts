@@ -77,7 +77,7 @@ export const seedCompanies: SeedCompany[] = [
     'figure',
     'https://www.figure.ai',
     'Figure builds general purpose humanoid robots for commercial work and the home.',
-    'Figure is a San Jose humanoid robotics company building Figure 03, a general purpose robot for warehouses, factories, and homes. Teams hire across perception, controls, hardware, fleet operations, and on site deployment. Robot Jobs Board lists Figure jobs in the United States, United Kingdom, and Europe.',
+    'Figure is a San Jose humanoid company (Figure 03) with live openings in perception, controls, hardware, and fleet ops. Robot Jobs Board aggregates Figure jobs from their public ATS so you can compare titles and US locations in one place.',
     'figureai',
   ),
   greenhouse(
@@ -85,7 +85,7 @@ export const seedCompanies: SeedCompany[] = [
     'apptronik',
     'https://www.apptronik.com',
     'Apptronik designs Apollo, an AI powered humanoid for manufacturing and logistics.',
-    'Apptronik is an Austin based humanoid company building Apollo for manufacturing, 3PL, and warehouse work. Hiring spans mechanical design, controls, applied AI, and production engineering. Browse Robot Jobs Board for Apptronik openings in the United States.',
+    'Apptronik (Austin) posts live Apollo humanoid openings across mechanical, controls, applied AI, and production. Browse aggregated Apptronik jobs on Robot Jobs Board instead of hunting their ATS alone.',
     'apptronik',
   ),
   greenhouse(
@@ -93,7 +93,7 @@ export const seedCompanies: SeedCompany[] = [
     'anduril',
     'https://www.anduril.com',
     'Anduril builds autonomous defense systems including aerial drones and command software.',
-    'Anduril Industries develops autonomous air, land, and maritime systems for defense customers. Software, hardware, and robotics teams hire across the United States for aerial autonomy, perception, and systems integration. Use Robot Jobs Board to find Anduril drone, autonomy, and robotics software jobs in the USA, UK, and Europe.',
+    'Anduril Industries hires for autonomous air, land, and maritime systems — live autonomy, perception, and robotics software openings across the US. Robot Jobs Board lists Anduril jobs aggregated from their public career board.',
     'andurilindustries',
   ),
   greenhouse(
@@ -101,7 +101,7 @@ export const seedCompanies: SeedCompany[] = [
     'locus-robotics',
     'https://locusrobotics.com',
     'Locus Robotics builds autonomous mobile robots and fleet software for warehouse fulfillment.',
-    'Locus Robotics is a Wilmington, Massachusetts AMR company whose LocusONE platform runs collaborative warehouse robots for picking, replenishment, and sortation. Roles cover deployment engineering, robotics software, and customer success across North America and Europe. Robot Jobs Board only lists Locus jobs based in the United States, United Kingdom, or other European countries.',
+    'Locus Robotics (Wilmington, MA) posts live AMR and LocusONE openings for deployment, robotics software, and customer success. Compare US and Europe Locus jobs aggregated on Robot Jobs Board.',
     'locusrobotics',
   ),
   greenhouse(
@@ -109,7 +109,7 @@ export const seedCompanies: SeedCompany[] = [
     'agility-robotics',
     'https://www.agilityrobotics.com',
     'Agility Robotics builds Digit, a bipedal robot for warehouse and logistics work.',
-    'Agility Robotics is an Oregon humanoid company commercializing Digit for material handling. Engineering, manufacturing, and AI teams hire in Salem, Pittsburgh, and the Bay Area. Search Robot Jobs Board for Digit hardware, controls, and deployment jobs in the United States.',
+    'Agility Robotics commercializes Digit with live openings in Salem, Pittsburgh, and the Bay Area. Compare Digit hardware, controls, and deployment jobs aggregated on Robot Jobs Board.',
     'agilityrobotics',
   ),
   greenhouse(
@@ -141,7 +141,7 @@ export const seedCompanies: SeedCompany[] = [
     'carbon-robotics',
     'https://carbonrobotics.com',
     'Carbon Robotics builds LaserWeeder, an autonomous agricultural robot for in row weeding.',
-    'Carbon Robotics is a Seattle field robotics company using computer vision and high power lasers to kill weeds. Mechanical, software, and farm operations jobs are typically based in the United States. Search Robot Jobs Board for Carbon Robotics agricultural robot jobs.',
+    'Carbon Robotics (Seattle) hires for LaserWeeder field robotics — vision, mechanical, and farm ops. See live Carbon Robotics agricultural robot jobs aggregated on Robot Jobs Board.',
     'carbonrobotics',
   ),
   greenhouse(
@@ -261,7 +261,7 @@ export const seedCompanies: SeedCompany[] = [
     'waymo',
     'https://waymo.com',
     'Waymo builds the Waymo Driver for robotaxis and autonomous delivery.',
-    'Waymo, an Alphabet company, operates driverless ride hail in US cities and develops autonomy for trucks and delivery. Software, hardware, and operations teams hire primarily in California and Arizona. Search Robot Jobs Board for Waymo autonomy and robotics jobs in the USA, UK, and Europe.',
+    'Waymo operates driverless ride hail and autonomy R&D with live openings in California and Arizona. Robot Jobs Board aggregates Waymo autonomy and robotics jobs from their public ATS for easy comparison.',
     'waymo',
   ),
   ashby(
@@ -269,7 +269,7 @@ export const seedCompanies: SeedCompany[] = [
     '1x',
     'https://www.1x.tech',
     '1X builds humanoid robots for home and commercial work, including NEO and EVE.',
-    '1X is a humanoid robotics company with engineering in the United States and Europe. Roles cover hardware, learning, and robot operations. Robot Jobs Board lists 1X jobs based in the USA, UK, or other European countries.',
+    '1X builds NEO and EVE humanoids with live hardware, learning, and robot ops openings in the US and Europe. Compare 1X jobs aggregated on Robot Jobs Board from their public career page.',
     '1x',
   ),
   ashby(
@@ -365,7 +365,7 @@ export const seedCompanies: SeedCompany[] = [
     'shield-ai',
     'https://www.shield.ai',
     'Shield AI builds autonomous aircraft and Hivemind software for defense missions.',
-    'Shield AI is a US autonomy company flying uncrewed aircraft with GPS denied navigation. Aerospace, autonomy, and software teams hire across the United States. Browse Robot Jobs Board for Shield AI drone and aerial robotics jobs in the USA, UK, and Europe.',
+    'Shield AI flies uncrewed aircraft with GPS-denied autonomy — live aerospace and software openings across the US. Browse Shield AI drone jobs aggregated on Robot Jobs Board.',
     'shieldai',
   ),
   lever(
@@ -397,7 +397,7 @@ export const seedCompanies: SeedCompany[] = [
     'zoox',
     'https://zoox.com',
     'Zoox, an Amazon company, builds purpose designed robotaxis and autonomy software.',
-    'Zoox designs a bidirectional robotaxi and the stack that drives it, with engineering in Foster City. Autonomy, vehicle, and safety teams hire in the United States. Browse Robot Jobs Board for Zoox robotaxi and AV jobs.',
+    'Zoox (Foster City) hires for purpose-built robotaxis — live autonomy, vehicle, and safety openings. Compare Zoox AV jobs aggregated on Robot Jobs Board from their public careers page.',
     'zoox',
   ),
   lever(
@@ -457,7 +457,7 @@ export const seedCompanies: SeedCompany[] = [
     website: 'https://bostondynamics.com',
     description: 'Boston Dynamics builds Atlas, Spot, and Stretch robots for research, inspection, and warehouses.',
     seoIntro:
-      'Boston Dynamics is a Waltham robotics company known for Atlas humanoids, Spot quadrupeds, and Stretch warehouse robots. Mechanical, controls, and AI teams hire in Massachusetts and related US sites. Search Robot Jobs Board for Boston Dynamics humanoid, field, and AMR jobs in the USA, UK, and Europe.',
+      'Boston Dynamics (Waltham) hires for Atlas, Spot, and Stretch — live mechanical, controls, and AI openings. Robot Jobs Board aggregates Boston Dynamics jobs from Workday so you can scan titles without the careers portal alone.',
     sourceSystem: SourceSystem.workday,
     sourceIdentifier: 'bostondynamics',
     config: {
@@ -472,7 +472,7 @@ export const seedCompanies: SeedCompany[] = [
     website: 'https://www.autostoresystem.com',
     description: 'AutoStore builds cube storage robots and software for dense warehouse fulfillment.',
     seoIntro:
-      'AutoStore is a warehouse robotics company whose robots work a grid of bins in fulfillment centers across Europe and North America. Electronics, product, and deployment teams hire in Norway, the United States, and other European countries. Robot Jobs Board lists AutoStore warehouse robot jobs in the USA, UK, and Europe.',
+      'AutoStore warehouse robotics roles span Norway, the US, and Europe — electronics, product, and deployment. Browse live AutoStore jobs aggregated on Robot Jobs Board from their public Workday board.',
     sourceSystem: SourceSystem.workday,
     sourceIdentifier: 'autostore',
     config: {

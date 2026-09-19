@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { JobBoard } from '@/components/job-board';
 import { filtersFromSearchParams, isDefaultBoardListing } from '@/lib/job-filter-utils';
+import { loadPublicSnapshot } from '@/lib/snapshot/load';
 
 /** Filtered homepage queries — rewritten from `/?…` so `/` stays ISR-cached. */
 export const dynamic = 'force-dynamic';
@@ -15,11 +16,19 @@ export async function generateMetadata({
   const params = await searchParams;
   const filters = filtersFromSearchParams(params);
   const indexable = isDefaultBoardListing(filters);
+  const snapshot = await loadPublicSnapshot();
+  const count = snapshot?.jobs.length ?? 0;
+  const countLabel = count > 0 ? `${count.toLocaleString('en-US')} open roles. ` : '';
+  const title = 'Robotics jobs board';
+  const description =
+    `${countLabel}Robotics jobs board for engineers and technicians — US, UK, Canada, and remote. Updated daily from company ATS boards; filter by robot type and apply on the original posting.`.slice(
+      0,
+      160,
+    );
 
   return {
-    title: 'Robotics jobs board',
-    description:
-      'Robotics jobs board with open roles in the United States, United Kingdom, Canada, Australia, and Europe. Filter by location, robot type, and experience, then apply on the original posting.',
+    title,
+    description,
     alternates: { canonical: '/' },
     robots: indexable ? undefined : { index: false, follow: true },
   };

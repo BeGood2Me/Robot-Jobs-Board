@@ -487,6 +487,7 @@ export function companyPageJsonLd(company: {
   name: string;
   slug: string;
   description: string;
+  seoIntro?: string | null;
   website: string | null;
   logoUrl: string | null;
   jobs: Array<{ id: string; slug: string; title: string }>;
@@ -496,21 +497,31 @@ export function companyPageJsonLd(company: {
   const site = getSiteUrl();
   const url = `${site}/companies/${company.slug}`;
   const offset = (company.page - 1) * PAGE_SIZE;
+  const pageName =
+    company.total < 1
+      ? `${company.name} careers on Robot Jobs Board`
+      : `${company.name} jobs & careers (${company.total} open roles)`;
+  const pageDescription = (company.seoIntro?.trim() || company.description).replace(/\s+/g, ' ').trim();
+  const organization: Record<string, unknown> = {
+    '@type': 'Organization',
+    name: company.name,
+    url: company.website || url,
+    logo: company.logoUrl || undefined,
+    description: company.description,
+  };
+  if (company.website) {
+    organization.sameAs = [company.website];
+  }
   return {
     '@context': 'https://schema.org',
     '@graph': [
-      {
-        '@type': 'Organization',
-        name: company.name,
-        url: company.website || url,
-        logo: company.logoUrl || undefined,
-        description: company.description,
-      },
+      organization,
       {
         '@type': 'CollectionPage',
-        name: `${company.name} robotics jobs`,
-        description: company.description,
+        name: pageName,
+        description: pageDescription,
         url,
+        mainEntityOfPage: url,
         mainEntity: {
           '@type': 'ItemList',
           numberOfItems: company.total,
@@ -527,7 +538,46 @@ export function companyPageJsonLd(company: {
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Robotics jobs', item: site },
           { '@type': 'ListItem', position: 2, name: 'Companies', item: `${site}/companies` },
-          { '@type': 'ListItem', position: 3, name: company.name, item: url },
+          { '@type': 'ListItem', position: 3, name: `${company.name} jobs`, item: url },
+        ],
+      },
+    ],
+  };
+}
+
+export function locationPageJsonLd(input: {
+  label: string;
+  path: string;
+  description: string;
+  total: number;
+  jobs: Array<{ id: string; slug: string; title: string }>;
+}) {
+  const site = getSiteUrl();
+  const url = `${site}${input.path.startsWith('/') ? input.path : `/${input.path}`}`;
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        name: input.label,
+        description: input.description,
+        url,
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: input.total,
+          itemListElement: input.jobs.slice(0, 20).map((job, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            url: `${site}/jobs/${job.id}/${job.slug}`,
+            name: job.title,
+          })),
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Robotics jobs', item: site },
+          { '@type': 'ListItem', position: 2, name: input.label, item: url },
         ],
       },
     ],

@@ -34,19 +34,30 @@ export function jobPageDescription(job: JobSeoFields): string {
 }
 
 export function companyPageTitle(name: string, total: number): string {
+  if (total < 1) return `${name} careers on Robot Jobs Board`;
   const roles = total === 1 ? '1 open role' : `${total} open roles`;
   return `${name} jobs & careers (${roles})`;
 }
 
-export function companyPageDescription(name: string, total: number, description: string): string {
-  const roles = total === 1 ? '1 live robotics job' : `${total} live robotics jobs`;
-  const lead = `${name} careers: browse ${roles} on Robot Jobs Board. Compare titles and locations, then apply on the company's original posting.`;
-  const tail = description.replace(/\s+/g, ' ').trim();
-  return `${lead} ${tail}`.slice(0, 160);
+export function companyPageDescription(
+  name: string,
+  total: number,
+  description: string,
+  seoIntro?: string | null,
+): string {
+  const source = (seoIntro?.trim() || description).replace(/\s+/g, ' ').trim();
+  if (total < 1) {
+    return `${name} careers on Robot Jobs Board. ${source}`.slice(0, 160);
+  }
+  const roles = total === 1 ? '1 live opening' : `${total} live openings`;
+  return `${name} careers — ${roles} aggregated on Robot Jobs Board. Compare titles and locations, then apply on the original posting. ${source}`.slice(
+    0,
+    160,
+  );
 }
 
 export function companyPageIntro(name: string, total: number, description: string, seoIntro?: string | null): string {
   if (seoIntro?.trim()) return seoIntro;
-  const roles = total === 1 ? '1 open role' : `${total} open roles`;
+  const roles = total === 1 ? '1 open role' : total < 1 ? 'robotics roles' : `${total} open roles`;
   return `${name} posts robotics roles on Greenhouse, Lever, Ashby, and other company boards. Robot Jobs Board aggregates ${roles} in one place so you can compare titles, locations, and stacks without checking each careers page separately. ${description}`;
 }

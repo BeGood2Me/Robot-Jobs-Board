@@ -712,3 +712,49 @@ export async function getCompanyJobsPage(companyId: string, requestedPage: numbe
     { total: 0, jobs: [] as JobCardData[] },
   );
 }
+
+export type RelatedCompany = {
+  name: string;
+  slug: string;
+  openJobCount: number;
+};
+
+const loadRelatedCompaniesCached = unstable_cache(
+  async (slug: string, take: number) => {
+    const companies = await prisma.company.findMany({
+      where: { slug: { not: slug } },
+      select: {
+        name: true,
+        slug: true,
+        _count: { select: { jobs: { where: publicJobWhere } } },
+      },
+    });
+    return companies
+      .map((company) => ({
+        name: company.name,
+        slug: company.slug,
+        openJobCount: company._count.jobs,
+      }))
+      .filter((company) => company.openJobCount > 0)
+      .sort((a, b) => b.openJobCount - a.openJobCount || a.name.localeCompare(b.name))
+      .slice(0, take);
+  },
+  ['related-companies'],
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
+);
+
+export async function getRelatedCompanies(slug: string, take = 5): Promise<RelatedCompany[]> {
+  const snapshot = await loadPublicSnapshot();
+  if (snapshot) {
+    return snapshot.companies
+      .filter((company) => company.slug !== slug && company.openJobCount > 0)
+      .sort((a, b) => b.openJobCount - a.openJobCount || a.name.localeCompare(b.name))
+      .slice(0, take)
+      .map((company) => ({
+        name: company.name,
+        slug: company.slug,
+        openJobCount: company.openJobCount,
+      }));
+  }
+  return withDb(() => loadRelatedCompaniesCached(slug, take), []);
+}

@@ -40,10 +40,19 @@ function blogPostsForSitemap(contentDir: string): Array<{ slug: string; publishe
     .filter(Boolean) as Array<{ slug: string; publishedAt: string; updatedAt?: string }>;
 }
 
-function urlset(urls: string[]) {
+function urlEntry(loc: string, lastmod?: string) {
+  if (lastmod) {
+    return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod></url>`;
+  }
+  return `  <url><loc>${loc}</loc></url>`;
+}
+
+function urlset(entries: Array<string | { loc: string; lastmod?: string }>) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
+${entries
+  .map((entry) => (typeof entry === 'string' ? urlEntry(entry) : urlEntry(entry.loc, entry.lastmod)))
+  .join('\n')}
 </urlset>`;
 }
 
@@ -97,14 +106,19 @@ export function writePublicSnapshotFiles(snapshot: PublicBoardSnapshot, outDir: 
   // Keep them discoverable via company pages; only sitemap durable hub URLs here.
   writeFileSync(join(outDir, 'sitemap-jobs.xml'), urlset([]), 'utf8');
 
-  const categoryUrls = [`${site}/`];
+  const boardLastmod = snapshot.generatedAt.slice(0, 10);
+  const categoryUrls: Array<{ loc: string; lastmod: string }> = [
+    { loc: `${site}/`, lastmod: boardLastmod },
+  ];
   for (const domain of snapshot.domains) {
     if (domain.openJobCount >= INDEX_JOB_THRESHOLD) {
-      categoryUrls.push(`${site}/robots/${domain.slug}-jobs`);
+      categoryUrls.push({ loc: `${site}/robots/${domain.slug}-jobs`, lastmod: boardLastmod });
     }
   }
   const remoteCount = jobs.filter((job) => job.isRemote).length;
-  if (remoteCount >= INDEX_JOB_THRESHOLD) categoryUrls.push(`${site}/locations/remote-robotics-jobs`);
+  if (remoteCount >= INDEX_JOB_THRESHOLD) {
+    categoryUrls.push({ loc: `${site}/locations/remote-robotics-jobs`, lastmod: boardLastmod });
+  }
 
   const cityCounts = new Map<string, number>();
   const countryCounts = new Map<string, number>();
@@ -113,16 +127,39 @@ export function writePublicSnapshotFiles(snapshot: PublicBoardSnapshot, outDir: 
     if (job.country) countryCounts.set(job.country, (countryCounts.get(job.country) ?? 0) + 1);
   }
   for (const [city, count] of cityCounts) {
-    if (count >= INDEX_JOB_THRESHOLD) categoryUrls.push(`${site}/locations/${slugify(city)}-robotics-jobs`);
+    if (count >= INDEX_JOB_THRESHOLD) {
+      categoryUrls.push({
+        loc: `${site}/locations/${slugify(city)}-robotics-jobs`,
+        lastmod: boardLastmod,
+      });
+    }
   }
   for (const [country, count] of countryCounts) {
-    if (count >= INDEX_JOB_THRESHOLD) categoryUrls.push(`${site}/locations/${slugify(country)}-robotics-jobs`);
+    if (count >= INDEX_JOB_THRESHOLD) {
+      categoryUrls.push({
+        loc: `${site}/locations/${slugify(country)}-robotics-jobs`,
+        lastmod: boardLastmod,
+      });
+    }
   }
   writeFileSync(join(outDir, 'sitemap-categories.xml'), urlset(categoryUrls), 'utf8');
 
+  const newestByCompany = new Map<string, string>();
+  for (const job of jobs) {
+    const stamp = (job.postedAt ?? job.createdAt).slice(0, 10);
+    const prev = newestByCompany.get(job.companyId);
+    if (!prev || stamp > prev) newestByCompany.set(job.companyId, stamp);
+  }
+
   writeFileSync(
     join(outDir, 'sitemap-companies.xml'),
-    urlset([`${site}/companies`, ...snapshot.companies.map((company) => `${site}/companies/${company.slug}`)]),
+    urlset([
+      { loc: `${site}/companies`, lastmod: boardLastmod },
+      ...snapshot.companies.map((company) => ({
+        loc: `${site}/companies/${company.slug}`,
+        lastmod: newestByCompany.get(company.id) ?? boardLastmod,
+      })),
+    ]),
     'utf8',
   );
 
