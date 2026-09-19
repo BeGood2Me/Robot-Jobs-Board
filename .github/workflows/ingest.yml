@@ -123,25 +123,9 @@ jobs:
           echo "Failed to push snapshot after retries"
           exit 1
 
-      # Snapshot commits are ignored by Vercel Git (see vercel.json ignoreCommand)
-      # so this hook is the single production deploy for ingest — avoids double
-      # Function Storage growth from Git webhook + deploy hook on the same SHA.
-      - name: Trigger Vercel production deploy
-        if: steps.freshness.outputs.skip != 'true' && steps.commit.outputs.pushed == 'true'
-        env:
-          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-        run: |
-          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
-            echo "VERCEL_DEPLOY_HOOK_URL secret is not set"
-            exit 1
-          fi
-          # Give Git a moment to expose the new commit to Vercel's Git integration.
-          sleep 8
-          echo "Triggering Vercel deploy hook…"
-          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
-          echo
-          echo "Deploy hook accepted"
-
+      # Snapshot pushes deploy via Vercel Git. Do not also fire the deploy hook —
+      # ignoreCommand used to skip Git builds for these commits, which canceled
+      # both the Git build and the hook, leaving production on a stale snapshot.
       - name: Revalidate Next.js board cache
         if: steps.freshness.outputs.skip != 'true' && steps.commit.outputs.pushed == 'true'
         env:
@@ -153,9 +137,9 @@ jobs:
             echo "CRON_SECRET secret is not set — skipping on-demand revalidate"
             exit 0
           fi
-          # Wait for the deploy hook build to finish promoting static snapshot files.
+          # Wait for the Vercel Git production build to promote static snapshot files.
           echo "Waiting for production deploy before cache bust…"
-          sleep 90
+          sleep 120
           for attempt in 1 2 3 4 5; do
             if curl -fsS -X POST "$SITE_URL/api/revalidate" \
               -H "Authorization: Bearer $CRON_SECRET" \
