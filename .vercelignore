@@ -1,0 +1,5 @@
+# Local snapshot bodies — served from Neon in production; do not upload to Vercel.
+apps/web/public/snapshot/jobs
+apps/web/public/snapshot/**/*.json.gz
+.env*.local
+.cron_secret.tmp
