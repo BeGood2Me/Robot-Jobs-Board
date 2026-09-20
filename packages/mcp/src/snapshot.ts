@@ -2,7 +2,7 @@ import { gunzipSync } from 'node:zlib';
 import { getSiteUrl } from './api';
 
 const SNAPSHOT_CDN =
-  'https://cdn.jsdelivr.net/gh/BeGood2Me/Robot-Jobs-Board@snapshot-data/snapshot';
+  'https://raw.githubusercontent.com/BeGood2Me/Robot-Jobs-Board/snapshot-data/snapshot';
 
 export type SnapshotJob = {
   id: string;

@@ -34,7 +34,7 @@ jobs:
         if: github.event_name == 'schedule'
         run: |
           set -euo pipefail
-          CDN="https://cdn.jsdelivr.net/gh/BeGood2Me/Robot-Jobs-Board@snapshot-data/snapshot/manifest.json"
+          CDN="https://raw.githubusercontent.com/BeGood2Me/Robot-Jobs-Board/snapshot-data/snapshot/manifest.json"
           if curl -fsSL "$CDN" -o /tmp/manifest.json; then
             AGE_HOURS=$(node -e "const m=require('/tmp/manifest.json'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
             echo "Snapshot age: ${AGE_HOURS}h"

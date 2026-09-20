@@ -1,7 +1,7 @@
 const DEFAULT_CDN =
-  'https://cdn.jsdelivr.net/gh/BeGood2Me/Robot-Jobs-Board@snapshot-data/snapshot';
+  'https://raw.githubusercontent.com/BeGood2Me/Robot-Jobs-Board/snapshot-data/snapshot';
 
-/** Where board.json.gz / bodies.json.gz / sitemaps are loaded (GitHub/jsDelivr — not Neon). */
+/** Where board.json.gz / bodies.json.gz / sitemaps are loaded (GitHub — not Neon). */
 export function resolveSnapshotBaseUrl(options?: { port?: string }): string {
   const fromEnv =
     process.env.SNAPSHOT_BASE_URL?.trim() || process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL?.trim();
