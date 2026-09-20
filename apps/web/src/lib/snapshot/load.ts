@@ -46,9 +46,9 @@ function snapshotDataBaseUrl(): string {
 }
 
 /**
- * Fetch snapshot bytes without Next Data Cache (`unstable_cache` / cached fetch).
- * board.json.gz + bodies.json.gz exceed the 2MB Data Cache item limit and otherwise
- * fail SSG, which then hammers Neon and floods build logs with prisma:error.
+ * Fetch snapshot bytes.
+ * - board.json.gz (~300KB): Next Data Cache OK (under 2MB limit) so location SSG stays static.
+ * - bodies.json.gz (~5MB): never Data-Cache — exceeds 2MB and would fail / force dynamic.
  */
 async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
   if (process.env.NODE_ENV === 'development') {
@@ -58,10 +58,13 @@ async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
 
   const base = snapshotDataBaseUrl();
   const url = `${base}/${name}`;
+  const large = name === 'bodies.json.gz';
   try {
     const response = await fetch(url, {
       headers: { Accept: 'application/gzip,application/octet-stream,*/*' },
-      cache: 'no-store',
+      ...(large
+        ? { cache: 'no-store' as const }
+        : { next: { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] } }),
     });
     if (!response.ok) return null;
     return Buffer.from(await response.arrayBuffer());
