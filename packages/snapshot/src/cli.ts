@@ -26,7 +26,7 @@ async function main() {
   }
 
   // Neon metadata upload is opt-in only — free-tier transfer caps suspend compute.
-  // Production source of truth is the GitHub snapshot-data branch / jsDelivr.
+  // Production source of truth is the GitHub snapshot-data branch.
   if (process.env.SNAPSHOT_UPLOAD_DB === '1') {
     try {
       const db = await uploadSnapshotDirToDb(outDir);

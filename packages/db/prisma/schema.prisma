@@ -164,7 +164,7 @@ model SourceFeedConfig {
   @@index([sourceSystem])
 }
 
-/// Manifest + sitemaps only (board/bodies on GitHub snapshot-data branch / jsDelivr).
+/// Manifest + sitemaps only (board/bodies on GitHub snapshot-data branch).
 model PublicSnapshot {
   id                String   @id @default("current")
   generatedAt       DateTime

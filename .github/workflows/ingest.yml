@@ -84,7 +84,7 @@ jobs:
           echo "exported=true" >> "$GITHUB_OUTPUT"
           echo "job_count=$JOB_COUNT" >> "$GITHUB_OUTPUT"
 
-      - name: Publish snapshot to GitHub CDN branch (jsDelivr)
+      - name: Publish snapshot to GitHub snapshot-data branch
         id: cdn
         if: steps.freshness.outputs.skip != 'true' && steps.export.outputs.exported == 'true'
         env:
