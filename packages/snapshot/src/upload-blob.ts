@@ -1,10 +1,20 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
-import { del, list, put } from '@vercel/blob';
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { put } from '@vercel/blob';
 
 const PREFIX = 'snapshot';
-const CONCURRENCY = 4;
 const MAX_RETRIES = 8;
+
+/** Only these files go to Blob — keeps Advanced Operations under Hobby limits. */
+const BLOB_FILES = [
+  'manifest.json',
+  'board.json.gz',
+  'bodies.json.gz',
+  'sitemap-jobs.xml',
+  'sitemap-categories.xml',
+  'sitemap-companies.xml',
+  'sitemap-blog.xml',
+] as const;
 
 function contentTypeFor(path: string): string {
   if (path.endsWith('.json.gz')) return 'application/gzip';
@@ -13,21 +23,9 @@ function contentTypeFor(path: string): string {
   return 'application/octet-stream';
 }
 
-function cacheControlFor(pathname: string): number {
-  // Board index + manifest change every ingest; job bodies are immutable per id until replaced.
-  if (pathname.endsWith('/manifest.json') || pathname.endsWith('/board.json.gz')) return 60;
-  if (pathname.includes('/jobs/')) return 3600;
+function cacheControlFor(name: string): number {
+  if (name === 'manifest.json' || name === 'board.json.gz' || name === 'bodies.json.gz') return 60;
   return 300;
-}
-
-function walkFiles(dir: string): string[] {
-  const out: string[] = [];
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) out.push(...walkFiles(full));
-    else if (name !== '.gitkeep') out.push(full);
-  }
-  return out;
 }
 
 async function sleep(ms: number) {
@@ -59,30 +57,6 @@ async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
   throw lastError;
 }
 
-async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-  let i = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (i < items.length) {
-      const idx = i++;
-      await fn(items[idx]!);
-    }
-  });
-  await Promise.all(workers);
-}
-
-async function listAll(prefix: string): Promise<Array<{ url: string; pathname: string }>> {
-  const blobs: Array<{ url: string; pathname: string }> = [];
-  let cursor: string | undefined;
-  do {
-    const page = await list({ prefix, cursor, limit: 1000 });
-    for (const blob of page.blobs) {
-      blobs.push({ url: blob.url, pathname: blob.pathname });
-    }
-    cursor = page.hasMore ? page.cursor : undefined;
-  } while (cursor);
-  return blobs;
-}
-
 export type UploadSnapshotResult = {
   uploaded: number;
   deleted: number;
@@ -91,24 +65,28 @@ export type UploadSnapshotResult = {
   jobCount: number;
 };
 
-/** Upload a local `public/snapshot` directory to Vercel Blob under `snapshot/`. */
+/**
+ * Upload the small public snapshot index to Vercel Blob.
+ * Does not upload per-job files and does not list/delete orphans (those burn Hobby Advanced Ops).
+ */
 export async function uploadSnapshotDirToBlob(outDir: string): Promise<UploadSnapshotResult> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) {
     throw new Error('BLOB_READ_WRITE_TOKEN is required to upload the public snapshot');
   }
 
-  const files = walkFiles(outDir);
-  if (!files.length) {
-    throw new Error(`No snapshot files found under ${outDir}`);
-  }
-
   let boardUrl = '';
   let uploaded = 0;
 
-  await mapPool(files, CONCURRENCY, async (filePath) => {
-    const rel = relative(outDir, filePath).split(sep).join('/');
-    const pathname = `${PREFIX}/${rel}`;
+  for (const name of BLOB_FILES) {
+    const filePath = join(outDir, name);
+    if (!existsSync(filePath)) {
+      if (name === 'board.json.gz' || name === 'manifest.json' || name === 'bodies.json.gz') {
+        throw new Error(`Required snapshot file missing: ${name}`);
+      }
+      continue;
+    }
+    const pathname = `${PREFIX}/${name}`;
     const body = readFileSync(filePath);
     const result = await withRetry(pathname, () =>
       put(pathname, body, {
@@ -116,35 +94,17 @@ export async function uploadSnapshotDirToBlob(outDir: string): Promise<UploadSna
         token,
         addRandomSuffix: false,
         allowOverwrite: true,
-        contentType: contentTypeFor(pathname),
-        cacheControlMaxAge: cacheControlFor(pathname),
+        contentType: contentTypeFor(name),
+        cacheControlMaxAge: cacheControlFor(name),
       }),
     );
     uploaded += 1;
-    if (uploaded % 100 === 0 || rel === 'board.json.gz' || rel === 'manifest.json') {
-      console.log(`uploaded ${uploaded}/${files.length}: ${rel}`);
-    }
-    if (rel === 'board.json.gz') boardUrl = result.url;
-  });
-
-  if (!boardUrl) {
-    throw new Error('Upload finished but board.json.gz was not found in the local snapshot');
+    console.log(`uploaded ${name}`);
+    if (name === 'board.json.gz') boardUrl = result.url;
   }
 
-  const activePathnames = new Set(
-    files.map((filePath) => {
-      const rel = relative(outDir, filePath).split(sep).join('/');
-      return `${PREFIX}/${rel}`;
-    }),
-  );
-
-  const remote = await listAll(`${PREFIX}/`);
-  const stale = remote.filter((blob) => !activePathnames.has(blob.pathname));
-  if (stale.length) {
-    await del(
-      stale.map((blob) => blob.url),
-      { token },
-    );
+  if (!boardUrl) {
+    throw new Error('Upload finished but board.json.gz was not uploaded');
   }
 
   const board = new URL(boardUrl);
@@ -155,7 +115,7 @@ export async function uploadSnapshotDirToBlob(outDir: string): Promise<UploadSna
 
   return {
     uploaded,
-    deleted: stale.length,
+    deleted: 0,
     snapshotBaseUrl,
     boardUrl,
     jobCount: manifest.jobCount ?? 0,

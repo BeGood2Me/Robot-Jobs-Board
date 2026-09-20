@@ -22,7 +22,7 @@
     "ingest:reclassify": "pnpm --filter @robot-jobs-board/ingestion ingest:reclassify",
     "snapshot:export": "pnpm --filter @robot-jobs-board/snapshot export",
     "snapshot:export:feeds": "pnpm --filter @robot-jobs-board/snapshot export:feeds",
-    "snapshot:upload:blob": "pnpm --filter @robot-jobs-board/snapshot upload:blob",
+    "snapshot:upload": "pnpm --filter @robot-jobs-board/snapshot upload",
     "snapshot:export:feeds:upload": "pnpm --filter @robot-jobs-board/snapshot export:feeds:upload",
     "mcp": "pnpm --filter @robot-jobs-board/mcp start",
     "postinstall": "pnpm db:generate"

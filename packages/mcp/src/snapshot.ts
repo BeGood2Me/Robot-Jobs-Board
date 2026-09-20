@@ -68,6 +68,22 @@ function snapshotBaseUrl(): string {
   return `${getSiteUrl().replace(/\/$/, '')}/snapshot`;
 }
 
+type BodiesCacheEntry = { loadedAt: number; bodies: Record<string, SnapshotJobBody> };
+let bodiesCache: BodiesCacheEntry | null = null;
+
+async function loadBodiesMap(force = false): Promise<Record<string, SnapshotJobBody>> {
+  if (!force && bodiesCache && Date.now() - bodiesCache.loadedAt < CACHE_TTL_MS) {
+    return bodiesCache.bodies;
+  }
+  const response = await fetch(`${snapshotBaseUrl()}/bodies.json.gz`, {
+    headers: { 'User-Agent': 'robot-jobs-board-mcp/0.1', Accept: 'application/gzip,application/json' },
+  });
+  if (!response.ok) return {};
+  const bodies = parseGzipJson<Record<string, SnapshotJobBody>>(Buffer.from(await response.arrayBuffer()));
+  bodiesCache = { loadedAt: Date.now(), bodies };
+  return bodies;
+}
+
 export async function loadBoardSnapshot(force = false): Promise<PublicBoardSnapshot> {
   if (!force && cache && Date.now() - cache.loadedAt < CACHE_TTL_MS) {
     return cache.snapshot;
@@ -90,12 +106,9 @@ export async function loadJobBody(id: string): Promise<SnapshotJobBody | null> {
   const hit = bodyCache.get(id);
   if (hit) return hit;
 
-  const response = await fetch(`${snapshotBaseUrl()}/jobs/${encodeURIComponent(id)}.json.gz`, {
-    headers: { 'User-Agent': 'robot-jobs-board-mcp/0.1', Accept: 'application/gzip,application/json' },
-  });
-  if (!response.ok) return null;
-
-  const body = parseGzipJson<SnapshotJobBody>(Buffer.from(await response.arrayBuffer()));
+  const bodies = await loadBodiesMap();
+  const body = bodies[id];
+  if (!body) return null;
   bodyCache.set(id, body);
   return body;
 }

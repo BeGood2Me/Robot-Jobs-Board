@@ -11,7 +11,7 @@ import { defaultSnapshotOutDir } from './export';
 import { buildCountryFacets } from './filter';
 import { stableEntityId } from './stable-id';
 import type { PublicBoardSnapshot, SnapshotGoneJob, SnapshotJob, SnapshotJobBody } from './types';
-import { SNAPSHOT_JOBS_DIR } from './types';
+import { SNAPSHOT_BODIES_FILE, SNAPSHOT_JOBS_DIR } from './types';
 import { writePublicSnapshotFiles } from './write-snapshot';
 
 const classifier = new RuleBasedClassifier();
@@ -38,7 +38,19 @@ function readPreviousSnapshot(outDir: string): PublicBoardSnapshot | null {
   }
 }
 
-function readJobBody(outDir: string, jobId: string): SnapshotJobBody | null {
+function readBodiesMap(outDir: string): Record<string, SnapshotJobBody> | null {
+  const path = join(outDir, SNAPSHOT_BODIES_FILE);
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(gunzipSync(readFileSync(path)).toString('utf8')) as Record<string, SnapshotJobBody>;
+  } catch {
+    return null;
+  }
+}
+
+function readJobBody(outDir: string, jobId: string, bodies?: Record<string, SnapshotJobBody> | null): SnapshotJobBody | null {
+  if (bodies?.[jobId]) return bodies[jobId]!;
+  // Legacy per-job file (local snapshots before bodies.json.gz).
   const path = join(outDir, SNAPSHOT_JOBS_DIR, `${jobId}.json.gz`);
   if (!existsSync(path)) return null;
   try {
@@ -55,11 +67,12 @@ export function carryForwardCompanyJobs(
   outDir: string,
 ): SnapshotJob[] {
   if (!previous) return [];
+  const bodies = readBodiesMap(outDir);
   return previous.jobs
     .filter((job) => job.company.slug === companySlug)
     .map((job) => {
       if (job.descriptionHtml != null && job.descriptionPlain != null) return job;
-      const body = readJobBody(outDir, job.id);
+      const body = readJobBody(outDir, job.id, bodies);
       return {
         ...job,
         descriptionHtml: body?.descriptionHtml ?? job.descriptionHtml ?? '',

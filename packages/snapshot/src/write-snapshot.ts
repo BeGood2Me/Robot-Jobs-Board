@@ -1,8 +1,8 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import type { PublicBoardSnapshot, SnapshotJob, SnapshotJobBody } from './types';
-import { SNAPSHOT_JOBS_DIR } from './types';
+import { SNAPSHOT_BODIES_FILE } from './types';
 
 const INDEX_JOB_THRESHOLD = 5;
 
@@ -69,27 +69,17 @@ function jobBody(job: SnapshotJob): SnapshotJobBody {
 }
 
 function writeJobBodies(jobs: SnapshotJob[], outDir: string): void {
-  const jobsDir = join(outDir, SNAPSHOT_JOBS_DIR);
-  mkdirSync(jobsDir, { recursive: true });
-  const activeIds = new Set(jobs.map((job) => job.id));
-
-  if (existsSync(jobsDir)) {
-    for (const file of readdirSync(jobsDir)) {
-      if (!file.endsWith('.json.gz')) continue;
-      const id = file.slice(0, -'.json.gz'.length);
-      if (!activeIds.has(id)) unlinkSync(join(jobsDir, file));
-    }
-  }
-
+  const bodies: Record<string, SnapshotJobBody> = {};
   for (const job of jobs) {
-    writeFileSync(
-      join(jobsDir, `${job.id}.json.gz`),
-      gzipSync(Buffer.from(JSON.stringify(jobBody(job)), 'utf8')),
-    );
+    bodies[job.id] = jobBody(job);
   }
+  writeFileSync(
+    join(outDir, SNAPSHOT_BODIES_FILE),
+    gzipSync(Buffer.from(JSON.stringify(bodies), 'utf8')),
+  );
 }
 
-/** Board index without descriptions + per-job body files under `jobs/`. */
+/** Board index without descriptions + one bodies map (Hobby Blob-friendly). */
 export function writePublicSnapshotFiles(snapshot: PublicBoardSnapshot, outDir: string): void {
   const site = snapshot.siteUrl.replace(/\/$/, '');
   const jobs = snapshot.jobs;
@@ -196,6 +186,7 @@ ${posts
         jobCount: jobs.length,
         companyCount: snapshot.companies.length,
         boardIncludesDescriptions: false,
+        bodiesFile: 'bodies.json.gz',
       },
       null,
       2,

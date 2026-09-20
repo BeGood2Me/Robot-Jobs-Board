@@ -163,3 +163,19 @@ model SourceFeedConfig {
   @@index([active])
   @@index([sourceSystem])
 }
+
+/// Slim public board snapshot (board + bodies + sitemaps). Avoids Vercel Blob Advanced Ops.
+model PublicSnapshot {
+  id                String   @id @default("current")
+  generatedAt       DateTime
+  jobCount          Int
+  companyCount      Int
+  manifestJson      String   @db.Text
+  boardGz           Bytes
+  bodiesGz          Bytes
+  sitemapJobs       String   @db.Text
+  sitemapCategories String   @db.Text
+  sitemapCompanies  String   @db.Text
+  sitemapBlog       String   @db.Text
+  updatedAt         DateTime @updatedAt
+}

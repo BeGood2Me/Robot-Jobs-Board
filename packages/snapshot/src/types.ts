@@ -129,4 +129,7 @@ export type JobFilters = {
 
 export const SNAPSHOT_DIR = 'public/snapshot';
 export const SNAPSHOT_BOARD_FILE = 'board.json.gz';
+/** Single gzip map of jobId → body. Prefer this over per-job files (Blob ops). */
+export const SNAPSHOT_BODIES_FILE = 'bodies.json.gz';
+/** @deprecated Local-only legacy layout; Blob uploads no longer use per-job files. */
 export const SNAPSHOT_JOBS_DIR = 'jobs';

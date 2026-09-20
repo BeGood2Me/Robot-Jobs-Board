@@ -29,37 +29,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Skip near-duplicate collisions only. Window is 6h so:
-      # - 07:00 + 10:00 catch-up: catch-up skips if morning already ran
-      # - morning + evening (~13h apart): both still run
-      # - missed morning: catch-up still fires (snapshot from prior evening is >6h)
       - name: Skip schedule if snapshot was just rebuilt
         id: freshness
         if: github.event_name == 'schedule'
         env:
-          SNAPSHOT_BASE_URL: ${{ secrets.SNAPSHOT_BASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
-          BASE="${SNAPSHOT_BASE_URL:-}"
-          if [ -z "$BASE" ]; then
+          if [ -z "${DATABASE_URL:-}" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "SNAPSHOT_BASE_URL unset — running ingest"
+            echo "DATABASE_URL unset — running ingest"
             exit 0
           fi
-          BASE="${BASE%/}"
-          if ! curl -fsS "$BASE/manifest.json" -o /tmp/manifest.json; then
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "Remote manifest missing — running ingest"
-            exit 0
+          # Age check via a tiny node query would need Prisma; use HTTP revalidate target instead.
+          # Prefer running unless a recent manifest is reachable from production.
+          if curl -fsS "https://www.robotjobsboard.com/snapshot/manifest.json" -o /tmp/manifest.json; then
+            AGE_HOURS=$(node -e "const m=require('/tmp/manifest.json'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
+            echo "Snapshot age: ${AGE_HOURS}h"
+            if node -e "const m=require('/tmp/manifest.json'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 6 ? 0 : 1)"; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "Snapshot just rebuilt (<6h) — skipping duplicate schedule"
+              exit 0
+            fi
           fi
-          AGE_HOURS=$(node -e "const m=require('/tmp/manifest.json'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
-          echo "Snapshot age: ${AGE_HOURS}h"
-          if node -e "const m=require('/tmp/manifest.json'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 6 ? 0 : 1)"; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Snapshot just rebuilt (<6h) — skipping duplicate schedule"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
         if: steps.freshness.outputs.skip != 'true'
@@ -70,34 +63,31 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
         if: steps.freshness.outputs.skip != 'true'
-      # Local codegen only — does not connect to Neon.
       - run: pnpm db:generate
         if: steps.freshness.outputs.skip != 'true'
-      - name: Export snapshot and upload to Vercel Blob
+      - name: Export snapshot and upload to Neon
         id: upload
         if: steps.freshness.outputs.skip != 'true'
         env:
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${BLOB_READ_WRITE_TOKEN:-}" ]; then
-            echo "BLOB_READ_WRITE_TOKEN secret is not set"
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "DATABASE_URL secret is not set"
             exit 1
           fi
           pnpm snapshot:export:feeds:upload | tee /tmp/snapshot-upload.log
-          BOARD=$(node -e "const fs=require('fs'); const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/); const row=JSON.parse(lines.at(-1)); if(!row.snapshotBaseUrl||!row.jobCount) process.exit(1); console.log(row.snapshotBaseUrl); console.error(JSON.stringify(row))")
-          JOB_COUNT=$(node -e "const fs=require('fs'); const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/); console.log(JSON.parse(lines.at(-1)).jobCount)")
+          JOB_COUNT=$(node -e "const fs=require('fs'); const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/).filter(Boolean); const row=JSON.parse(lines.reverse().find(l=>l.includes('snapshot.upload.db'))); if(!row||!row.jobCount) process.exit(1); console.log(row.jobCount)")
           if [ "$JOB_COUNT" -lt 1 ]; then
             echo "Refusing empty snapshot (jobCount=$JOB_COUNT)"
             exit 1
           fi
           echo "uploaded=true" >> "$GITHUB_OUTPUT"
           echo "job_count=$JOB_COUNT" >> "$GITHUB_OUTPUT"
-          echo "snapshot_base_url=$BOARD" >> "$GITHUB_OUTPUT"
 
-      # No Vercel deploy — Blob is live immediately. Bust Next.js Data Cache only.
       - name: Revalidate Next.js board cache
         if: steps.freshness.outputs.skip != 'true' && steps.upload.outputs.uploaded == 'true'
         env:

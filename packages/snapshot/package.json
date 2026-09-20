@@ -9,8 +9,9 @@
   "scripts": {
     "export": "tsx src/cli.ts",
     "export:feeds": "tsx src/cli.ts --from-feeds",
-    "upload:blob": "tsx src/cli.ts --upload-only",
-    "export:feeds:upload": "tsx src/cli.ts --from-feeds --upload-blob",
+    "upload": "tsx src/cli.ts --upload-only",
+    "upload:blob": "SNAPSHOT_UPLOAD_BLOB=1 tsx src/cli.ts --upload-only",
+    "export:feeds:upload": "tsx src/cli.ts --from-feeds",
     "test": "vitest run",
     "lint": "echo \"no lint\""
   },

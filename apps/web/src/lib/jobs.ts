@@ -433,10 +433,22 @@ export const getJobById = cache(async (id: string, slug?: string) => {
     }
     if (!job) return null;
     const body = await loadJobBody(job.id);
+    if (body) {
+      return reviveJobDates({
+        ...job,
+        descriptionHtml: body.descriptionHtml ?? '',
+        descriptionPlain: body.descriptionPlain ?? '',
+      }) as unknown as JobWithRelations | null;
+    }
+    // bodies.json.gz missing (or job absent) — fall back to DB for the description.
+    const fromDb = await withDb(() => loadJobByIdCached(job.id), null);
+    if (fromDb && fromDb.isActive && !fromDb.isHidden) {
+      return reviveJobDates(fromDb) as JobWithRelations | null;
+    }
     return reviveJobDates({
       ...job,
-      descriptionHtml: body?.descriptionHtml ?? job.descriptionHtml ?? '',
-      descriptionPlain: body?.descriptionPlain ?? job.descriptionPlain ?? '',
+      descriptionHtml: job.descriptionHtml ?? '',
+      descriptionPlain: job.descriptionPlain ?? '',
     }) as unknown as JobWithRelations | null;
   }
   const job = await withDb(() => loadJobByIdCached(id), null);
