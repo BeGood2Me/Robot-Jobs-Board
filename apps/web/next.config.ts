@@ -37,6 +37,15 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'job-boards.greenhouse.io' },
     ],
   },
+  async rewrites() {
+    const base = (process.env.SNAPSHOT_BASE_URL || process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || '').replace(
+      /\/$/,
+      '',
+    );
+    if (!base) return [];
+    // Keep /snapshot/* on the site origin (MCP, bookmarks) while files live in Blob.
+    return [{ source: '/snapshot/:path*', destination: `${base}/:path*` }];
+  },
   async redirects() {
     return [
       {

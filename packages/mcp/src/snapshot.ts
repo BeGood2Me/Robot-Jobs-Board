@@ -62,12 +62,18 @@ function parseGzipJson<T>(buffer: Buffer): T {
   return JSON.parse(gunzipSync(buffer).toString('utf8')) as T;
 }
 
+function snapshotBaseUrl(): string {
+  const fromEnv = process.env.SNAPSHOT_BASE_URL?.trim() || process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  return `${getSiteUrl().replace(/\/$/, '')}/snapshot`;
+}
+
 export async function loadBoardSnapshot(force = false): Promise<PublicBoardSnapshot> {
   if (!force && cache && Date.now() - cache.loadedAt < CACHE_TTL_MS) {
     return cache.snapshot;
   }
 
-  const response = await fetch(`${getSiteUrl()}/snapshot/board.json.gz`, {
+  const response = await fetch(`${snapshotBaseUrl()}/board.json.gz`, {
     headers: { 'User-Agent': 'robot-jobs-board-mcp/0.1', Accept: 'application/gzip,application/json' },
   });
   if (!response.ok) {
@@ -84,7 +90,7 @@ export async function loadJobBody(id: string): Promise<SnapshotJobBody | null> {
   const hit = bodyCache.get(id);
   if (hit) return hit;
 
-  const response = await fetch(`${getSiteUrl()}/snapshot/jobs/${encodeURIComponent(id)}.json.gz`, {
+  const response = await fetch(`${snapshotBaseUrl()}/jobs/${encodeURIComponent(id)}.json.gz`, {
     headers: { 'User-Agent': 'robot-jobs-board-mcp/0.1', Accept: 'application/gzip,application/json' },
   });
   if (!response.ok) return null;

@@ -5,12 +5,19 @@ import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/sna
 /** Next.js Data Cache tag — ingest calls /api/revalidate to bust this after each board refresh. */
 export const PUBLIC_BOARD_CACHE_TAG = 'public-board';
 
-function snapshotBaseUrl(): string {
+/**
+ * Public snapshot origin (no trailing slash), e.g. Vercel Blob `…/snapshot`.
+ * Falls back to the site origin so local `public/snapshot` still works in dev.
+ */
+export function snapshotBaseUrl(): string {
+  const fromEnv = process.env.SNAPSHOT_BASE_URL?.trim() || process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+
   if (process.env.NODE_ENV === 'development') {
     const port = process.env.PORT ?? '3000';
-    return `http://localhost:${port}`;
+    return `http://localhost:${port}/snapshot`;
   }
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.robotjobsboard.com').replace(/\/$/, '');
+  return `${(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.robotjobsboard.com').replace(/\/$/, '')}/snapshot`;
 }
 
 function parseGzipJson<T>(buf: Buffer): T {
@@ -19,7 +26,7 @@ function parseGzipJson<T>(buf: Buffer): T {
 
 async function boardCacheBuster(): Promise<string> {
   try {
-    const res = await fetch(`${snapshotBaseUrl()}/snapshot/manifest.json`, {
+    const res = await fetch(`${snapshotBaseUrl()}/manifest.json`, {
       next: { revalidate: 60, tags: [PUBLIC_BOARD_CACHE_TAG] },
     });
     if (!res.ok) return '0';
@@ -33,7 +40,7 @@ async function boardCacheBuster(): Promise<string> {
 export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | null> => {
   try {
     const v = await boardCacheBuster();
-    const res = await fetch(`${snapshotBaseUrl()}/snapshot/board.json.gz?v=${encodeURIComponent(v)}`, {
+    const res = await fetch(`${snapshotBaseUrl()}/board.json.gz?v=${encodeURIComponent(v)}`, {
       next: { revalidate: 3600, tags: [PUBLIC_BOARD_CACHE_TAG] },
     });
     if (!res.ok) return null;
@@ -48,7 +55,7 @@ export const loadJobBody = cache(async (id: string): Promise<SnapshotJobBody | n
   try {
     const v = await boardCacheBuster();
     const res = await fetch(
-      `${snapshotBaseUrl()}/snapshot/jobs/${encodeURIComponent(id)}.json.gz?v=${encodeURIComponent(v)}`,
+      `${snapshotBaseUrl()}/jobs/${encodeURIComponent(id)}.json.gz?v=${encodeURIComponent(v)}`,
       { next: { revalidate: 3600, tags: [PUBLIC_BOARD_CACHE_TAG] } },
     );
     if (!res.ok) return null;
@@ -61,7 +68,7 @@ export const loadJobBody = cache(async (id: string): Promise<SnapshotJobBody | n
 export async function readStaticSnapshotFile(name: string): Promise<string | null> {
   try {
     const v = await boardCacheBuster();
-    const res = await fetch(`${snapshotBaseUrl()}/snapshot/${name}?v=${encodeURIComponent(v)}`, {
+    const res = await fetch(`${snapshotBaseUrl()}/${name}?v=${encodeURIComponent(v)}`, {
       next: { revalidate: 3600, tags: [PUBLIC_BOARD_CACHE_TAG] },
     });
     if (!res.ok) return null;

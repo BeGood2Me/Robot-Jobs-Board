@@ -16,12 +16,10 @@ on:
 
 concurrency:
   group: ingest-jobs
-  # One full export at a time. Overlapping runs previously conflicted on
-  # board.json.gz during `git pull --rebase` and failed the job.
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
   actions: write
 
 jobs:
@@ -30,9 +28,6 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Skip near-duplicate collisions only. Window is 6h so:
       # - 07:00 + 10:00 catch-up: catch-up skips if morning already ran
@@ -41,15 +36,25 @@ jobs:
       - name: Skip schedule if snapshot was just rebuilt
         id: freshness
         if: github.event_name == 'schedule'
+        env:
+          SNAPSHOT_BASE_URL: ${{ secrets.SNAPSHOT_BASE_URL }}
         run: |
-          MANIFEST="apps/web/public/snapshot/manifest.json"
-          if [ ! -f "$MANIFEST" ]; then
+          set -euo pipefail
+          BASE="${SNAPSHOT_BASE_URL:-}"
+          if [ -z "$BASE" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "SNAPSHOT_BASE_URL unset — running ingest"
             exit 0
           fi
-          AGE_HOURS=$(node -e "const m=require('./$MANIFEST'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
+          BASE="${BASE%/}"
+          if ! curl -fsS "$BASE/manifest.json" -o /tmp/manifest.json; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Remote manifest missing — running ingest"
+            exit 0
+          fi
+          AGE_HOURS=$(node -e "const m=require('/tmp/manifest.json'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
           echo "Snapshot age: ${AGE_HOURS}h"
-          if node -e "const m=require('./$MANIFEST'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 6 ? 0 : 1)"; then
+          if node -e "const m=require('/tmp/manifest.json'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 6 ? 0 : 1)"; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Snapshot just rebuilt (<6h) — skipping duplicate schedule"
           else
@@ -68,66 +73,33 @@ jobs:
       # Local codegen only — does not connect to Neon.
       - run: pnpm db:generate
         if: steps.freshness.outputs.skip != 'true'
-      - run: pnpm snapshot:export:feeds
+      - name: Export snapshot and upload to Vercel Blob
+        id: upload
         if: steps.freshness.outputs.skip != 'true'
         env:
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
-      - name: Commit public snapshot
-        id: commit
-        if: steps.freshness.outputs.skip != 'true'
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          echo "pushed=false" >> "$GITHUB_OUTPUT"
-          if [ ! -f apps/web/public/snapshot/board.json.gz ]; then
-            echo "Snapshot export did not write apps/web/public/snapshot/board.json.gz"
+          if [ -z "${BLOB_READ_WRITE_TOKEN:-}" ]; then
+            echo "BLOB_READ_WRITE_TOKEN secret is not set"
             exit 1
           fi
-          JOB_COUNT=$(node -e "console.log(require('./apps/web/public/snapshot/manifest.json').jobCount)")
+          pnpm snapshot:export:feeds:upload | tee /tmp/snapshot-upload.log
+          BOARD=$(node -e "const fs=require('fs'); const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/); const row=JSON.parse(lines.at(-1)); if(!row.snapshotBaseUrl||!row.jobCount) process.exit(1); console.log(row.snapshotBaseUrl); console.error(JSON.stringify(row))")
+          JOB_COUNT=$(node -e "const fs=require('fs'); const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/); console.log(JSON.parse(lines.at(-1)).jobCount)")
           if [ "$JOB_COUNT" -lt 1 ]; then
-            echo "Refusing to commit empty snapshot (jobCount=$JOB_COUNT)"
+            echo "Refusing empty snapshot (jobCount=$JOB_COUNT)"
             exit 1
           fi
+          echo "uploaded=true" >> "$GITHUB_OUTPUT"
+          echo "job_count=$JOB_COUNT" >> "$GITHUB_OUTPUT"
+          echo "snapshot_base_url=$BOARD" >> "$GITHUB_OUTPUT"
 
-          # Keep a copy of the freshly exported snapshot. Binary gzip files do not
-          # rebase cleanly when another ingest lands on main mid-push.
-          SNAPSHOT_BACKUP=$(mktemp -d)
-          cp -a apps/web/public/snapshot/. "$SNAPSHOT_BACKUP/"
-
-          restore_snapshot() {
-            rm -rf apps/web/public/snapshot
-            mkdir -p apps/web/public/snapshot
-            cp -a "$SNAPSHOT_BACKUP"/. apps/web/public/snapshot/
-          }
-
-          for attempt in 1 2 3 4 5; do
-            git fetch origin main
-            git reset --hard origin/main
-            restore_snapshot
-            git add apps/web/public/snapshot/
-            if git diff --staged --quiet; then
-              echo "No snapshot changes to commit"
-              exit 0
-            fi
-            git commit -m "chore: update public snapshot"
-            if git push origin HEAD:main; then
-              echo "pushed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "Push rejected (attempt ${attempt}/5); retrying on latest main"
-            sleep $((attempt * 2))
-          done
-
-          echo "Failed to push snapshot after retries"
-          exit 1
-
-      # Snapshot pushes deploy via Vercel Git. Do not also fire the deploy hook —
-      # ignoreCommand used to skip Git builds for these commits, which canceled
-      # both the Git build and the hook, leaving production on a stale snapshot.
+      # No Vercel deploy — Blob is live immediately. Bust Next.js Data Cache only.
       - name: Revalidate Next.js board cache
-        if: steps.freshness.outputs.skip != 'true' && steps.commit.outputs.pushed == 'true'
+        if: steps.freshness.outputs.skip != 'true' && steps.upload.outputs.uploaded == 'true'
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_URL: https://www.robotjobsboard.com
@@ -137,9 +109,6 @@ jobs:
             echo "CRON_SECRET secret is not set — skipping on-demand revalidate"
             exit 0
           fi
-          # Wait for the Vercel Git production build to promote static snapshot files.
-          echo "Waiting for production deploy before cache bust…"
-          sleep 120
           for attempt in 1 2 3 4 5; do
             if curl -fsS -X POST "$SITE_URL/api/revalidate" \
               -H "Authorization: Bearer $CRON_SECRET" \
@@ -149,7 +118,7 @@ jobs:
               exit 0
             fi
             echo "Revalidate attempt ${attempt}/5 failed; retrying…"
-            sleep $((attempt * 15))
+            sleep $((attempt * 5))
           done
-          echo "Revalidate did not succeed (deploy may still be building); Data Cache TTL will expire within an hour"
+          echo "Revalidate did not succeed; Data Cache TTL will expire within an hour"
           exit 0

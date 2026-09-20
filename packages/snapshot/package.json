@@ -9,6 +9,8 @@
   "scripts": {
     "export": "tsx src/cli.ts",
     "export:feeds": "tsx src/cli.ts --from-feeds",
+    "upload:blob": "tsx src/cli.ts --upload-only",
+    "export:feeds:upload": "tsx src/cli.ts --from-feeds --upload-blob",
     "test": "vitest run",
     "lint": "echo \"no lint\""
   },
@@ -16,6 +18,7 @@
     "@robot-jobs-board/db": "workspace:*",
     "@robot-jobs-board/ingestion": "workspace:*",
     "@robot-jobs-board/taxonomy": "workspace:*",
+    "@vercel/blob": "^2.8.0",
     "dotenv": "^16.6.1"
   },
   "devDependencies": {
