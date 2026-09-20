@@ -4,29 +4,20 @@ import { unstable_cache } from 'next/cache';
 import { prisma, withDb } from '@/lib/db';
 import { getSiteUrl } from '@/lib/site';
 
+/** DB fallback only — production serves per-company lastmod from the static snapshot. */
 const loadCompanySitemapXml = unstable_cache(
   async () => {
     const site = getSiteUrl();
     const companies = await prisma.company.findMany({
-      select: {
-        slug: true,
-        jobs: {
-          where: { isActive: true, isHidden: false },
-          select: { postedAt: true },
-          orderBy: { postedAt: 'desc' },
-          take: 1,
-        },
-      },
+      select: { slug: true },
+      orderBy: { slug: 'asc' },
     });
-    const today = new Date().toISOString().slice(0, 10);
+    const lastmod = new Date().toISOString().slice(0, 10);
     const rows = [
-      `  <url><loc>${site}/companies</loc><lastmod>${today}</lastmod></url>`,
-      ...companies.map((c) => {
-        const lastmod = c.jobs[0]?.postedAt
-          ? new Date(c.jobs[0].postedAt).toISOString().slice(0, 10)
-          : today;
-        return `  <url><loc>${site}/companies/${c.slug}</loc><lastmod>${lastmod}</lastmod></url>`;
-      }),
+      `  <url><loc>${site}/companies</loc><lastmod>${lastmod}</lastmod></url>`,
+      ...companies.map(
+        (c) => `  <url><loc>${site}/companies/${c.slug}</loc><lastmod>${lastmod}</lastmod></url>`,
+      ),
     ];
     return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

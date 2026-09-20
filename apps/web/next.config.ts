@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
     '@robot-jobs-board/snapshot',
     '@robot-jobs-board/mcp',
   ],
+  // Keep ~2.5k per-job gzip bodies out of serverless traces (served as static CDN files).
+  outputFileTracingExcludes: {
+    '*': ['./public/snapshot/jobs/**/*'],
+  },
+  serverExternalPackages: ['@prisma/client', 'prisma'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'boards.greenhouse.io' },

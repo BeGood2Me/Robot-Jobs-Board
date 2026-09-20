@@ -721,23 +721,26 @@ export type RelatedCompany = {
 
 const loadRelatedCompaniesCached = unstable_cache(
   async (slug: string, take: number) => {
-    const companies = await prisma.company.findMany({
-      where: { slug: { not: slug } },
-      select: {
-        name: true,
-        slug: true,
-        _count: { select: { jobs: { where: publicJobWhere } } },
-      },
-    });
-    return companies
-      .map((company) => ({
-        name: company.name,
-        slug: company.slug,
-        openJobCount: company._count.jobs,
-      }))
-      .filter((company) => company.openJobCount > 0)
-      .sort((a, b) => b.openJobCount - a.openJobCount || a.name.localeCompare(b.name))
-      .slice(0, take);
+    // Rank in SQL — avoid loading every company + open-job count into the function.
+    const rows = await prisma.$queryRaw<
+      Array<{ name: string; slug: string; openJobCount: number | bigint }>
+    >`
+      SELECT c.name, c.slug, COUNT(j.id)::int AS "openJobCount"
+      FROM "Company" c
+      INNER JOIN "Job" j ON j."companyId" = c.id
+        AND j."isActive" = true
+        AND j."isHidden" = false
+      WHERE c.slug <> ${slug}
+      GROUP BY c.id, c.name, c.slug
+      HAVING COUNT(j.id) > 0
+      ORDER BY COUNT(j.id) DESC, c.name ASC
+      LIMIT ${take}
+    `;
+    return rows.map((row) => ({
+      name: row.name,
+      slug: row.slug,
+      openJobCount: Number(row.openJobCount),
+    }));
   },
   ['related-companies'],
   { revalidate: PUBLIC_REVALIDATE_SECONDS },
