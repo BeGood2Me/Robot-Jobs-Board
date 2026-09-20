@@ -3,12 +3,14 @@ import { prisma } from '@robot-jobs-board/db';
 export { prisma };
 
 /**
- * Public board is CDN/snapshot-first. When SNAPSHOT_ONLY=1 (production default via
- * vercel.json), skip Postgres entirely so a Neon free-tier transfer cap cannot
- * burn egress on every page fallback/probe.
+ * Public board is CDN/snapshot-first. Skip Postgres on Vercel unless SNAPSHOT_ONLY=0
+ * so a Neon free-tier transfer cap cannot flood build logs or burn egress.
  */
 export function isDbEnabled(): boolean {
   if (process.env.SNAPSHOT_ONLY === '1' || process.env.DISABLE_DB === '1') return false;
+  if (process.env.SNAPSHOT_ONLY === '0') return Boolean(process.env.DATABASE_URL?.trim());
+  // Default off on Vercel (Hobby Neon transfer is exhausted).
+  if (process.env.VERCEL === '1') return false;
   return Boolean(process.env.DATABASE_URL?.trim());
 }
 

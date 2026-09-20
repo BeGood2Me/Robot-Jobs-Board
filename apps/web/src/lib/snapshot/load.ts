@@ -2,7 +2,6 @@ import { gunzipSync } from 'node:zlib';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cache } from 'react';
-import { unstable_cache } from 'next/cache';
 import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
 import { resolveSnapshotBaseUrl } from '@robot-jobs-board/snapshot';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
@@ -12,9 +11,12 @@ export const PUBLIC_BOARD_CACHE_TAG = 'public-board';
 
 const BODIES_MEM_TTL_MS = 15 * 60 * 1000;
 let bodiesMem: { loadedAt: number; map: Record<string, SnapshotJobBody> } | null = null;
+let boardMem: { loadedAt: number; snapshot: PublicBoardSnapshot } | null = null;
+const BOARD_MEM_TTL_MS = 15 * 60 * 1000;
 
 export function clearSnapshotMemoryCache(): void {
   bodiesMem = null;
+  boardMem = null;
 }
 
 function parseGzipJson<T>(buf: Buffer): T {
@@ -43,6 +45,11 @@ function snapshotDataBaseUrl(): string {
   return resolveSnapshotBaseUrl();
 }
 
+/**
+ * Fetch snapshot bytes without Next Data Cache (`unstable_cache` / cached fetch).
+ * board.json.gz + bodies.json.gz exceed the 2MB Data Cache item limit and otherwise
+ * fail SSG, which then hammers Neon and floods build logs with prisma:error.
+ */
 async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
   if (process.env.NODE_ENV === 'development') {
     const local = readLocalSnapshotFile(name);
@@ -54,7 +61,7 @@ async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
   try {
     const response = await fetch(url, {
       headers: { Accept: 'application/gzip,application/octet-stream,*/*' },
-      next: { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] },
+      cache: 'no-store',
     });
     if (!response.ok) return null;
     return Buffer.from(await response.arrayBuffer());
@@ -62,12 +69,6 @@ async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
     return null;
   }
 }
-
-const loadBoardGz = unstable_cache(
-  async () => fetchSnapshotBytes('board.json.gz'),
-  ['snapshot-board-gz'],
-  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] },
-);
 
 async function fetchTextFile(name: string): Promise<string | null> {
   if (process.env.NODE_ENV === 'development') {
@@ -96,10 +97,15 @@ export function snapshotBaseUrl(): string {
 }
 
 export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | null> => {
-  const gz = await loadBoardGz();
+  if (boardMem && Date.now() - boardMem.loadedAt < BOARD_MEM_TTL_MS) {
+    return boardMem.snapshot;
+  }
+  const gz = await fetchSnapshotBytes('board.json.gz');
   if (!gz) return null;
   try {
-    return parseGzipJson<PublicBoardSnapshot>(gz);
+    const snapshot = parseGzipJson<PublicBoardSnapshot>(gz);
+    boardMem = { loadedAt: Date.now(), snapshot };
+    return snapshot;
   } catch {
     return null;
   }

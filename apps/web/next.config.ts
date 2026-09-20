@@ -18,6 +18,10 @@ loadEnvConfig(monorepoRoot());
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  env: {
+    // Bake in so SSG never falls back to Neon when free-tier transfer is exhausted.
+    SNAPSHOT_ONLY: process.env.SNAPSHOT_ONLY ?? '1',
+  },
   transpilePackages: [
     '@robot-jobs-board/db',
     '@robot-jobs-board/config',
