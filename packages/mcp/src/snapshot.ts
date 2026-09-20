@@ -1,6 +1,9 @@
 import { gunzipSync } from 'node:zlib';
 import { getSiteUrl } from './api';
 
+const SNAPSHOT_CDN =
+  'https://cdn.jsdelivr.net/gh/BeGood2Me/Robot-Jobs-Board@snapshot-data/snapshot';
+
 export type SnapshotJob = {
   id: string;
   slug: string;
@@ -65,7 +68,10 @@ function parseGzipJson<T>(buffer: Buffer): T {
 function snapshotBaseUrl(): string {
   const fromEnv = process.env.SNAPSHOT_BASE_URL?.trim() || process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
-  return `${getSiteUrl().replace(/\/$/, '')}/snapshot`;
+  if (process.env.NODE_ENV === 'development') {
+    return `${getSiteUrl().replace(/\/$/, '')}/snapshot`;
+  }
+  return SNAPSHOT_CDN;
 }
 
 type BodiesCacheEntry = { loadedAt: number; bodies: Record<string, SnapshotJobBody> };

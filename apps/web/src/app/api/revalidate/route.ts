@@ -1,7 +1,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { cronAuthorized } from '@/lib/admin';
-import { PUBLIC_BOARD_CACHE_TAG } from '@/lib/snapshot/load';
+import { clearSnapshotMemoryCache, PUBLIC_BOARD_CACHE_TAG } from '@/lib/snapshot/load';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  clearSnapshotMemoryCache();
   revalidateTag(PUBLIC_BOARD_CACHE_TAG, 'max');
   revalidatePath('/', 'layout');
   revalidatePath('/board');

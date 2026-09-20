@@ -7,7 +7,6 @@ export type UploadSnapshotDbResult = {
   jobCount: number;
   companyCount: number;
   generatedAt: string;
-  bytes: number;
 };
 
 function requireFile(outDir: string, name: string): Buffer {
@@ -24,7 +23,13 @@ function optionalText(outDir: string, name: string): string {
   return readFileSync(path, 'utf8');
 }
 
-/** Persist the slim public snapshot into Neon (Hobby-safe; no Blob Advanced Ops). */
+const MAX_DB_ATTEMPTS = 5;
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Persist manifest + sitemaps into Neon (small rows; no gzip blobs). */
 export async function uploadSnapshotDirToDb(outDir: string): Promise<UploadSnapshotDbResult> {
   const manifestRaw = requireFile(outDir, 'manifest.json').toString('utf8');
   const manifest = JSON.parse(manifestRaw) as {
@@ -32,8 +37,6 @@ export async function uploadSnapshotDirToDb(outDir: string): Promise<UploadSnaps
     jobCount?: number;
     companyCount?: number;
   };
-  const boardGz = requireFile(outDir, 'board.json.gz');
-  const bodiesGz = requireFile(outDir, 'bodies.json.gz');
   const sitemapJobs = optionalText(outDir, 'sitemap-jobs.xml');
   const sitemapCategories = optionalText(outDir, 'sitemap-categories.xml');
   const sitemapCompanies = optionalText(outDir, 'sitemap-companies.xml');
@@ -44,40 +47,37 @@ export async function uploadSnapshotDirToDb(outDir: string): Promise<UploadSnaps
     throw new Error(`Refusing to upload empty snapshot (jobCount=${jobCount})`);
   }
 
-  await prisma.publicSnapshot.upsert({
-    where: { id: 'current' },
-    create: {
-      id: 'current',
-      generatedAt: new Date(manifest.generatedAt),
-      jobCount,
-      companyCount: manifest.companyCount ?? 0,
-      manifestJson: manifestRaw,
-      boardGz: new Uint8Array(boardGz),
-      bodiesGz: new Uint8Array(bodiesGz),
-      sitemapJobs,
-      sitemapCategories,
-      sitemapCompanies,
-      sitemapBlog,
-    },
-    update: {
-      generatedAt: new Date(manifest.generatedAt),
-      jobCount,
-      companyCount: manifest.companyCount ?? 0,
-      manifestJson: manifestRaw,
-      boardGz: new Uint8Array(boardGz),
-      bodiesGz: new Uint8Array(bodiesGz),
-      sitemapJobs,
-      sitemapCategories,
-      sitemapCompanies,
-      sitemapBlog,
-    },
-  });
-
-  return {
-    uploaded: true,
+  const payload = {
+    generatedAt: new Date(manifest.generatedAt),
     jobCount,
     companyCount: manifest.companyCount ?? 0,
-    generatedAt: manifest.generatedAt,
-    bytes: boardGz.length + bodiesGz.length,
+    manifestJson: manifestRaw,
+    sitemapJobs,
+    sitemapCategories,
+    sitemapCompanies,
+    sitemapBlog,
   };
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_DB_ATTEMPTS; attempt++) {
+    try {
+      await prisma.publicSnapshot.upsert({
+        where: { id: 'current' },
+        create: { id: 'current', ...payload },
+        update: payload,
+      });
+      return {
+        uploaded: true,
+        jobCount,
+        companyCount: manifest.companyCount ?? 0,
+        generatedAt: manifest.generatedAt,
+      };
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_DB_ATTEMPTS) {
+        await sleep(attempt * 4000);
+      }
+    }
+  }
+  throw lastError;
 }

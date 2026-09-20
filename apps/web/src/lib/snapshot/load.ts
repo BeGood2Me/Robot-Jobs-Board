@@ -1,46 +1,120 @@
 import { gunzipSync } from 'node:zlib';
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
+import { resolveSnapshotBaseUrl } from '@robot-jobs-board/snapshot';
 import { prisma, withDb } from '@/lib/db';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 /** Used by /api/revalidate for path busting after ingest. */
 export const PUBLIC_BOARD_CACHE_TAG = 'public-board';
+
+const BODIES_MEM_TTL_MS = 15 * 60 * 1000;
+let bodiesMem: { loadedAt: number; map: Record<string, SnapshotJobBody> } | null = null;
+
+export function clearSnapshotMemoryCache(): void {
+  bodiesMem = null;
+}
 
 function parseGzipJson<T>(buf: Buffer): T {
   return JSON.parse(gunzipSync(buf).toString('utf8')) as T;
 }
 
-type SnapshotRow = {
-  generatedAt: Date;
-  jobCount: number;
-  manifestJson: string;
-  boardGz: Uint8Array;
-  bodiesGz: Uint8Array;
-  sitemapJobs: string;
-  sitemapCategories: string;
-  sitemapCompanies: string;
-  sitemapBlog: string;
-};
+function localSnapshotDir(): string {
+  return join(process.cwd(), 'public', 'snapshot');
+}
 
-/**
- * Request-scoped only — do not put boardGz/bodiesGz in `unstable_cache`
- * (they exceed the 2MB Data Cache item limit and stall static generation).
- */
-async function getSnapshotRow(): Promise<SnapshotRow | null> {
+function readLocalSnapshotFile(name: string): Buffer | null {
+  const path = join(localSnapshotDir(), name);
+  if (!existsSync(path)) return null;
+  return readFileSync(path);
+}
+
+/** CDN / static branch — not the public /snapshot route (avoids origin loops). */
+function snapshotDataBaseUrl(): string {
+  const fromEnv =
+    process.env.SNAPSHOT_BASE_URL?.trim() || process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  if (process.env.NODE_ENV === 'development') {
+    const port = process.env.PORT ?? '3000';
+    return `http://localhost:${port}/snapshot`;
+  }
+  return resolveSnapshotBaseUrl();
+}
+
+async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
+  if (process.env.NODE_ENV === 'development') {
+    const local = readLocalSnapshotFile(name);
+    if (local) return local;
+  }
+
+  const base = snapshotDataBaseUrl();
+  const url = `${base}/${name}`;
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/gzip,application/octet-stream,*/*' },
+      next: { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] },
+    });
+    if (!response.ok) return null;
+    return Buffer.from(await response.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+const loadBoardGz = unstable_cache(
+  async () => fetchSnapshotBytes('board.json.gz'),
+  ['snapshot-board-gz'],
+  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] },
+);
+
+async function fetchTextFile(name: string): Promise<string | null> {
+  if (process.env.NODE_ENV === 'development') {
+    const local = readLocalSnapshotFile(name);
+    if (local) return local.toString('utf8');
+  }
+
+  const base = snapshotDataBaseUrl();
+  try {
+    const response = await fetch(`${base}/${name}`, {
+      next: { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] },
+    });
+    if (!response.ok) return null;
+    return await response.text();
+  } catch {
+    return null;
+  }
+}
+
+async function readSitemapFromDb(name: string): Promise<string | null> {
   return withDb(async () => {
-    const row = await prisma.publicSnapshot.findUnique({ where: { id: 'current' } });
+    const row = await prisma.publicSnapshot.findUnique({
+      where: { id: 'current' },
+      select: {
+        manifestJson: true,
+        sitemapJobs: true,
+        sitemapCategories: true,
+        sitemapCompanies: true,
+        sitemapBlog: true,
+      },
+    });
     if (!row) return null;
-    return {
-      generatedAt: row.generatedAt,
-      jobCount: row.jobCount,
-      manifestJson: row.manifestJson,
-      boardGz: row.boardGz,
-      bodiesGz: row.bodiesGz,
-      sitemapJobs: row.sitemapJobs,
-      sitemapCategories: row.sitemapCategories,
-      sitemapCompanies: row.sitemapCompanies,
-      sitemapBlog: row.sitemapBlog,
-    };
+    switch (name) {
+      case 'manifest.json':
+        return row.manifestJson;
+      case 'sitemap-jobs.xml':
+        return row.sitemapJobs || null;
+      case 'sitemap-categories.xml':
+        return row.sitemapCategories || null;
+      case 'sitemap-companies.xml':
+        return row.sitemapCompanies || null;
+      case 'sitemap-blog.xml':
+        return row.sitemapBlog || null;
+      default:
+        return null;
+    }
   }, null);
 }
 
@@ -53,24 +127,29 @@ export function snapshotBaseUrl(): string {
 }
 
 export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | null> => {
-  const row = await getSnapshotRow();
-  if (!row) return null;
+  const gz = await loadBoardGz();
+  if (!gz) return null;
   try {
-    return parseGzipJson<PublicBoardSnapshot>(Buffer.from(row.boardGz));
+    return parseGzipJson<PublicBoardSnapshot>(gz);
   } catch {
     return null;
   }
 });
 
-const loadBodiesMap = cache(async (): Promise<Record<string, SnapshotJobBody> | null> => {
-  const row = await getSnapshotRow();
-  if (!row) return null;
+async function loadBodiesMap(): Promise<Record<string, SnapshotJobBody> | null> {
+  if (bodiesMem && Date.now() - bodiesMem.loadedAt < BODIES_MEM_TTL_MS) {
+    return bodiesMem.map;
+  }
+  const gz = await fetchSnapshotBytes('bodies.json.gz');
+  if (!gz) return null;
   try {
-    return parseGzipJson<Record<string, SnapshotJobBody>>(Buffer.from(row.bodiesGz));
+    const map = parseGzipJson<Record<string, SnapshotJobBody>>(gz);
+    bodiesMem = { loadedAt: Date.now(), map };
+    return map;
   } catch {
     return null;
   }
-});
+}
 
 export const loadJobBody = cache(async (id: string): Promise<SnapshotJobBody | null> => {
   const bodies = await loadBodiesMap();
@@ -78,28 +157,18 @@ export const loadJobBody = cache(async (id: string): Promise<SnapshotJobBody | n
 });
 
 export async function readStaticSnapshotFile(name: string): Promise<string | null> {
-  const row = await getSnapshotRow();
-  if (!row) return null;
-  switch (name) {
-    case 'manifest.json':
-      return row.manifestJson;
-    case 'sitemap-jobs.xml':
-      return row.sitemapJobs || null;
-    case 'sitemap-categories.xml':
-      return row.sitemapCategories || null;
-    case 'sitemap-companies.xml':
-      return row.sitemapCompanies || null;
-    case 'sitemap-blog.xml':
-      return row.sitemapBlog || null;
-    default:
-      return null;
-  }
+  const fromHttp = await fetchTextFile(name);
+  if (fromHttp) return fromHttp;
+  return readSitemapFromDb(name);
 }
 
 export async function getSnapshotBinary(name: string): Promise<Buffer | null> {
-  const row = await getSnapshotRow();
-  if (!row) return null;
-  if (name === 'board.json.gz') return Buffer.from(row.boardGz);
-  if (name === 'bodies.json.gz') return Buffer.from(row.bodiesGz);
+  if (name === 'board.json.gz' || name === 'bodies.json.gz') {
+    return fetchSnapshotBytes(name);
+  }
   return null;
+}
+
+export function snapshotCdnBaseUrl(): string {
+  return snapshotDataBaseUrl();
 }

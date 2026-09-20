@@ -1,4 +1,4 @@
-import { readStaticSnapshotFile } from '@/lib/snapshot/load';
+import { readStaticSnapshotFile, snapshotCdnBaseUrl } from '@/lib/snapshot/load';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 export const revalidate = 3600;
@@ -15,8 +15,12 @@ export async function GET(
     return new Response('Not found', { status: 404 });
   }
 
+  const cdnBase = snapshotCdnBaseUrl();
+  if (process.env.NODE_ENV === 'production' && !cdnBase.includes('localhost')) {
+    return Response.redirect(`${cdnBase}/${name}`, 307);
+  }
+
   if (name.endsWith('.json.gz') || name === 'board.json.gz' || name === 'bodies.json.gz') {
-    // Binary snapshots are loaded server-side from Neon; keep public HTTP for MCP/tools.
     const { getSnapshotBinary } = await import('@/lib/snapshot/load');
     const bytes = await getSnapshotBinary(name);
     if (!bytes) return new Response('Not found', { status: 404 });

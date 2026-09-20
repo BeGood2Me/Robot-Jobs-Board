@@ -25,9 +25,19 @@ async function main() {
     console.log(JSON.stringify({ event: fromFeeds ? 'snapshot.export.feeds' : 'snapshot.export', ...result }));
   }
 
-  // Primary: Neon (no Blob Advanced Ops). Optional Blob when the store is healthy.
-  const db = await uploadSnapshotDirToDb(outDir);
-  console.log(JSON.stringify({ event: 'snapshot.upload.db', ...db }));
+  // Neon: manifest + sitemaps only (optional when transfer quota is exhausted).
+  try {
+    const db = await uploadSnapshotDirToDb(outDir);
+    console.log(JSON.stringify({ event: 'snapshot.upload.db', ...db }));
+  } catch (error) {
+    console.warn(
+      JSON.stringify({
+        event: 'snapshot.upload.db',
+        skipped: true,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
 
   if (uploadBlob || process.env.SNAPSHOT_UPLOAD_BLOB === '1') {
     try {

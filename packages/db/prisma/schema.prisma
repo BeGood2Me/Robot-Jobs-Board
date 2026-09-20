@@ -164,15 +164,13 @@ model SourceFeedConfig {
   @@index([sourceSystem])
 }
 
-/// Slim public board snapshot (board + bodies + sitemaps). Avoids Vercel Blob Advanced Ops.
+/// Manifest + sitemaps only (board/bodies on GitHub snapshot-data branch / jsDelivr).
 model PublicSnapshot {
   id                String   @id @default("current")
   generatedAt       DateTime
   jobCount          Int
   companyCount      Int
   manifestJson      String   @db.Text
-  boardGz           Bytes
-  bodiesGz          Bytes
   sitemapJobs       String   @db.Text
   sitemapCategories String   @db.Text
   sitemapCompanies  String   @db.Text

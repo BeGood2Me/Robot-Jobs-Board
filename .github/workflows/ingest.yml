@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -41,8 +41,6 @@ jobs:
             echo "DATABASE_URL unset — running ingest"
             exit 0
           fi
-          # Age check via a tiny node query would need Prisma; use HTTP revalidate target instead.
-          # Prefer running unless a recent manifest is reachable from production.
           if curl -fsS "https://www.robotjobsboard.com/snapshot/manifest.json" -o /tmp/manifest.json; then
             AGE_HOURS=$(node -e "const m=require('/tmp/manifest.json'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
             echo "Snapshot age: ${AGE_HOURS}h"
@@ -65,8 +63,29 @@ jobs:
         if: steps.freshness.outputs.skip != 'true'
       - run: pnpm db:generate
         if: steps.freshness.outputs.skip != 'true'
-      - name: Export snapshot and upload to Neon
-        id: upload
+
+      - name: Apply DB migrations
+        if: steps.freshness.outputs.skip != 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DIRECT_URL:-}" ]; then
+            echo "DIRECT_URL unset — skipping migrate"
+            exit 0
+          fi
+          for attempt in 1 2 3 4 5; do
+            if pnpm exec prisma migrate deploy --schema packages/db/prisma/schema.prisma; then
+              exit 0
+            fi
+            echo "migrate deploy attempt ${attempt}/5 failed; retrying…"
+            sleep $((attempt * 8))
+          done
+          echo "Neon migrate unavailable (transfer cap?) — continuing; CDN publish will still run"
+
+      - name: Export snapshot and upload metadata to Neon
+        id: export
         if: steps.freshness.outputs.skip != 'true'
         env:
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
@@ -75,21 +94,47 @@ jobs:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "DATABASE_URL secret is not set"
-            exit 1
-          fi
           pnpm snapshot:export:feeds:upload | tee /tmp/snapshot-upload.log
-          JOB_COUNT=$(node -e "const fs=require('fs'); const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/).filter(Boolean); const row=JSON.parse(lines.reverse().find(l=>l.includes('snapshot.upload.db'))); if(!row||!row.jobCount) process.exit(1); console.log(row.jobCount)")
-          if [ "$JOB_COUNT" -lt 1 ]; then
-            echo "Refusing empty snapshot (jobCount=$JOB_COUNT)"
-            exit 1
-          fi
+          JOB_COUNT=$(node -e "
+            const fs=require('fs');
+            const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/).filter(Boolean);
+            const line=lines.reverse().find(l=>l.includes('snapshot.export.feeds')||l.includes('snapshot.upload.db'));
+            if(!line) process.exit(1);
+            const row=JSON.parse(line);
+            const n=row.jobCount;
+            if(!n||n<1) process.exit(1);
+            console.log(n);
+          ")
           echo "uploaded=true" >> "$GITHUB_OUTPUT"
           echo "job_count=$JOB_COUNT" >> "$GITHUB_OUTPUT"
 
+      - name: Publish snapshot to GitHub CDN branch (jsDelivr)
+        id: cdn
+        if: steps.freshness.outputs.skip != 'true' && steps.export.outputs.uploaded == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SRC="apps/web/public/snapshot"
+          test -f "$SRC/manifest.json"
+          test -f "$SRC/board.json.gz"
+          test -f "$SRC/bodies.json.gz"
+          GENERATED=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$SRC/manifest.json','utf8')).generatedAt)")
+
+          WORK=$(mktemp -d)
+          cd "$WORK"
+          git init -b snapshot-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir snapshot
+          cp -r "$GITHUB_WORKSPACE/$SRC"/. snapshot/
+          git add snapshot
+          git commit -m "snapshot ${GENERATED}"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:snapshot-data
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
       - name: Revalidate Next.js board cache
-        if: steps.freshness.outputs.skip != 'true' && steps.upload.outputs.uploaded == 'true'
+        if: steps.freshness.outputs.skip != 'true' && steps.cdn.outputs.published == 'true'
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_URL: https://www.robotjobsboard.com
