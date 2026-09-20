@@ -25,18 +25,23 @@ async function main() {
     console.log(JSON.stringify({ event: fromFeeds ? 'snapshot.export.feeds' : 'snapshot.export', ...result }));
   }
 
-  // Neon: manifest + sitemaps only (optional when transfer quota is exhausted).
-  try {
-    const db = await uploadSnapshotDirToDb(outDir);
-    console.log(JSON.stringify({ event: 'snapshot.upload.db', ...db }));
-  } catch (error) {
-    console.warn(
-      JSON.stringify({
-        event: 'snapshot.upload.db',
-        skipped: true,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+  // Neon metadata upload is opt-in only — free-tier transfer caps suspend compute.
+  // Production source of truth is the GitHub snapshot-data branch / jsDelivr.
+  if (process.env.SNAPSHOT_UPLOAD_DB === '1') {
+    try {
+      const db = await uploadSnapshotDirToDb(outDir);
+      console.log(JSON.stringify({ event: 'snapshot.upload.db', ...db }));
+    } catch (error) {
+      console.warn(
+        JSON.stringify({
+          event: 'snapshot.upload.db',
+          skipped: true,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+  } else {
+    console.log(JSON.stringify({ event: 'snapshot.upload.db', skipped: true, reason: 'SNAPSHOT_UPLOAD_DB unset' }));
   }
 
   if (uploadBlob || process.env.SNAPSHOT_UPLOAD_BLOB === '1') {
@@ -55,5 +60,9 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } catch {
+      // no-op when DATABASE_URL is unset / Neon is unreachable
+    }
   });

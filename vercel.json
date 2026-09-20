@@ -3,6 +3,9 @@
   "outputDirectory": "apps/web/.next",
   "buildCommand": "pnpm db:generate && pnpm --filter web build",
   "installCommand": "pnpm install",
+  "env": {
+    "SNAPSHOT_ONLY": "1"
+  },
   "crons": [
     {
       "path": "/api/cron/ingest",

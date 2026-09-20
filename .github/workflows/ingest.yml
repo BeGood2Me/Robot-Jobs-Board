@@ -32,16 +32,10 @@ jobs:
       - name: Skip schedule if snapshot was just rebuilt
         id: freshness
         if: github.event_name == 'schedule'
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "DATABASE_URL unset — running ingest"
-            exit 0
-          fi
-          if curl -fsS "https://www.robotjobsboard.com/snapshot/manifest.json" -o /tmp/manifest.json; then
+          CDN="https://cdn.jsdelivr.net/gh/BeGood2Me/Robot-Jobs-Board@snapshot-data/snapshot/manifest.json"
+          if curl -fsSL "$CDN" -o /tmp/manifest.json; then
             AGE_HOURS=$(node -e "const m=require('/tmp/manifest.json'); console.log(((Date.now()-Date.parse(m.generatedAt))/36e5).toFixed(2))")
             echo "Snapshot age: ${AGE_HOURS}h"
             if node -e "const m=require('/tmp/manifest.json'); process.exit((Date.now()-Date.parse(m.generatedAt))/36e5 < 6 ? 0 : 1)"; then
@@ -49,6 +43,8 @@ jobs:
               echo "Snapshot just rebuilt (<6h) — skipping duplicate schedule"
               exit 0
             fi
+          else
+            echo "CDN manifest unavailable — running ingest"
           fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
@@ -64,53 +60,33 @@ jobs:
       - run: pnpm db:generate
         if: steps.freshness.outputs.skip != 'true'
 
-      - name: Apply DB migrations
-        if: steps.freshness.outputs.skip != 'true'
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-        run: |
-          set -euo pipefail
-          if [ -z "${DIRECT_URL:-}" ]; then
-            echo "DIRECT_URL unset — skipping migrate"
-            exit 0
-          fi
-          for attempt in 1 2 3 4 5; do
-            if pnpm exec prisma migrate deploy --schema packages/db/prisma/schema.prisma; then
-              exit 0
-            fi
-            echo "migrate deploy attempt ${attempt}/5 failed; retrying…"
-            sleep $((attempt * 8))
-          done
-          echo "Neon migrate unavailable (transfer cap?) — continuing; CDN publish will still run"
-
-      - name: Export snapshot and upload metadata to Neon
+      - name: Export snapshot from ATS feeds
         id: export
         if: steps.freshness.outputs.skip != 'true'
         env:
           NEXT_PUBLIC_SITE_URL: https://www.robotjobsboard.com
           NODE_ENV: production
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          # Do not upload to Neon — free-tier transfer is exhausted; CDN is source of truth.
+          SNAPSHOT_UPLOAD_DB: "0"
         run: |
           set -euo pipefail
           pnpm snapshot:export:feeds:upload | tee /tmp/snapshot-upload.log
           JOB_COUNT=$(node -e "
             const fs=require('fs');
             const lines=fs.readFileSync('/tmp/snapshot-upload.log','utf8').trim().split(/\n/).filter(Boolean);
-            const line=lines.reverse().find(l=>l.includes('snapshot.export.feeds')||l.includes('snapshot.upload.db'));
+            const line=lines.reverse().find(l=>l.includes('snapshot.export.feeds'));
             if(!line) process.exit(1);
             const row=JSON.parse(line);
             const n=row.jobCount;
             if(!n||n<1) process.exit(1);
             console.log(n);
           ")
-          echo "uploaded=true" >> "$GITHUB_OUTPUT"
+          echo "exported=true" >> "$GITHUB_OUTPUT"
           echo "job_count=$JOB_COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Publish snapshot to GitHub CDN branch (jsDelivr)
         id: cdn
-        if: steps.freshness.outputs.skip != 'true' && steps.export.outputs.uploaded == 'true'
+        if: steps.freshness.outputs.skip != 'true' && steps.export.outputs.exported == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

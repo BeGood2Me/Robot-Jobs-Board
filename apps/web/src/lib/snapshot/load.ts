@@ -5,7 +5,6 @@ import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
 import { resolveSnapshotBaseUrl } from '@robot-jobs-board/snapshot';
-import { prisma, withDb } from '@/lib/db';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 /** Used by /api/revalidate for path busting after ingest. */
@@ -88,36 +87,6 @@ async function fetchTextFile(name: string): Promise<string | null> {
   }
 }
 
-async function readSitemapFromDb(name: string): Promise<string | null> {
-  return withDb(async () => {
-    const row = await prisma.publicSnapshot.findUnique({
-      where: { id: 'current' },
-      select: {
-        manifestJson: true,
-        sitemapJobs: true,
-        sitemapCategories: true,
-        sitemapCompanies: true,
-        sitemapBlog: true,
-      },
-    });
-    if (!row) return null;
-    switch (name) {
-      case 'manifest.json':
-        return row.manifestJson;
-      case 'sitemap-jobs.xml':
-        return row.sitemapJobs || null;
-      case 'sitemap-categories.xml':
-        return row.sitemapCategories || null;
-      case 'sitemap-companies.xml':
-        return row.sitemapCompanies || null;
-      case 'sitemap-blog.xml':
-        return row.sitemapBlog || null;
-      default:
-        return null;
-    }
-  }, null);
-}
-
 export function snapshotBaseUrl(): string {
   if (process.env.NODE_ENV === 'development') {
     const port = process.env.PORT ?? '3000';
@@ -157,9 +126,7 @@ export const loadJobBody = cache(async (id: string): Promise<SnapshotJobBody | n
 });
 
 export async function readStaticSnapshotFile(name: string): Promise<string | null> {
-  const fromHttp = await fetchTextFile(name);
-  if (fromHttp) return fromHttp;
-  return readSitemapFromDb(name);
+  return fetchTextFile(name);
 }
 
 export async function getSnapshotBinary(name: string): Promise<Buffer | null> {
