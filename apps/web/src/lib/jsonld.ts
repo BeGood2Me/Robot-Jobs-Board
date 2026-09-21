@@ -271,9 +271,58 @@ function employmentSchema(type: string): string {
   }
 }
 
+function stripHtmlToPlain(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Google JobPosting requires a non-empty `description`. Some ATS rows arrive with
+ * empty plain text (body missing from snapshot); never emit "".
+ */
+function jobDescriptionForSchema(job: {
+  title: string;
+  descriptionPlain?: string | null;
+  descriptionHtml?: string | null;
+  locationRaw?: string | null;
+  department?: string | null;
+  company: { name: string };
+}): string {
+  const plain = (job.descriptionPlain ?? '').replace(/\s+/g, ' ').trim();
+  if (plain.length >= 40) return plain.slice(0, 5000);
+
+  const fromHtml = stripHtmlToPlain(job.descriptionHtml ?? '');
+  if (fromHtml.length >= 40) return fromHtml.slice(0, 5000);
+
+  const seed = [plain, fromHtml].filter(Boolean).join(' ').trim();
+  const fallback = [
+    `${job.title} at ${job.company.name}.`,
+    job.locationRaw ? `Location: ${job.locationRaw}.` : null,
+    job.department ? `Team: ${job.department}.` : null,
+    seed || null,
+    'Full role details are on the company careers posting linked from Robot Jobs Board.',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return fallback.slice(0, 5000);
+}
+
 export function jobPostingJsonLd(job: JobWithRelations) {
   const site = getSiteUrl();
-  const description = (job.descriptionPlain ?? '').slice(0, 5000);
+  const description = jobDescriptionForSchema(job);
   const postedAt = asDate(job.postedAt);
   const createdAt = asDateRequired(job.createdAt);
   const expiresAt = asDate(job.expiresAt);
@@ -305,26 +354,8 @@ export function jobPostingJsonLd(job: JobWithRelations) {
   const validThrough = expiresAt ?? addDays(postedAt ?? createdAt, 30);
   data.validThrough = validThrough.toISOString();
 
-  let baseSalary = parseCompensationBaseSalary(job.compensationText);
-  if (!baseSalary && job.compensationText) {
-    // Fallback: if we see any digits at all, still emit a baseSalary so GSC
-    // doesn't flag missing fields for feeds that use non-standard wording.
-    const lower = job.compensationText.toLowerCase();
-    const currency =
-      lower.includes('usd') || job.compensationText.includes('$')
-        ? 'USD'
-        : lower.includes('gbp') || job.compensationText.includes('£')
-          ? 'GBP'
-          : lower.includes('eur') || job.compensationText.includes('€')
-            ? 'EUR'
-            : 'USD';
-    const unitText = /(hour|hr)\b/.test(lower) ? 'HOUR' : /(month|mo)\b/.test(lower) ? 'MONTH' : 'YEAR';
-    const numericMatch = lower.match(/(\d[\d,]*(?:\.\d+)?\s*k?)/i);
-    const numeric = numericMatch ? normalizeMoneyNumber(numericMatch[1].replace(/[$£€]/g, '').trim()) : null;
-    baseSalary = numeric == null ? { currency, value: 0, unitText } : { currency, value: numeric, unitText };
-  }
-
-  if (baseSalary) {
+  const baseSalary = parseCompensationBaseSalary(job.compensationText);
+  if (baseSalary && baseSalary.value > 0) {
     data.baseSalary = {
       '@type': 'MonetaryAmount',
       currency: baseSalary.currency,
@@ -344,18 +375,20 @@ export function jobPostingJsonLd(job: JobWithRelations) {
   }
 
   if (job.workplaceType !== 'REMOTE') {
-    const streetAddress = extractStreetAddress(job.locationRaw);
-    const postalCode = extractPostalCode(job.locationRaw);
     const addressLocality = job.city?.trim() || undefined;
+    const region = resolveAddressRegion(job);
+    // Prefer a real street; otherwise use locality/region so GSC does not flag missing streetAddress.
+    const streetAddress =
+      extractStreetAddress(job.locationRaw) ?? addressLocality ?? region;
+    const postalCode = extractPostalCode(job.locationRaw);
     data.jobLocation = {
       '@type': 'Place',
       address: {
         '@type': 'PostalAddress',
-        ...(streetAddress ? { streetAddress } : {}),
+        streetAddress,
         ...(postalCode ? { postalCode } : {}),
         ...(addressLocality ? { addressLocality } : {}),
-        // Required by Google Job Postings (non-critical today; omit → GSC warning).
-        addressRegion: resolveAddressRegion(job),
+        addressRegion: region,
         addressCountry: job.country?.trim() || 'US',
       },
     };
