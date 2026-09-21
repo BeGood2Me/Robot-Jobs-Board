@@ -31,13 +31,15 @@ const loadCompaniesIndex = unstable_cache(
 export default async function CompaniesPage() {
   const snapshot = await loadPublicSnapshot();
   const companies = snapshot
-    ? snapshot.companies.map((company) => ({
-        id: company.id,
-        name: company.name,
-        slug: company.slug,
-        description: company.description,
-        _count: { jobs: company.openJobCount },
-      }))
+    ? [...snapshot.companies]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((company) => ({
+          id: company.id,
+          name: company.name,
+          slug: company.slug,
+          description: company.description,
+          _count: { jobs: company.openJobCount },
+        }))
     : await withDb(loadCompaniesIndex, []);
 
   return (
