@@ -11,12 +11,15 @@ export const PUBLIC_BOARD_CACHE_TAG = 'public-board';
 
 const BODIES_MEM_TTL_MS = 15 * 60 * 1000;
 let bodiesMem: { loadedAt: number; map: Record<string, SnapshotJobBody> } | null = null;
-let boardMem: { loadedAt: number; snapshot: PublicBoardSnapshot } | null = null;
-const BOARD_MEM_TTL_MS = 15 * 60 * 1000;
 
+/**
+ * No process-level board cache in production: warm serverless instances can keep a
+ * pre-ingest snapshot for minutes and skip the tagged Data Cache, so some routes
+ * (e.g. /api/companies) show new companies while pages still 404.
+ * React `cache()` still dedupes within a single request.
+ */
 export function clearSnapshotMemoryCache(): void {
   bodiesMem = null;
-  boardMem = null;
 }
 
 function parseGzipJson<T>(buf: Buffer): T {
@@ -100,15 +103,10 @@ export function snapshotBaseUrl(): string {
 }
 
 export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | null> => {
-  if (boardMem && Date.now() - boardMem.loadedAt < BOARD_MEM_TTL_MS) {
-    return boardMem.snapshot;
-  }
   const gz = await fetchSnapshotBytes('board.json.gz');
   if (!gz) return null;
   try {
-    const snapshot = parseGzipJson<PublicBoardSnapshot>(gz);
-    boardMem = { loadedAt: Date.now(), snapshot };
-    return snapshot;
+    return parseGzipJson<PublicBoardSnapshot>(gz);
   } catch {
     return null;
   }

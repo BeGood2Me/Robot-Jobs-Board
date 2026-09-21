@@ -15,14 +15,18 @@ export async function POST(request: Request) {
   }
 
   clearSnapshotMemoryCache();
-  revalidateTag(PUBLIC_BOARD_CACHE_TAG, 'max');
+  // expire: 0 — ingest must not serve stale-while-revalidate board bytes (new company 404s).
+  revalidateTag(PUBLIC_BOARD_CACHE_TAG, { expire: 0 });
   revalidatePath('/', 'layout');
   revalidatePath('/board');
   revalidatePath('/companies');
+  revalidatePath('/companies/[slug]', 'page');
   revalidatePath('/robots');
+  revalidatePath('/robots/[slug]', 'page');
   revalidatePath('/locations');
   revalidatePath('/api/jobs');
   revalidatePath('/api/facets');
+  revalidatePath('/api/companies');
 
   return NextResponse.json({ ok: true, tag: PUBLIC_BOARD_CACHE_TAG });
 }
