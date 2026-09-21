@@ -14,7 +14,8 @@ import { companyStaticParams } from '@/lib/snapshot/static-params';
 import { formatPosted, PAGE_SIZE } from '@/lib/site';
 
 export const revalidate = 3600;
-export const dynamicParams = false;
+/** New companies appear via ingest/CDN without a rebuild — allow slugs beyond build-time static params. */
+export const dynamicParams = true;
 
 export function generateStaticParams() {
   return companyStaticParams();
