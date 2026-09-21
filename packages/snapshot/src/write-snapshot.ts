@@ -2,7 +2,12 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import type { PublicBoardSnapshot, SnapshotJob, SnapshotJobBody } from './types';
-import { SNAPSHOT_BODIES_FILE } from './types';
+import {
+  BODIES_SHARD_COUNT,
+  SNAPSHOT_BODIES_FILE,
+  SNAPSHOT_BODIES_SHARDS_DIR,
+  bodyShardIndex,
+} from './types';
 
 const INDEX_JOB_THRESHOLD = 5;
 
@@ -70,13 +75,28 @@ function jobBody(job: SnapshotJob): SnapshotJobBody {
 
 function writeJobBodies(jobs: SnapshotJob[], outDir: string): void {
   const bodies: Record<string, SnapshotJobBody> = {};
+  const shards: Array<Record<string, SnapshotJobBody>> = Array.from(
+    { length: BODIES_SHARD_COUNT },
+    () => ({}),
+  );
   for (const job of jobs) {
-    bodies[job.id] = jobBody(job);
+    const body = jobBody(job);
+    bodies[job.id] = body;
+    shards[bodyShardIndex(job.id)]![job.id] = body;
   }
   writeFileSync(
     join(outDir, SNAPSHOT_BODIES_FILE),
     gzipSync(Buffer.from(JSON.stringify(bodies), 'utf8')),
   );
+
+  const shardDir = join(outDir, SNAPSHOT_BODIES_SHARDS_DIR);
+  mkdirSync(shardDir, { recursive: true });
+  for (let i = 0; i < BODIES_SHARD_COUNT; i++) {
+    writeFileSync(
+      join(shardDir, `${i}.json.gz`),
+      gzipSync(Buffer.from(JSON.stringify(shards[i] ?? {}), 'utf8')),
+    );
+  }
 }
 
 /** Board index without descriptions + one bodies map (Hobby Blob-friendly). */
@@ -187,6 +207,8 @@ ${posts
         companyCount: snapshot.companies.length,
         boardIncludesDescriptions: false,
         bodiesFile: 'bodies.json.gz',
+        bodiesShardCount: BODIES_SHARD_COUNT,
+        bodiesShardsDir: SNAPSHOT_BODIES_SHARDS_DIR,
       },
       null,
       2,

@@ -3,23 +3,24 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cache } from 'react';
 import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
-import { resolveSnapshotBaseUrl } from '@robot-jobs-board/snapshot';
+import {
+  bodyShardPath,
+  resolveSnapshotBaseUrl,
+  SNAPSHOT_BODIES_FILE,
+} from '@robot-jobs-board/snapshot';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 /** Used by /api/revalidate for path busting after ingest. */
 export const PUBLIC_BOARD_CACHE_TAG = 'public-board';
 
-const BODIES_MEM_TTL_MS = 15 * 60 * 1000;
-let bodiesMem: { loadedAt: number; map: Record<string, SnapshotJobBody> } | null = null;
-
 /**
- * No process-level board cache in production: warm serverless instances can keep a
- * pre-ingest snapshot for minutes and skip the tagged Data Cache, so some routes
- * (e.g. /api/companies) show new companies while pages still 404.
- * React `cache()` still dedupes within a single request.
+ * No process-level board/bodies cache in production: warm serverless instances can
+ * keep a pre-ingest snapshot and skip the tagged Data Cache. React `cache()` still
+ * dedupes within a single request; Next Data Cache handles cross-request reuse for
+ * board.json.gz and body shards (each under the 2MB limit).
  */
 export function clearSnapshotMemoryCache(): void {
-  bodiesMem = null;
+  // Intentionally empty — kept for /api/revalidate callers.
 }
 
 function parseGzipJson<T>(buf: Buffer): T {
@@ -50,8 +51,8 @@ function snapshotDataBaseUrl(): string {
 
 /**
  * Fetch snapshot bytes.
- * - board.json.gz (~300KB): Next Data Cache OK (under 2MB limit) so location SSG stays static.
- * - bodies.json.gz (~5MB): never Data-Cache — exceeds 2MB and would fail / force dynamic.
+ * - board.json.gz + bodies/shards/*.json.gz: Data Cache OK (under 2MB).
+ * - bodies.json.gz (~5MB): never Data-Cache — exceeds 2MB; only used as fallback.
  */
 async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
   if (process.env.NODE_ENV === 'development') {
@@ -61,11 +62,11 @@ async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
 
   const base = snapshotDataBaseUrl();
   const url = `${base}/${name}`;
-  const large = name === 'bodies.json.gz';
+  const tooLargeForDataCache = name === SNAPSHOT_BODIES_FILE;
   try {
     const response = await fetch(url, {
       headers: { Accept: 'application/gzip,application/octet-stream,*/*' },
-      ...(large
+      ...(tooLargeForDataCache
         ? { cache: 'no-store' as const }
         : { next: { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] } }),
     });
@@ -112,35 +113,66 @@ export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | 
   }
 });
 
-async function loadBodiesMap(): Promise<Record<string, SnapshotJobBody> | null> {
-  if (bodiesMem && Date.now() - bodiesMem.loadedAt < BODIES_MEM_TTL_MS) {
-    return bodiesMem.map;
+type SnapshotManifest = {
+  bodiesShardCount?: number;
+};
+
+const readManifest = cache(async (): Promise<SnapshotManifest | null> => {
+  const text = await fetchTextFile('manifest.json');
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as SnapshotManifest;
+  } catch {
+    return null;
   }
-  const gz = await fetchSnapshotBytes('bodies.json.gz');
+});
+
+async function bodiesShardsEnabled(): Promise<boolean> {
+  const manifest = await readManifest();
+  return typeof manifest?.bodiesShardCount === 'number' && manifest.bodiesShardCount > 0;
+}
+
+async function loadBodyFromShard(id: string): Promise<SnapshotJobBody | null> {
+  const gz = await fetchSnapshotBytes(bodyShardPath(id));
   if (!gz) return null;
   try {
     const map = parseGzipJson<Record<string, SnapshotJobBody>>(gz);
-    bodiesMem = { loadedAt: Date.now(), map };
-    return map;
+    return map[id] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fallback while CDN still only has the monolithic bodies map (pre-shard ingest). */
+async function loadBodyFromFullMap(id: string): Promise<SnapshotJobBody | null> {
+  const gz = await fetchSnapshotBytes(SNAPSHOT_BODIES_FILE);
+  if (!gz) return null;
+  try {
+    const map = parseGzipJson<Record<string, SnapshotJobBody>>(gz);
+    return map[id] ?? null;
   } catch {
     return null;
   }
 }
 
 export const loadJobBody = cache(async (id: string): Promise<SnapshotJobBody | null> => {
-  const bodies = await loadBodiesMap();
-  return bodies?.[id] ?? null;
+  if (await bodiesShardsEnabled()) {
+    const fromShard = await loadBodyFromShard(id);
+    if (fromShard) return fromShard;
+  }
+  return loadBodyFromFullMap(id);
 });
 
 export async function readStaticSnapshotFile(name: string): Promise<string | null> {
   return fetchTextFile(name);
 }
 
+const BINARY_SNAPSHOT_RE =
+  /^(board\.json\.gz|bodies\.json\.gz|bodies\/shards\/\d+\.json\.gz)$/;
+
 export async function getSnapshotBinary(name: string): Promise<Buffer | null> {
-  if (name === 'board.json.gz' || name === 'bodies.json.gz') {
-    return fetchSnapshotBytes(name);
-  }
-  return null;
+  if (!BINARY_SNAPSHOT_RE.test(name)) return null;
+  return fetchSnapshotBytes(name);
 }
 
 export function snapshotCdnBaseUrl(): string {

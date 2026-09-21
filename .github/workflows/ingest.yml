@@ -95,6 +95,8 @@ jobs:
           test -f "$SRC/manifest.json"
           test -f "$SRC/board.json.gz"
           test -f "$SRC/bodies.json.gz"
+          test -d "$SRC/bodies/shards"
+          test -f "$SRC/bodies/shards/0.json.gz"
           GENERATED=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$SRC/manifest.json','utf8')).generatedAt)")
 
           WORK=$(mktemp -d)

@@ -129,7 +129,31 @@ export type JobFilters = {
 
 export const SNAPSHOT_DIR = 'public/snapshot';
 export const SNAPSHOT_BOARD_FILE = 'board.json.gz';
-/** Single gzip map of jobId → body. Prefer this over per-job files (Blob ops). */
+/** Full gzip map of jobId → body (MCP / ingest carry-forward). Too large for Next Data Cache. */
 export const SNAPSHOT_BODIES_FILE = 'bodies.json.gz';
+/**
+ * Sharded body maps for the web app: each file stays under Vercel's 2MB Data Cache
+ * limit so job pages can cache a small gzip instead of gunzipping the full bodies blob.
+ */
+export const BODIES_SHARD_COUNT = 64;
+export const SNAPSHOT_BODIES_SHARDS_DIR = 'bodies/shards';
 /** @deprecated Local-only legacy layout; Blob uploads no longer use per-job files. */
 export const SNAPSHOT_JOBS_DIR = 'jobs';
+
+/** Stable shard index for a job id (must match write + read paths). */
+export function bodyShardIndex(jobId: string, shardCount = BODIES_SHARD_COUNT): number {
+  let hash = 2166136261;
+  for (let i = 0; i < jobId.length; i++) {
+    hash ^= jobId.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % shardCount;
+}
+
+export function bodyShardFileName(jobId: string, shardCount = BODIES_SHARD_COUNT): string {
+  return `${bodyShardIndex(jobId, shardCount)}.json.gz`;
+}
+
+export function bodyShardPath(jobId: string, shardCount = BODIES_SHARD_COUNT): string {
+  return `${SNAPSHOT_BODIES_SHARDS_DIR}/${bodyShardFileName(jobId, shardCount)}`;
+}

@@ -11,7 +11,7 @@ export async function GET(
 ) {
   const { path } = await context.params;
   const name = path.join('/');
-  if (name.includes('..') || name.startsWith('jobs/')) {
+  if (name.includes('..')) {
     return new Response('Not found', { status: 404 });
   }
 
@@ -20,7 +20,12 @@ export async function GET(
     return Response.redirect(`${cdnBase}/${name}`, 307);
   }
 
-  if (name.endsWith('.json.gz') || name === 'board.json.gz' || name === 'bodies.json.gz') {
+  if (
+    name.endsWith('.json.gz') ||
+    name === 'board.json.gz' ||
+    name === 'bodies.json.gz' ||
+    name.startsWith('bodies/shards/')
+  ) {
     const { getSnapshotBinary } = await import('@/lib/snapshot/load');
     const bytes = await getSnapshotBinary(name);
     if (!bytes) return new Response('Not found', { status: 404 });
