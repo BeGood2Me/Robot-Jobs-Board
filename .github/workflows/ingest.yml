@@ -104,14 +104,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir snapshot
           cp -r "$GITHUB_WORKSPACE/$SRC"/. snapshot/
-          # Orphan branch has no Next app — give Vercel a no-op so preview builds don't error.
-          cat > vercel.json <<'EOF'
-{
-  "buildCommand": "echo \"snapshot-data is CDN-only\" && mkdir -p public && echo ok > public/index.html",
-  "installCommand": "echo skip",
-  "outputDirectory": "public"
-}
-EOF
+          # Orphan branch has no Next app — no-op Vercel config so preview builds don't error.
+          node -e "require('fs').writeFileSync('vercel.json', JSON.stringify({ buildCommand: 'echo snapshot-data-cdn && mkdir -p public && echo ok > public/index.html', installCommand: 'echo skip', outputDirectory: 'public' }, null, 2))"
           git add snapshot vercel.json
           git commit -m "snapshot ${GENERATED}"
           git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:snapshot-data
