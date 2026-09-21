@@ -104,7 +104,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir snapshot
           cp -r "$GITHUB_WORKSPACE/$SRC"/. snapshot/
-          git add snapshot
+          # Orphan branch has no Next app — give Vercel a no-op so preview builds don't error.
+          cat > vercel.json <<'EOF'
+{
+  "buildCommand": "echo \"snapshot-data is CDN-only\" && mkdir -p public && echo ok > public/index.html",
+  "installCommand": "echo skip",
+  "outputDirectory": "public"
+}
+EOF
+          git add snapshot vercel.json
           git commit -m "snapshot ${GENERATED}"
           git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:snapshot-data
           echo "published=true" >> "$GITHUB_OUTPUT"
