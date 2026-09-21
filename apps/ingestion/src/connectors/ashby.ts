@@ -26,6 +26,11 @@ export function mapAshbyJob(job: AshbyJob): NormalizedJob {
   const apply = job.applyUrl ?? '';
   const url = posting.includes(externalId) ? posting : apply.includes(externalId) ? apply : posting || apply;
 
+  const departmentParts = [
+    job.departmentName ?? job.department ?? null,
+    job.teamName ?? job.team ?? null,
+  ].filter((part, index, all): part is string => Boolean(part) && all.indexOf(part) === index);
+
   return {
     externalId,
     sourceSystem: 'ashby',
@@ -44,7 +49,8 @@ export function mapAshbyJob(job: AshbyJob): NormalizedJob {
         : parsed.workplaceType
       : parsed.workplaceType,
     employmentType: mapEmployment(job.employmentType),
-    department: job.departmentName ?? job.department ?? job.teamName ?? job.team ?? null,
+    // Keep Ashby team (e.g. OpenAI "Robotics") so board filters can match it.
+    department: departmentParts.length ? departmentParts.join(' / ') : null,
     compensationText: compensation,
     postedAt: job.publishedAt ? new Date(job.publishedAt) : job.updatedAt ? new Date(job.updatedAt) : null,
   };

@@ -38,6 +38,7 @@ function ashby(
   description: string,
   seoIntro: string,
   jobBoardName: string,
+  extraConfig: Record<string, string> = {},
 ): SeedCompany {
   return {
     name,
@@ -47,7 +48,7 @@ function ashby(
     seoIntro,
     sourceSystem: SourceSystem.ashby,
     sourceIdentifier: jobBoardName,
-    config: { jobBoardName },
+    config: { jobBoardName, ...extraConfig },
   };
 }
 
@@ -439,6 +440,16 @@ export const seedCompanies: SeedCompany[] = [
     'Humanoid builds commercially scalable humanoid robots, including the HMND-01 platform.',
     'Humanoid is a London based humanoid robotics company with engineering hubs in the United Kingdom and the United States. Roles cover AI, controls, hardware, and manufacturing for industrial humanoid deployments. Robot Jobs Board lists Humanoid jobs in the USA, UK, and Europe.',
     'humanoid',
+  ),
+  ashby(
+    'OpenAI',
+    'openai',
+    'https://openai.com',
+    'OpenAI builds frontier AI systems and is hiring across a Robotics team spanning hardware, firmware, controls, and ML infrastructure.',
+    'OpenAI (San Francisco) posts robotics roles from actuator and firmware engineering through inference and distributed data systems for robot training — including listings with public base salaries into the high hundreds of thousands. Robot Jobs Board aggregates OpenAI Robotics team jobs from their public Ashby board (not the full company careers page).',
+    'openai',
+    // OpenAI's Ashby board is company-wide; keep Robotics team / robot-titled roles only.
+    { keyword: 'robot' },
   ),
   {
     name: 'NEURA Robotics',

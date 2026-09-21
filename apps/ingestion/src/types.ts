@@ -42,4 +42,6 @@ export type FeedConfigJson = {
   sourceFilter?: string;
   host?: string;
   tenant?: string;
+  /** If set, keep only jobs whose title/department include one of these | -separated needles (case-insensitive). */
+  keyword?: string;
 };
