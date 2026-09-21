@@ -3,6 +3,7 @@
   "outputDirectory": "apps/web/.next",
   "buildCommand": "SNAPSHOT_ONLY=1 pnpm db:generate && SNAPSHOT_ONLY=1 pnpm --filter web build",
   "installCommand": "pnpm install",
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"snapshot-data\" ]; then exit 0; else exit 1; fi",
   "env": {
     "SNAPSHOT_ONLY": "1"
   },
