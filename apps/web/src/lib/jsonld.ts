@@ -533,7 +533,7 @@ export function companyPageJsonLd(company: {
   const pageName =
     company.total < 1
       ? `${company.name} careers on Robot Jobs Board`
-      : `${company.name} jobs & careers (${company.total} open roles)`;
+      : `${company.name} jobs & careers`;
   const pageDescription = (company.seoIntro?.trim() || company.description).replace(/\s+/g, ' ').trim();
   const organization: Record<string, unknown> = {
     '@type': 'Organization',

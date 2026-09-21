@@ -33,10 +33,9 @@ export function jobPageDescription(job: JobSeoFields): string {
   return `${lead} ${snippet}`.slice(0, 160);
 }
 
-export function companyPageTitle(name: string, total: number): string {
+export function companyPageTitle(name: string, total = 1): string {
   if (total < 1) return `${name} careers on Robot Jobs Board`;
-  const roles = total === 1 ? '1 open role' : `${total} open roles`;
-  return `${name} jobs & careers (${roles})`;
+  return `${name} jobs & careers`;
 }
 
 export function companyPageDescription(
