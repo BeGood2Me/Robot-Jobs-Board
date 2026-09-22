@@ -78,14 +78,27 @@ export function classifyInternshipTrack(job: {
     job.employmentType === 'INTERN' || isInternshipTitle(job.title);
   if (!isIntern) return null;
 
-  const text = [job.title, job.descriptionPlain ?? '']
-    .filter(Boolean)
-    .join(' ')
+  const title = job.title
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u201a\u2032]/g, "'");
+  const description = (job.descriptionPlain ?? '')
     .toLowerCase()
     .replace(/[\u2018\u2019\u201a\u2032]/g, "'");
 
-  if (PHD_PHRASES.some((phrase) => hasPhrase(text, phrase))) return 'phd';
-  if (PG_PHRASES.some((phrase) => hasPhrase(text, phrase))) return 'pg';
-  if (UG_PHRASES.some((phrase) => hasPhrase(text, phrase))) return 'ug';
+  // Title wins — job descriptions often mention PhD/MS in requirements boilerplate.
+  for (const [track, phrases] of [
+    ['phd', PHD_PHRASES],
+    ['pg', PG_PHRASES],
+    ['ug', UG_PHRASES],
+  ] as const) {
+    if (phrases.some((phrase) => hasPhrase(title, phrase))) return track;
+  }
+  for (const [track, phrases] of [
+    ['phd', PHD_PHRASES],
+    ['pg', PG_PHRASES],
+    ['ug', UG_PHRASES],
+  ] as const) {
+    if (phrases.some((phrase) => hasPhrase(description, phrase))) return track;
+  }
   return null;
 }

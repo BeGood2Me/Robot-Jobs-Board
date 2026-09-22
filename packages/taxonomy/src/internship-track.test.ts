@@ -60,7 +60,17 @@ describe('classifyInternshipTrack', () => {
     ).toBe('ug');
   });
 
-  it('prefers PhD over PG when both appear', () => {
+  it('prefers an explicit title level over description boilerplate', () => {
+    expect(
+      classifyInternshipTrack({
+        title: 'Undergraduate Robotics Intern',
+        descriptionPlain: 'PhD mentors on the team. MS preferred for full-time conversion.',
+        employmentType: 'INTERN',
+      }),
+    ).toBe('ug');
+  });
+
+  it('prefers PhD over PG when both appear in the same field', () => {
     expect(
       classifyInternshipTrack({
         title: 'Intern',
