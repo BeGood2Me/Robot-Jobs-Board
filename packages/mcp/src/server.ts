@@ -88,6 +88,7 @@ type FacetsResponse = {
   countries: Array<{ country: string; count: number }>;
   workplaces: string[];
   employments: string[];
+  internshipTracks?: Array<{ slug: string; label: string }>;
 };
 
 export function createServer() {
@@ -117,6 +118,7 @@ export function registerRobotJobsBoard(server: McpServer) {
         region: z.string().optional(),
         workplace: listSchema.describe('ONSITE, HYBRID, and/or REMOTE'),
         employment: listSchema.describe('FULL_TIME, PART_TIME, CONTRACT, INTERN, TEMPORARY'),
+        intern: listSchema.describe('Internship audience: ug, pg, and/or phd'),
         remote: z.boolean().optional().describe('Only remote jobs when true'),
         entry_level: z.boolean().optional().describe('Prefer early-career / new-grad style jobs'),
         sort: z.enum(['newest', 'relevance']).optional(),
@@ -136,6 +138,7 @@ export function registerRobotJobsBoard(server: McpServer) {
           region: args.region,
           workplace: asList(args.workplace),
           employment: asList(args.employment),
+          intern: asList(args.intern),
           remote: boolQuery(args.remote),
           entry: boolQuery(args.entry_level),
           sort: args.sort,
@@ -384,6 +387,11 @@ export function registerRobotJobsBoard(server: McpServer) {
           countries: board.countryFacets,
           workplaces: ['ONSITE', 'HYBRID', 'REMOTE'],
           employments: ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN', 'TEMPORARY'],
+          internshipTracks: [
+            { slug: 'ug', label: 'Undergraduate' },
+            { slug: 'pg', label: "Master's / postgraduate" },
+            { slug: 'phd', label: 'PhD' },
+          ],
         } satisfies FacetsResponse);
       } catch (error) {
         return errorResult(error);

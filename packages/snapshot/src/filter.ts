@@ -229,6 +229,13 @@ export function matchesJobFilters(job: SnapshotJob, filters: JobFilters): boolea
     if (!employmentMatch) return false;
   }
 
+  const tracks = (filters.internshipTracks ?? []).filter(
+    (value): value is 'ug' | 'pg' | 'phd' => value === 'ug' || value === 'pg' || value === 'phd',
+  );
+  if (tracks.length) {
+    if (!job.internshipTrack || !tracks.includes(job.internshipTrack)) return false;
+  }
+
   if (filters.remote && !job.isRemote) return false;
   return true;
 }

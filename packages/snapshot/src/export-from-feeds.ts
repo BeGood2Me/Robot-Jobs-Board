@@ -201,6 +201,7 @@ function toSnapshotJob(
       const seniority = taxonomy.seniorityBySlug.get(classification.seniority);
       return seniority ? [{ seniority: { id: seniority.id, slug: seniority.slug, label: seniority.label } }] : [];
     })(),
+    internshipTrack: classification.internshipTrack,
   };
 }
 

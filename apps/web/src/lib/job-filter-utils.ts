@@ -8,6 +8,7 @@ export type JobFilters = {
   city?: string;
   workplaces?: string[];
   employments?: string[];
+  internshipTracks?: string[];
   entryLevel?: boolean;
   remote?: boolean;
   sort?: 'newest' | 'relevance';
@@ -39,6 +40,9 @@ export function filtersFromSearchParams(params: Record<string, string | string[]
     city: first(params.city),
     workplaces: list(params.workplace),
     employments: list(params.employment),
+    internshipTracks: list(params.intern).filter(
+      (value) => value === 'ug' || value === 'pg' || value === 'phd',
+    ),
     entryLevel:
       list(params.entry).includes('1') ||
       list(params.entry).includes('true') ||
@@ -70,6 +74,7 @@ export function countActiveFilters(filters: JobFilters): number {
     (filters.seniorities?.length ?? 0) +
     (filters.workplaces?.length ?? 0) +
     (filters.employments?.length ?? 0) +
+    (filters.internshipTracks?.length ?? 0) +
     (filters.entryLevel ? 1 : 0) +
     (filters.remote ? 1 : 0) +
     (filters.sort === 'relevance' && !filters.q ? 1 : 0)
@@ -88,6 +93,7 @@ export function jobBoardHref(filters: JobFilters, page = filters.page ?? 1): str
   if (filters.city) query.set('city', filters.city);
   for (const workplace of filters.workplaces ?? []) query.append('workplace', workplace);
   for (const employment of filters.employments ?? []) query.append('employment', employment);
+  for (const track of filters.internshipTracks ?? []) query.append('intern', track);
   if (filters.remote) query.set('remote', '1');
   if (filters.sort && filters.sort !== 'newest') query.set('sort', filters.sort);
   if (page > 1) query.set('page', String(page));

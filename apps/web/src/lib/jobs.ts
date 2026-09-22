@@ -288,6 +288,41 @@ export function jobWhere(filters: JobFilters, activeOnly = true): Prisma.JobWher
     if (otherEmployments.length) employmentMatch.push({ employmentType: { in: otherEmployments } });
     and.push(employmentMatch.length === 1 ? employmentMatch[0] : { OR: employmentMatch });
   }
+  const tracks = (filters.internshipTracks ?? []).filter(
+    (value): value is 'ug' | 'pg' | 'phd' => value === 'ug' || value === 'pg' || value === 'phd',
+  );
+  if (tracks.length) {
+    const trackMatch: Prisma.JobWhereInput[] = [];
+    if (tracks.includes('phd')) {
+      trackMatch.push(
+        { title: { contains: 'phd', mode: 'insensitive' } },
+        { title: { contains: 'ph.d', mode: 'insensitive' } },
+        { title: { contains: 'doctoral', mode: 'insensitive' } },
+        { descriptionPlain: { contains: 'phd', mode: 'insensitive' } },
+        { descriptionPlain: { contains: 'doctoral', mode: 'insensitive' } },
+      );
+    }
+    if (tracks.includes('pg')) {
+      trackMatch.push(
+        { title: { contains: "master's", mode: 'insensitive' } },
+        { title: { contains: 'masters', mode: 'insensitive' } },
+        { title: { contains: 'msc', mode: 'insensitive' } },
+        { title: { contains: 'postgraduate', mode: 'insensitive' } },
+        { descriptionPlain: { contains: "master's", mode: 'insensitive' } },
+        { descriptionPlain: { contains: 'graduate student', mode: 'insensitive' } },
+      );
+    }
+    if (tracks.includes('ug')) {
+      trackMatch.push(
+        { title: { contains: 'undergraduate', mode: 'insensitive' } },
+        { title: { contains: 'undergrad', mode: 'insensitive' } },
+        { title: { contains: "bachelor's", mode: 'insensitive' } },
+        { descriptionPlain: { contains: 'undergraduate', mode: 'insensitive' } },
+        { descriptionPlain: { contains: "bachelor's", mode: 'insensitive' } },
+      );
+    }
+    and.push({ AND: [internWhere(), { OR: trackMatch }] });
+  }
   if (filters.remote) and.push({ isRemote: true });
   return and.length ? { AND: and } : {};
 }
@@ -313,6 +348,7 @@ export async function searchJobs(filters: JobFilters) {
     countries: filters.countries ?? [],
     workplaces: filters.workplaces ?? [],
     employments: filters.employments ?? [],
+    internshipTracks: filters.internshipTracks ?? [],
     entryLevel: Boolean(filters.entryLevel),
     region: filters.region ?? '',
     city: filters.city ?? '',

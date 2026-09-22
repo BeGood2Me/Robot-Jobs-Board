@@ -1,4 +1,5 @@
 import { isEntryLevelRole, isInternshipTitle } from './entry-level';
+import { classifyInternshipTrack, type InternshipTrackSlug } from './internship-track';
 import {
   COMPANY_DOMAIN_HINTS,
   ROBOT_DOMAIN_RULES,
@@ -21,6 +22,8 @@ export type ClassificationResult = {
   domains: RobotDomainSlug[];
   techTags: TechTagSlug[];
   seniority: SenioritySlug;
+  /** Set only for internships when UG / PG / PhD is explicit in the posting. */
+  internshipTrack: InternshipTrackSlug | null;
   unclear: boolean;
 };
 
@@ -100,10 +103,12 @@ export class RuleBasedClassifier implements Classifier {
     const domains = classifyDomains(job);
     const techTags = classifyTechTags(job);
     const seniority = classifySeniority(job);
+    const internshipTrack = classifyInternshipTrack(job);
     return {
       domains,
       techTags,
       seniority,
+      internshipTrack,
       unclear: domains.length === 0,
     };
   }

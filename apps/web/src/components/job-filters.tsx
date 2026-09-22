@@ -33,6 +33,12 @@ const employments = [
   { slug: 'PART_TIME', label: 'Part time' },
 ];
 
+const internshipTracks = [
+  { slug: 'ug', label: 'Undergraduate' },
+  { slug: 'pg', label: "Master's / postgraduate" },
+  { slug: 'phd', label: 'PhD' },
+] as const satisfies ReadonlyArray<Option>;
+
 const PINNED_COUNTRIES = ['Australia', 'Canada', 'United Kingdom', 'United States'];
 const LOCATION_LEADERS = ['United States', 'United Kingdom'];
 
@@ -147,6 +153,7 @@ export function JobFilters({
       filters.seniorities?.length ||
       filters.workplaces?.length ||
       filters.employments?.length ||
+      filters.internshipTracks?.length ||
       filters.entryLevel ||
       filters.sort === 'relevance',
   );
@@ -187,6 +194,7 @@ export function JobFilters({
     seniorities: filters.seniorities,
     workplaces: filters.workplaces,
     employments: filters.employments,
+    internshipTracks: filters.internshipTracks,
     entryLevel: filters.entryLevel,
     sort: filters.sort,
   });
@@ -238,6 +246,12 @@ export function JobFilters({
         scroll
       />
       <CheckList legend="Job type" name="employment" options={[...employments].sort(byLabel)} selected={filters.employments} />
+      <CheckList
+        legend="Internship for"
+        name="intern"
+        options={[...internshipTracks]}
+        selected={filters.internshipTracks}
+      />
       <CheckList
         legend="Experience"
         name="seniority"
@@ -293,6 +307,9 @@ function HiddenCurrentFilters({ filters }: { filters: JobFilterValues }) {
       ))}
       {(filters.employments ?? []).map((employment) => (
         <input key={`employment-${employment}`} type="hidden" name="employment" value={employment} />
+      ))}
+      {(filters.internshipTracks ?? []).map((track) => (
+        <input key={`intern-${track}`} type="hidden" name="intern" value={track} />
       ))}
     </>
   );

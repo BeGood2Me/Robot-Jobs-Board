@@ -74,6 +74,8 @@ export type SnapshotJob = {
   robotDomains: Array<{ domainId: string; domain: { id: string; slug: string; name: string } }>;
   techTags: Array<{ techTag: { id: string; slug: string; label: string } }>;
   seniorities: Array<{ seniority: { id: string; slug: string; label: string } }>;
+  /** UG / PG / PhD when the posting is an internship and the level is explicit. */
+  internshipTrack?: 'ug' | 'pg' | 'phd' | null;
 };
 
 export type SnapshotGoneJob = {
@@ -123,6 +125,8 @@ export type JobFilters = {
   city?: string;
   workplaces?: string[];
   employments?: string[];
+  /** Internship audience: ug | pg | phd */
+  internshipTracks?: string[];
   entryLevel?: boolean;
   remote?: boolean;
 };

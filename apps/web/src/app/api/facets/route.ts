@@ -34,5 +34,10 @@ export async function GET() {
     countries,
     workplaces: ['ONSITE', 'HYBRID', 'REMOTE'],
     employments: ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN', 'TEMPORARY'],
+    internshipTracks: [
+      { slug: 'ug', label: 'Undergraduate' },
+      { slug: 'pg', label: "Master's / postgraduate" },
+      { slug: 'phd', label: 'PhD' },
+    ],
   });
 }
