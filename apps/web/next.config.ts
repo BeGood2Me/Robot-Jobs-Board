@@ -49,6 +49,8 @@ const nextConfig: NextConfig = {
         destination: 'https://www.robotjobsboard.com/:path*',
         permanent: true,
       },
+      // CDN redirect — avoids a force-dynamic Node function for legacy /jobs URLs.
+      { source: '/jobs', destination: '/', permanent: true },
       { source: '/blog', destination: '/guides', permanent: true },
       { source: '/blog/:slug', destination: '/guides/:slug', permanent: true },
       { source: '/skills/:slug-jobs', destination: '/?tag=:slug', permanent: true },

@@ -1,9 +1,11 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 import { filtersFromSearchParams, jobBoardHref } from '@/lib/jobs';
 
-export const dynamic = 'force-dynamic';
-
+/**
+ * Fallback if next.config `/jobs` → `/` redirect is skipped (e.g. local).
+ * Prefer the config redirect in production — no Fluid Active CPU.
+ */
 export default async function JobsRedirectPage({ searchParams }: PageProps<'/jobs'>) {
   const params = await searchParams;
-  redirect(jobBoardHref(filtersFromSearchParams(params)));
+  permanentRedirect(jobBoardHref(filtersFromSearchParams(params)));
 }
