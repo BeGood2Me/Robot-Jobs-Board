@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { cache } from 'react';
 import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
 import {
+  bodyShardIndex,
   bodyShardPath,
   resolveSnapshotBaseUrl,
   SNAPSHOT_BODIES_FILE,
@@ -13,14 +14,21 @@ import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 /** Used by /api/revalidate for path busting after ingest. */
 export const PUBLIC_BOARD_CACHE_TAG = 'public-board';
 
+type SnapshotManifest = {
+  generatedAt?: string;
+  bodiesShardCount?: number;
+};
+
 /**
- * No process-level board/bodies cache in production: warm serverless instances can
- * keep a pre-ingest snapshot and skip the tagged Data Cache. React `cache()` still
- * dedupes within a single request; Next Data Cache handles cross-request reuse for
- * board.json.gz and body shards (each under the 2MB limit).
+ * Warm-instance caches keyed by snapshot generatedAt so revalidate / new ingest
+ * cannot serve a stale board (the failure mode that 404'd /companies/openai).
  */
+let boardMem: { generatedAt: string; snapshot: PublicBoardSnapshot } | null = null;
+let shardMem = new Map<number, { generatedAt: string; map: Record<string, SnapshotJobBody> }>();
+
 export function clearSnapshotMemoryCache(): void {
-  // Intentionally empty — kept for /api/revalidate callers.
+  boardMem = null;
+  shardMem = new Map();
 }
 
 function parseGzipJson<T>(buf: Buffer): T {
@@ -52,7 +60,7 @@ function snapshotDataBaseUrl(): string {
 /**
  * Fetch snapshot bytes.
  * - board.json.gz + bodies/shards/*.json.gz: Data Cache OK (under 2MB).
- * - bodies.json.gz (~5MB): never Data-Cache — exceeds 2MB; only used as fallback.
+ * - bodies.json.gz (~5MB): never Data-Cache — exceeds 2MB; only used as pre-shard fallback.
  */
 async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
   if (process.env.NODE_ENV === 'development') {
@@ -103,20 +111,6 @@ export function snapshotBaseUrl(): string {
   return `${(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.robotjobsboard.com').replace(/\/$/, '')}/snapshot`;
 }
 
-export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | null> => {
-  const gz = await fetchSnapshotBytes('board.json.gz');
-  if (!gz) return null;
-  try {
-    return parseGzipJson<PublicBoardSnapshot>(gz);
-  } catch {
-    return null;
-  }
-});
-
-type SnapshotManifest = {
-  bodiesShardCount?: number;
-};
-
 const readManifest = cache(async (): Promise<SnapshotManifest | null> => {
   const text = await fetchTextFile('manifest.json');
   if (!text) return null;
@@ -132,11 +126,42 @@ async function bodiesShardsEnabled(): Promise<boolean> {
   return typeof manifest?.bodiesShardCount === 'number' && manifest.bodiesShardCount > 0;
 }
 
+export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | null> => {
+  const manifest = await readManifest();
+  const generatedAt = manifest?.generatedAt?.trim();
+  if (boardMem && generatedAt && boardMem.generatedAt === generatedAt) {
+    return boardMem.snapshot;
+  }
+
+  const gz = await fetchSnapshotBytes('board.json.gz');
+  if (!gz) return null;
+  try {
+    const snapshot = parseGzipJson<PublicBoardSnapshot>(gz);
+    if (generatedAt || snapshot.generatedAt) {
+      boardMem = { generatedAt: generatedAt || snapshot.generatedAt, snapshot };
+    }
+    return snapshot;
+  } catch {
+    return null;
+  }
+});
+
 async function loadBodyFromShard(id: string): Promise<SnapshotJobBody | null> {
+  const manifest = await readManifest();
+  const generatedAt = manifest?.generatedAt?.trim();
+  const index = bodyShardIndex(id);
+  if (generatedAt) {
+    const hit = shardMem.get(index);
+    if (hit && hit.generatedAt === generatedAt) {
+      return hit.map[id] ?? null;
+    }
+  }
+
   const gz = await fetchSnapshotBytes(bodyShardPath(id));
   if (!gz) return null;
   try {
     const map = parseGzipJson<Record<string, SnapshotJobBody>>(gz);
+    if (generatedAt) shardMem.set(index, { generatedAt, map });
     return map[id] ?? null;
   } catch {
     return null;
@@ -156,9 +181,10 @@ async function loadBodyFromFullMap(id: string): Promise<SnapshotJobBody | null> 
 }
 
 export const loadJobBody = cache(async (id: string): Promise<SnapshotJobBody | null> => {
+  // When shards exist, never gunzip the 5MB monolith — a miss returns null and the
+  // job page falls back to empty/DB description instead of burning Fluid CPU.
   if (await bodiesShardsEnabled()) {
-    const fromShard = await loadBodyFromShard(id);
-    if (fromShard) return fromShard;
+    return loadBodyFromShard(id);
   }
   return loadBodyFromFullMap(id);
 });
