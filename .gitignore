@@ -25,3 +25,7 @@ tsconfig.tsbuildinfo
 # Generated board snapshot — served from Vercel Blob in production.
 apps/web/public/snapshot/**
 !apps/web/public/snapshot/.gitkeep
+
+# Local outreach lists — never commit.
+docs/outreach-student-contacts.csv
+docs/**/*contacts*.csv
