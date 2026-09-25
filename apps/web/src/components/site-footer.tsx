@@ -1,9 +1,13 @@
 import Link from 'next/link';
+import { NewsletterSignup } from '@/components/newsletter-signup';
 
 export function SiteFooter() {
   return (
     <footer className="relative z-10 mt-16 shrink-0 border-t border-line bg-background px-6 py-16 pb-[max(4rem,env(safe-area-inset-bottom))]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-start md:justify-between">
+      <div className="mx-auto max-w-6xl">
+        <NewsletterSignup source="footer" variant="footer" />
+      </div>
+      <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-sm font-semibold">Robot Jobs Board</p>
           <p className="mt-3 max-w-sm text-sm text-muted">

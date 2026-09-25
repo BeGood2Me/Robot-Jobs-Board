@@ -4,6 +4,7 @@ import { JobBoardInteractive } from '@/components/job-board-interactive';
 import { JobBoardShell } from '@/components/job-board-shell';
 import { JobCard } from '@/components/job-card';
 import { JobPagination } from '@/components/job-pagination';
+import { NewsletterSignup } from '@/components/newsletter-signup';
 import {
   filtersFromSearchParams,
   getCountryFacets,
@@ -65,6 +66,8 @@ export async function JobBoard({
           </Link>
         </nav>
       </div>
+
+      <NewsletterSignup source="homepage" variant="hero" />
 
       <Suspense
         fallback={

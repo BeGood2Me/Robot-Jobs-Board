@@ -4,11 +4,11 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'Privacy policy',
   description:
-    'How Robot Jobs Board collects, uses, and shares personal information when you browse robotics jobs or contact us.',
+    'How Robot Jobs Board collects, uses, and shares personal information when you browse robotics jobs, subscribe for hiring updates, or contact us.',
   alternates: { canonical: '/privacy' },
 };
 
-const UPDATED = 'August 20, 2026';
+const UPDATED = 'September 25, 2026';
 
 export default function PrivacyPage() {
   return (
@@ -142,6 +142,11 @@ export default function PrivacyPage() {
               or email hello@robotjobsboard.com.
             </li>
             <li>
+              <span className="font-semibold text-foreground">Newsletter data</span>, such as your email address when
+              you subscribe for occasional robotics hiring updates. We send these via Buttondown when we choose to
+              email the list; you can unsubscribe from any message.
+            </li>
+            <li>
               <span className="font-semibold text-foreground">Communications data</span> based on our exchanges with you
               by email or other channels you choose.
             </li>
@@ -219,6 +224,12 @@ export default function PrivacyPage() {
               ingest a public company board.
             </li>
             <li>
+              <span className="font-semibold text-foreground">Communications</span> — if you subscribe to our email
+              list, to send occasional robotics hiring updates and related service messages via Buttondown. We do not
+              commit to a fixed send schedule. You can unsubscribe at any time using the link in those emails or by
+              contacting us.
+            </li>
+            <li>
               <span className="font-semibold text-foreground">Service improvement and analytics</span> — to understand
               usage, fix issues, and improve the Service (including via Vercel Analytics and Google Analytics).
             </li>
@@ -247,7 +258,9 @@ export default function PrivacyPage() {
             We retain personal information as needed for the purposes described above, including legal, security, and
             operational needs. Open jobs remain listed while they appear on the source board and pass our filters. When
             a job disappears from an employer ATS feed, we delete it from our database on the next successful sync and
-            its page returns 404. Emails you send are kept only as long as needed to handle the request. Analytics and
+            its page returns 404. Emails you send are kept only as long as needed to handle the request. Newsletter
+            subscription addresses are kept until you unsubscribe or ask us to delete them, subject to Buttondown&apos;s
+            retention for delivery and compliance. Analytics and
             server logs follow each provider&apos;s retention settings. When we no longer need personal information, we
             delete, anonymize, or isolate it from further processing.
           </p>
@@ -259,7 +272,8 @@ export default function PrivacyPage() {
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>
               <span className="font-semibold text-foreground">Service providers</span> that help us operate the Service —
-              including Vercel (hosting and analytics), Neon (database), and Google (Google Analytics).
+              including Vercel (hosting and analytics), Neon (database), Buttondown (newsletter delivery), and Google
+              (Google Analytics).
             </li>
             <li>
               <span className="font-semibold text-foreground">Employers and ATS providers</span> when you follow an apply
@@ -283,6 +297,11 @@ export default function PrivacyPage() {
             <li>
               Email hello@robotjobsboard.com to ask about a message you sent, to correct it, or to request deletion of
               that email.
+            </li>
+            <li>
+              Unsubscribe from hiring update emails using the link in any message we send, or email
+              hello@robotjobsboard.com to request removal from the list. Newsletter addresses are stored and processed
+              by Buttondown under their privacy terms as our email provider.
             </li>
             <li>Clear saved jobs by clearing site data in your browser.</li>
             <li>
@@ -329,9 +348,9 @@ export default function PrivacyPage() {
         <section id="international" className="scroll-mt-28">
           <h2 className="text-xl font-semibold text-foreground">International data transfer</h2>
           <p className="mt-3">
-            We are established in Ireland. Some of our service providers (including Vercel, Neon, and Google) process
-            data in the United States or other countries outside Ireland and the EEA. Where we transfer personal data
-            from the EEA or UK to countries without an adequacy decision, we use appropriate safeguards such as the
+            We are established in Ireland. Some of our service providers (including Vercel, Neon, Buttondown, and Google)
+            process data in the United States or other countries outside Ireland and the EEA. Where we transfer personal
+            data from the EEA or UK to countries without an adequacy decision, we use appropriate safeguards such as the
             European Commission&apos;s Standard Contractual Clauses (and the UK international data transfer addendum
             where required), or another lawful transfer mechanism. See also the{' '}
             <a href="#notice-to-european-users" className="underline">
