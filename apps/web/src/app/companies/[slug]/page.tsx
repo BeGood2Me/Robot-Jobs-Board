@@ -13,7 +13,7 @@ import { companyPageDescription, companyPageIntro, companyPageTitle } from '@/li
 import { companyStaticParams } from '@/lib/snapshot/static-params';
 import { formatPosted, PAGE_SIZE } from '@/lib/site';
 
-export const revalidate = 3600;
+export const revalidate = 14400;
 /** New companies appear via ingest/CDN without a rebuild — allow slugs beyond build-time static params. */
 export const dynamicParams = true;
 

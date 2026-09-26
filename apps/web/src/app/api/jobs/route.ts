@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { filtersFromSearchParams, searchJobs } from '@/lib/jobs';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 function paramsFromUrl(url: URL): Record<string, string | string[] | undefined> {
   const params: Record<string, string | string[]> = {};
@@ -13,5 +14,9 @@ function paramsFromUrl(url: URL): Record<string, string | string[] | undefined> 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const result = await searchJobs(filtersFromSearchParams(paramsFromUrl(url)));
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: {
+      'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
+    },
+  });
 }

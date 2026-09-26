@@ -10,7 +10,7 @@ import {
 } from '@/lib/programmatic';
 import { domainStaticParams } from '@/lib/snapshot/static-params';
 
-export const revalidate = 3600;
+export const revalidate = 14400;
 export const dynamicParams = false;
 
 export function generateStaticParams() {

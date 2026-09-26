@@ -44,9 +44,9 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Only HTML surfaces + public JSON APIs scrapers hit.
-     * Skipping /api/cron|/revalidate|/admin|/snapshot and static assets
-     * cuts middleware Active CPU (~18% of the meter) without dropping bot shields.
+     * Crawl-heavy HTML + public JSON APIs only.
+     * Skip low-traffic static pages (/privacy|/terms|/post-a-job|/mcp|/guides)
+     * to cut middleware Active CPU without dropping bot shields on the board.
      */
     '/',
     '/board',
@@ -56,17 +56,12 @@ export const config = {
     '/companies/:path*',
     '/locations/:path*',
     '/robots/:path*',
-    '/guides',
-    '/guides/:path*',
-    '/post-a-job',
-    '/privacy',
-    '/terms',
-    '/mcp',
     '/api/jobs',
     '/api/jobs/:path*',
     '/api/facets',
     '/api/companies',
     '/api/companies/:path*',
     '/api/mcp',
+    '/api/newsletter',
   ],
 };

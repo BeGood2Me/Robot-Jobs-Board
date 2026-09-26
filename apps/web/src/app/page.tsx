@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { JobBoard } from '@/components/job-board';
 
-export const revalidate = 3600;
+export const revalidate = 14400;
 
 export async function generateMetadata(): Promise<Metadata> {
   const title = 'Robotics jobs board';

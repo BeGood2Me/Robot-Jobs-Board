@@ -5,7 +5,7 @@ import { publicJobWhere } from '@/lib/jobs';
 import { unstable_cache } from 'next/cache';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export const revalidate = 3600;
+export const revalidate = 14400;
 
 export const metadata = {
   title: 'Robotics companies hiring',

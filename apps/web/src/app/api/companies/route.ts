@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSiteUrl } from '@/lib/site';
+import { getSiteUrl, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 import { loadPublicSnapshot } from '@/lib/snapshot/load';
 
 export async function GET() {
@@ -20,8 +20,15 @@ export async function GET() {
       pageUrl: `${site}/companies/${company.slug}`,
     }));
 
-  return NextResponse.json({
-    generatedAt: snapshot.generatedAt,
-    companies,
-  });
+  return NextResponse.json(
+    {
+      generatedAt: snapshot.generatedAt,
+      companies,
+    },
+    {
+      headers: {
+        'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
+      },
+    },
+  );
 }
