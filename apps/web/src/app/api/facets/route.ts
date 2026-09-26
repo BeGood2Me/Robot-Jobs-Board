@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
+import { apiRateLimitResponse } from '@/lib/api-rate-limit';
 import { getCountryFacets, getTagFacets, getTaxonomy } from '@/lib/jobs';
 import { loadPublicSnapshot } from '@/lib/snapshot/load';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = apiRateLimitResponse(request, { name: 'facets', limit: 60 });
+  if (limited) return limited;
+
   const [taxonomy, tags, countries, snapshot] = await Promise.all([
     getTaxonomy(),
     getTagFacets(),

@@ -1,5 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { createServer } from '@robot-jobs-board/mcp/server';
+import { apiRateLimitResponse } from '@/lib/api-rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -79,6 +80,9 @@ export async function DELETE() {
 }
 
 export async function POST(request: Request) {
+  const limited = apiRateLimitResponse(request, { name: 'mcp', limit: 60 });
+  if (limited) return withCors(limited);
+
   try {
     return await handleMcpPost(request);
   } catch (error) {

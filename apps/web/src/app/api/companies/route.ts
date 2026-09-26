@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
+import { apiRateLimitResponse } from '@/lib/api-rate-limit';
 import { getSiteUrl, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 import { loadPublicSnapshot } from '@/lib/snapshot/load';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = apiRateLimitResponse(request, { name: 'companies', limit: 60 });
+  if (limited) return limited;
+
   const snapshot = await loadPublicSnapshot();
   if (!snapshot) {
     return NextResponse.json({ error: 'Snapshot unavailable' }, { status: 503 });

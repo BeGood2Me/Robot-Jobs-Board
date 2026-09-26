@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiRateLimitResponse } from '@/lib/api-rate-limit';
 import { filtersFromSearchParams, searchJobs } from '@/lib/jobs';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
@@ -12,6 +13,9 @@ function paramsFromUrl(url: URL): Record<string, string | string[] | undefined> 
 }
 
 export async function GET(request: Request) {
+  const limited = apiRateLimitResponse(request, { name: 'jobs', limit: 90 });
+  if (limited) return limited;
+
   const url = new URL(request.url);
   const result = await searchJobs(filtersFromSearchParams(paramsFromUrl(url)));
   return NextResponse.json(result, {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiRateLimitResponse } from '@/lib/api-rate-limit';
 
 const BUTTONDOWN_API = 'https://api.buttondown.com/v1/subscribers';
 
@@ -9,6 +10,9 @@ function clientIp(request: Request): string | undefined {
 }
 
 export async function POST(request: Request) {
+  const limited = apiRateLimitResponse(request, { name: 'newsletter', limit: 10 });
+  if (limited) return limited;
+
   const apiKey = process.env.BUTTONDOWN_API_KEY?.trim();
   if (!apiKey) {
     return NextResponse.json(
