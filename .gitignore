@@ -26,6 +26,5 @@ tsconfig.tsbuildinfo
 apps/web/public/snapshot/**
 !apps/web/public/snapshot/.gitkeep
 
-# Local outreach lists — never commit.
-docs/outreach-student-contacts.csv
-docs/**/*contacts*.csv
+# Private local notes, plans, and outreach — never commit.
+docs/
