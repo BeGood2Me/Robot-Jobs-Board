@@ -57,19 +57,25 @@ function snapshotDataBaseUrl(): string {
   return resolveSnapshotBaseUrl();
 }
 
+/** Manifest polls often so a new ingest is visible even when /api/revalidate is blocked (Attack Challenge). */
+const MANIFEST_REVALIDATE_SECONDS = 60;
+
 /**
  * Fetch snapshot bytes.
  * - board.json.gz + bodies/shards/*.json.gz: Data Cache OK (under 2MB).
  * - bodies.json.gz (~5MB): never Data-Cache — exceeds 2MB; only used as pre-shard fallback.
+ * Cache key includes manifest generatedAt (`?v=`) so a new snapshot cannot reuse stale shard bytes
+ * when on-demand revalidate fails (GitHub Actions → site currently gets HTTP 429).
  */
-async function fetchSnapshotBytes(name: string): Promise<Buffer | null> {
+async function fetchSnapshotBytes(name: string, version?: string): Promise<Buffer | null> {
   if (process.env.NODE_ENV === 'development') {
     const local = readLocalSnapshotFile(name);
     if (local) return local;
   }
 
   const base = snapshotDataBaseUrl();
-  const url = `${base}/${name}`;
+  const bust = version ? `?v=${encodeURIComponent(version)}` : '';
+  const url = `${base}/${name}${bust}`;
   const tooLargeForDataCache = name === SNAPSHOT_BODIES_FILE;
   try {
     const response = await fetch(url, {
@@ -92,9 +98,13 @@ async function fetchTextFile(name: string): Promise<string | null> {
   }
 
   const base = snapshotDataBaseUrl();
+  const isManifest = name === 'manifest.json';
   try {
     const response = await fetch(`${base}/${name}`, {
-      next: { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_BOARD_CACHE_TAG] },
+      next: {
+        revalidate: isManifest ? MANIFEST_REVALIDATE_SECONDS : PUBLIC_REVALIDATE_SECONDS,
+        tags: [PUBLIC_BOARD_CACHE_TAG],
+      },
     });
     if (!response.ok) return null;
     return await response.text();
@@ -133,7 +143,7 @@ export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | 
     return boardMem.snapshot;
   }
 
-  const gz = await fetchSnapshotBytes('board.json.gz');
+  const gz = await fetchSnapshotBytes('board.json.gz', generatedAt);
   if (!gz) return null;
   try {
     const snapshot = parseGzipJson<PublicBoardSnapshot>(gz);
@@ -157,7 +167,7 @@ async function loadBodyFromShard(id: string): Promise<SnapshotJobBody | null> {
     }
   }
 
-  const gz = await fetchSnapshotBytes(bodyShardPath(id));
+  const gz = await fetchSnapshotBytes(bodyShardPath(id), generatedAt);
   if (!gz) return null;
   try {
     const map = parseGzipJson<Record<string, SnapshotJobBody>>(gz);

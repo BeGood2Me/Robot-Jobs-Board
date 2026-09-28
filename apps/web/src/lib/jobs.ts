@@ -4,7 +4,7 @@ import {
   relatedJobsFromSnapshot,
   searchJobsFromSnapshot,
 } from '@robot-jobs-board/snapshot';
-import { unstable_cache } from 'next/cache';
+import { unstable_cache, unstable_noStore as noStore } from 'next/cache';
 import { cache } from 'react';
 import { prisma, withDb } from './db';
 import { type JobFilters } from './job-filter-utils';
@@ -481,6 +481,8 @@ export const getJobById = cache(async (id: string, slug?: string) => {
     if (fromDb && fromDb.isActive && !fromDb.isHidden) {
       return reviveJobDates(fromDb) as JobWithRelations | null;
     }
+    // Do not ISR-cache an empty description (stale shard / failed revalidate).
+    noStore();
     return reviveJobDates({
       ...job,
       descriptionHtml: job.descriptionHtml ?? '',

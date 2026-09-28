@@ -19,6 +19,7 @@ export async function POST(request: Request) {
   revalidateTag(PUBLIC_BOARD_CACHE_TAG, { expire: 0 });
   revalidatePath('/', 'layout');
   revalidatePath('/board');
+  revalidatePath('/jobs/[id]/[slug]', 'page');
   revalidatePath('/companies');
   revalidatePath('/companies/[slug]', 'page');
   revalidatePath('/robots');
