@@ -24,6 +24,9 @@ export function SiteFooter() {
           <Link href="/guides" className="hover:text-foreground">
             Guides
           </Link>
+          <Link href="/post-a-job" className="hover:text-foreground">
+            Post a job
+          </Link>
           <Link href="/robots/amr-jobs" className="hover:text-foreground">
             AMR jobs
           </Link>

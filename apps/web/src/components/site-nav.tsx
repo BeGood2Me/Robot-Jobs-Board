@@ -10,6 +10,7 @@ const links = [
   { href: '/', label: 'Jobs' },
   { href: '/companies', label: 'Companies' },
   { href: '/guides', label: 'Guides' },
+  { href: '/post-a-job', label: 'Post a job' },
 ];
 
 export function SiteNav() {
