@@ -23,9 +23,14 @@ const loadJobSitemapUrls = unstable_cache(
   { revalidate: PUBLIC_REVALIDATE_SECONDS },
 );
 
+function sitemapHasUrls(xml: string): boolean {
+  return /<url[\s>]/i.test(xml);
+}
+
 export async function GET() {
   const staticXml = await readSnapshotSitemap('sitemap-jobs.xml');
-  if (staticXml) {
+  // Prefer snapshot when it actually lists jobs; empty urlsets were starving GSC.
+  if (staticXml && sitemapHasUrls(staticXml)) {
     return new Response(staticXml, { headers: snapshotXmlHeaders() });
   }
 

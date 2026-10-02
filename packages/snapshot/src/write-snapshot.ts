@@ -112,9 +112,18 @@ export function writePublicSnapshotFiles(snapshot: PublicBoardSnapshot, outDir: 
   writeFileSync(join(outDir, 'board.json.gz'), gzipSync(Buffer.from(JSON.stringify(indexSnapshot), 'utf8')));
   writeJobBodies(jobs, outDir);
 
-  // Job URLs are ephemeral and flood crawl budget (GSC "Discovered – not indexed").
-  // Keep them discoverable via company pages; only sitemap durable hub URLs here.
-  writeFileSync(join(outDir, 'sitemap-jobs.xml'), urlset([]), 'utf8');
+  // Job URLs for Google for Jobs / JobPosting discovery. ~2–3k active URLs is fine for
+  // sitemap limits (50k). Empty jobs sitemaps left most listings undiscovered in GSC.
+  writeFileSync(
+    join(outDir, 'sitemap-jobs.xml'),
+    urlset(
+      jobs.map((job) => ({
+        loc: `${site}/jobs/${job.id}/${job.slug}`,
+        lastmod: (job.postedAt ?? job.createdAt).slice(0, 10),
+      })),
+    ),
+    'utf8',
+  );
 
   const boardLastmod = snapshot.generatedAt.slice(0, 10);
   const categoryUrls: Array<{ loc: string; lastmod: string }> = [
