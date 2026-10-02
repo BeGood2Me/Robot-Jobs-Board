@@ -23,8 +23,9 @@ export async function generateMetadata({ params }: PageProps<'/robots/[slug]'>):
   const domain = domainSlug ? await getDomainBySlug(domainSlug) : null;
   if (!domain) return { title: 'Robot jobs' };
   const filter = { kind: 'domain' as const, domainId: domain.id };
-  const indexable = await listingIsIndexable(filter, `domain-${domain.id}`);
-  const copy = domainCopy(domain.name, domain.description);
+  const listing = await loadListing(filter, `domain-${domain.id}`);
+  const indexable = listing.indexable || (await listingIsIndexable(filter, `domain-${domain.id}`));
+  const copy = domainCopy(domain.slug, domain.name, domain.description, listing.total);
   const canonical = `/robots/${slug}`;
   return {
     title: copy.title,
@@ -48,7 +49,7 @@ export default async function DomainJobsPage({ params }: PageProps<'/robots/[slu
   if (!domain) notFound();
   const filter = { kind: 'domain' as const, domainId: domain.id };
   const listing = await loadListing(filter, `domain-${domain.id}`);
-  const copy = domainCopy(domain.name, domain.description);
+  const copy = domainCopy(domain.slug, domain.name, domain.description, listing.total);
   const path = `/robots/${slug}`;
   return (
     <SeoJobList

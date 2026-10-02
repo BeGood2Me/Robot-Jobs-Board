@@ -35,7 +35,7 @@ export function jobPageDescription(job: JobSeoFields): string {
 
 export function companyPageTitle(name: string, total = 1): string {
   if (total < 1) return `${name} careers on Robot Jobs Board`;
-  return `${name} jobs & careers`;
+  return `${name} robotics jobs`;
 }
 
 export function companyPageDescription(
@@ -48,8 +48,8 @@ export function companyPageDescription(
   if (total < 1) {
     return `${name} careers on Robot Jobs Board. ${source}`.slice(0, 160);
   }
-  const roles = total === 1 ? '1 live opening' : `${total} live openings`;
-  return `${name} careers — ${roles} aggregated on Robot Jobs Board. Compare titles and locations, then apply on the original posting. ${source}`.slice(
+  const openings = total === 1 ? '1 live job' : `${total} live jobs`;
+  return `${name} robotics jobs — ${openings} on Robot Jobs Board. Compare titles and locations, then apply on the original posting. ${source}`.slice(
     0,
     160,
   );
@@ -57,6 +57,6 @@ export function companyPageDescription(
 
 export function companyPageIntro(name: string, total: number, description: string, seoIntro?: string | null): string {
   if (seoIntro?.trim()) return seoIntro;
-  const roles = total === 1 ? '1 open role' : total < 1 ? 'robotics roles' : `${total} open roles`;
-  return `${name} posts robotics roles on Greenhouse, Lever, Ashby, and other company boards. Robot Jobs Board aggregates ${roles} in one place so you can compare titles, locations, and stacks without checking each careers page separately. ${description}`;
+  const openings = total === 1 ? '1 open job' : total < 1 ? 'robotics jobs' : `${total} open jobs`;
+  return `${name} posts robotics jobs on Greenhouse, Lever, Ashby, and other company boards. Robot Jobs Board aggregates ${openings} in one place so you can compare titles, locations, and stacks without checking each careers page separately. ${description}`;
 }

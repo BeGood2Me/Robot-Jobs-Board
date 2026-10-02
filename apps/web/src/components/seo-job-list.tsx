@@ -4,6 +4,9 @@ import type { JobCardData } from '@/lib/jobs';
 import { locationPageJsonLd } from '@/lib/jsonld';
 
 const HUB_LINKS = [
+  { href: '/robots/amr-jobs', label: 'AMR jobs' },
+  { href: '/robots/humanoid-jobs', label: 'Humanoid jobs' },
+  { href: '/robots/drone-jobs', label: 'Drone jobs' },
   { href: '/locations/united-states-robotics-jobs', label: 'US robotics jobs' },
   { href: '/locations/united-kingdom-robotics-jobs', label: 'UK robotics jobs' },
   { href: '/locations/remote-robotics-jobs', label: 'Remote robotics jobs' },
@@ -61,7 +64,7 @@ export function SeoJobList({
       </nav>
       <h1 className="mt-6 max-w-[680px] text-4xl font-semibold">{h1}</h1>
       <p className="mt-3 font-mono text-sm text-muted">
-        {total} open role{total === 1 ? '' : 's'}
+        {total} open job{total === 1 ? '' : 's'}
         {indexable ? ' · Updated from public company ATS boards' : null}
       </p>
       <p className="mt-6 max-w-[680px] text-muted">{intro}</p>

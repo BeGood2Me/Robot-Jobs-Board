@@ -101,17 +101,108 @@ export const resolvePlace = cache(async (place: string): Promise<{
   };
 });
 
-export function domainCopy(name: string, description: string): {
+/** Search-intent copy for robot-type hubs (`/robots/{slug}-jobs`). */
+const DOMAIN_SEO: Record<
+  string,
+  {
+    h1: string;
+    title: (count: number) => string;
+    description: (count: number) => string;
+    intro: (fallbackDescription: string) => string;
+  }
+> = {
+  amr: {
+    h1: 'AMR jobs',
+    title: (count) => (count > 0 ? `AMR jobs (${count} open)` : 'AMR jobs'),
+    description: (count) =>
+      count > 0
+        ? `${count} autonomous mobile robot (AMR) jobs — warehouse, factory, and logistics robotics. Updated daily on Robot Jobs Board.`
+        : 'Autonomous mobile robot (AMR) jobs for warehouse, factory, and logistics robotics. Updated daily on Robot Jobs Board.',
+    intro: (fallbackDescription) =>
+      `${fallbackDescription} AMR hiring usually mixes fleet software, navigation, perception, and on-site deployment in warehouses and factories. This page lists live AMR jobs from public company ATS boards so you can compare titles and locations, then apply on the original posting. Pair it with industrial or field hubs if you also want fixed arms or outdoor robots.`,
+  },
+  humanoid: {
+    h1: 'Humanoid robot jobs',
+    title: (count) => (count > 0 ? `Humanoid robot jobs (${count} open)` : 'Humanoid robot jobs'),
+    description: (count) =>
+      count > 0
+        ? `${count} humanoid robot jobs — learning, controls, hardware, and ops. Updated daily from public ATS boards on Robot Jobs Board.`
+        : 'Humanoid robot jobs across learning, controls, hardware, and ops. Updated daily from public ATS boards on Robot Jobs Board.',
+    intro: (fallbackDescription) =>
+      `${fallbackDescription} Humanoid teams hire for robot learning, whole-body control, actuators, teleoperation, and data collection — often in Bay Area, Boston, and European labs. Browse live humanoid jobs here without hopping between Greenhouse and Lever. Cross-check AMR or industrial hubs if you want warehouse or factory manipulators instead.`,
+  },
+  drone: {
+    h1: 'Drone and UAV jobs',
+    title: (count) => (count > 0 ? `Drone jobs (${count} open)` : 'Drone and UAV jobs'),
+    description: (count) =>
+      count > 0
+        ? `${count} drone and UAV jobs — autonomy, avionics, mapping, delivery, and defense. Updated daily on Robot Jobs Board.`
+        : 'Drone and UAV jobs across autonomy, avionics, mapping, delivery, and defense. Updated daily on Robot Jobs Board.',
+    intro: (fallbackDescription) =>
+      `${fallbackDescription} Drone hiring spans onboard autonomy, GNC, perception, ground stations, and flight ops for inspection, delivery, mapping, and defense. This hub aggregates live drone jobs from public employer boards so you can scan companies in one place. See field robotics for ground robots that work outdoors alongside UAVs.`,
+  },
+  industrial: {
+    h1: 'Industrial robotics jobs',
+    title: (count) =>
+      count > 0 ? `Industrial robotics jobs (${count} open)` : 'Industrial robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} industrial robotics jobs — cobots, welding, assembly, and pick-and-place. Updated daily on Robot Jobs Board.`
+        : 'Industrial robotics jobs for cobots, welding, assembly, and pick-and-place. Updated daily on Robot Jobs Board.',
+    intro: (fallbackDescription) =>
+      `${fallbackDescription} Industrial roles often sit on factory floors: cell design, PLC integration, vision-guided picking, and collaborative arms. Use this page for live industrial robotics jobs pulled from public ATS feeds, then apply on the company career page. AMR jobs cover mobile warehouse robots; humanoid hubs cover general-purpose bipeds.`,
+  },
+  field: {
+    h1: 'Field robotics jobs',
+    title: (count) => (count > 0 ? `Field robotics jobs (${count} open)` : 'Field robotics jobs'),
+    description: (count) =>
+      count > 0
+        ? `${count} field robotics jobs — outdoor, inspection, agriculture, and quadruped platforms. Updated daily on Robot Jobs Board.`
+        : 'Field robotics jobs for outdoor, inspection, agriculture, and quadruped platforms. Updated daily on Robot Jobs Board.',
+    intro: (fallbackDescription) =>
+      `${fallbackDescription} Field robotics hiring covers outdoor navigation, rugged platforms, agriculture, and inspection — often with more on-site work than pure software roles. Scan live field robotics jobs here from public company boards. Pair with drone jobs for aerial inspection programs.`,
+  },
+  medical: {
+    h1: 'Medical robotics jobs',
+    title: (count) =>
+      count > 0 ? `Medical robotics jobs (${count} open)` : 'Medical robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} medical robotics jobs — surgical, rehab, and hospital platforms. Updated daily on Robot Jobs Board.`
+        : 'Medical robotics jobs across surgical, rehab, and hospital platforms. Updated daily on Robot Jobs Board.',
+    intro: (fallbackDescription) =>
+      `${fallbackDescription} Medical robotics teams hire for surgical systems, rehab devices, and hospital automation with heavy safety and regulatory work. This page lists live medical robotics jobs when employers post them on public ATS boards. Check industrial or humanoid hubs for adjacent manipulation jobs.`,
+  },
+};
+
+export function domainCopy(
+  slug: string,
+  name: string,
+  description: string,
+  jobCount = 0,
+): {
   h1: string;
   title: string;
   description: string;
   intro: string;
 } {
+  const preset = DOMAIN_SEO[slug];
+  if (preset) {
+    return {
+      h1: preset.h1,
+      title: preset.title(jobCount),
+      description: preset.description(jobCount).slice(0, 160),
+      intro: preset.intro(description),
+    };
+  }
   return {
     h1: `${name} robotics jobs`,
-    title: `${name} robotics jobs`,
-    description: `Open ${name} jobs for robotics engineers, including software, hardware, and deployment.`,
-    intro: `${description} Teams hiring in this domain typically look for a mix of software (C++, Python, ROS 2) and hardware bring up. Use this page to scan current ${name} openings, then filter by seniority or city. Robot Jobs Board refreshes listings from public ATS boards so you can apply on the original posting.`,
+    title: jobCount > 0 ? `${name} robotics jobs (${jobCount} open)` : `${name} robotics jobs`,
+    description: `Open ${name} robotics jobs for engineers — software, hardware, and deployment. Updated from public company ATS boards.`.slice(
+      0,
+      160,
+    ),
+    intro: `${description} Teams hiring in this domain typically look for a mix of software (C++, Python, ROS 2) and hardware bring-up. Use this page to scan current ${name} jobs, then filter by seniority or city. Robot Jobs Board refreshes listings from public ATS boards so you can apply on the original posting.`,
   };
 }
 
@@ -143,7 +234,7 @@ const LOCATION_SEO: Record<
         ? `${count} remote robotics jobs — autonomy, simulation, perception, and fleet ops. Updated daily from public company ATS boards on Robot Jobs Board.`
         : 'Remote robotics jobs across autonomy, simulation, perception, and fleet ops. Updated daily from public company ATS boards.',
     intro:
-      'Remote robotics roles are usually software-heavy: autonomy stacks, simulation, perception, tooling, and fleet ops that do not need daily lab access. Hardware bring-up and field deployment stay on site more often. This page lists live remote openings pulled from public employer boards so you can compare companies without hopping between Greenhouse, Lever, and Ashby. Pair it with the US or UK hubs if you also want on-site lab roles.',
+      'Remote robotics jobs are usually software-heavy: autonomy stacks, simulation, perception, tooling, and fleet ops that do not need daily lab access. Hardware bring-up and field deployment stay on site more often. This page lists live remote openings pulled from public employer boards so you can compare companies without hopping between Greenhouse, Lever, and Ashby. Pair it with the US or UK hubs if you also want on-site lab jobs.',
   },
   'united-kingdom': {
     titleLabel: (count) => (count > 0 ? `UK robotics jobs (${count} open)` : 'UK robotics jobs'),
@@ -153,17 +244,18 @@ const LOCATION_SEO: Record<
         ? `${count} UK robotics jobs in London, Oxford, Cambridge, and beyond — AMR, humanoid, drone, and autonomy. Updated daily on Robot Jobs Board.`
         : 'UK robotics jobs in London, Oxford, Cambridge, and beyond — AMR, humanoid, drone, and autonomy. Updated daily on Robot Jobs Board.',
     intro:
-      'The UK robotics market spans warehouse automation, autonomous vehicles, drones, and humanoid research, with clusters in London, Oxford, Cambridge, Bristol, and Edinburgh. This page collects live UK robotics jobs from public company career pages so you can compare teams, stacks, and locations in one place. Typical requirements include C++, Python, and ROS 2, with a mix of on-site and hybrid roles. For fully remote software roles, see the remote robotics jobs hub.',
+      'The UK robotics market spans warehouse automation, autonomous vehicles, drones, and humanoid research, with clusters in London, Oxford, Cambridge, Bristol, and Edinburgh. This page collects live UK robotics jobs from public company career pages so you can compare teams, stacks, and locations in one place. Typical requirements include C++, Python, and ROS 2, with a mix of on-site and hybrid jobs. For fully remote software jobs, see the remote robotics jobs hub.',
   },
   'united-states': {
-    titleLabel: (count) => (count > 0 ? `US robotics jobs (${count} open)` : 'US robotics jobs'),
-    h1: 'US robotics jobs',
+    titleLabel: (count) =>
+      count > 0 ? `Robotics jobs in the United States (${count} open)` : 'Robotics jobs in the United States',
+    h1: 'Robotics jobs in the United States',
     description: (count) =>
       count > 0
         ? `${count} US robotics jobs across Bay Area, Boston, Seattle, Austin, and more. Humanoids, AMRs, drones — updated daily on Robot Jobs Board.`
         : 'US robotics jobs across Bay Area, Boston, Seattle, Austin, and more. Humanoids, AMRs, drones — updated daily on Robot Jobs Board.',
     intro:
-      'US robotics hiring concentrates in the Bay Area, Boston, Seattle, Austin, Pittsburgh, and defense-heavy hubs. This page lists live United States robotics jobs from public ATS feeds — humanoids, AMRs, drones, industrial automation, and AV stacks — so you can scan titles and locations without checking each company board separately. Filter further by company or jump to remote robotics jobs for software-only openings.',
+      'US robotics hiring concentrates in the Bay Area, Boston, Seattle, Austin, Pittsburgh, and defense-heavy hubs. This page lists live United States robotics jobs from public ATS feeds — humanoids, AMRs, drones, industrial automation, and AV stacks — so you can scan titles and locations without checking each company board separately. Jump to remote robotics jobs for software-only openings, or open a company page when you already know the employer.',
   },
   canada: {
     titleLabel: (count) =>
@@ -174,7 +266,73 @@ const LOCATION_SEO: Record<
         ? `${count} Canada robotics jobs in Toronto, Montreal, Vancouver, and Waterloo. Updated daily from company ATS boards.`
         : 'Canada robotics jobs in Toronto, Montreal, Vancouver, and Waterloo. Updated daily from company ATS boards.',
     intro:
-      'Canadian robotics hiring sits mainly in Toronto, Montreal, Vancouver, and Waterloo, spanning AV software, warehouse robots, and research labs. This page aggregates live Canada robotics jobs from public employer boards so you can compare openings without hopping between ATS sites. Cross-check the US hub if you are also open to Bay Area or Boston roles.',
+      'Canadian robotics hiring sits mainly in Toronto, Montreal, Vancouver, and Waterloo, spanning AV software, warehouse robots, and research labs. This page aggregates live Canada robotics jobs from public employer boards so you can compare openings without hopping between ATS sites. Cross-check the US hub if you are also open to Bay Area or Boston jobs.',
+  },
+  germany: {
+    titleLabel: (count) =>
+      count > 0 ? `Germany robotics jobs (${count} open)` : 'Germany robotics jobs',
+    h1: 'Germany robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} Germany robotics jobs in Munich, Stuttgart, Berlin, and beyond — industrial, humanoid, and autonomy. Updated daily on Robot Jobs Board.`
+        : 'Germany robotics jobs in Munich, Stuttgart, Berlin, and beyond — industrial, humanoid, and autonomy. Updated daily on Robot Jobs Board.',
+    intro:
+      'Germany is a core European robotics market: industrial automation, automotive suppliers, and growing humanoid and autonomy labs around Munich, Stuttgart, Berlin, and Aachen. This page lists live Germany robotics jobs from public company ATS boards so you can compare employers in one place. Pair it with the UK hub for other European openings.',
+  },
+  california: {
+    titleLabel: (count) =>
+      count > 0 ? `California robotics jobs (${count} open)` : 'California robotics jobs',
+    h1: 'California robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} California robotics jobs — Bay Area, LA, San Diego. Humanoids, AMRs, drones, AV. Updated daily on Robot Jobs Board.`
+        : 'California robotics jobs across Bay Area, LA, and San Diego — humanoids, AMRs, drones, AV. Updated daily on Robot Jobs Board.',
+    intro:
+      'California hosts the densest US robotics cluster: Bay Area humanoid and AV labs, Southern California autonomy and defense, and warehouse automation across the state. Browse live California robotics jobs aggregated from public employer boards, then apply on the original ATS posting. Narrow further with San Francisco or remote hubs if you already know the work style you want.',
+  },
+  'san-francisco': {
+    titleLabel: (count) =>
+      count > 0 ? `San Francisco robotics jobs (${count} open)` : 'San Francisco robotics jobs',
+    h1: 'San Francisco robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} San Francisco robotics jobs — humanoids, AV, drones, and robot learning. Updated daily on Robot Jobs Board.`
+        : 'San Francisco robotics jobs across humanoids, AV, drones, and robot learning. Updated daily on Robot Jobs Board.',
+    intro:
+      'San Francisco and the wider Bay Area hire heavily for robot learning, autonomy software, and humanoid hardware. This page collects live San Francisco robotics jobs from public career pages so you can compare companies without checking each board separately. Use the California or remote hubs if you want statewide or fully remote software jobs.',
+  },
+  boston: {
+    titleLabel: (count) =>
+      count > 0 ? `Boston robotics jobs (${count} open)` : 'Boston robotics jobs',
+    h1: 'Boston robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} Boston robotics jobs — autonomy, warehouses, medical, and research labs. Updated daily on Robot Jobs Board.`
+        : 'Boston robotics jobs across autonomy, warehouses, medical, and research labs. Updated daily on Robot Jobs Board.',
+    intro:
+      'Boston and Greater Boston are long-standing robotics hubs spanning academia spinouts, warehouse automation, and medical platforms. Scan live Boston robotics jobs pulled from public ATS feeds, then apply on the employer site. Cross-check US or remote hubs if you are flexible on location.',
+  },
+  austin: {
+    titleLabel: (count) =>
+      count > 0 ? `Austin robotics jobs (${count} open)` : 'Austin robotics jobs',
+    h1: 'Austin robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} Austin robotics jobs — autonomy, hardware, and growing robot labs in Texas. Updated daily on Robot Jobs Board.`
+        : 'Austin robotics jobs across autonomy, hardware, and growing robot labs in Texas. Updated daily on Robot Jobs Board.',
+    intro:
+      'Austin has become a secondary US robotics cluster for autonomy software, hardware bring-up, and defense-adjacent teams. This page lists live Austin robotics jobs from public company boards so you can compare openings in one feed. See the US hub for nationwide roles or remote for software-only jobs.',
+  },
+  norway: {
+    titleLabel: (count) =>
+      count > 0 ? `Norway robotics jobs (${count} open)` : 'Norway robotics jobs',
+    h1: 'Norway robotics jobs',
+    description: (count) =>
+      count > 0
+        ? `${count} Norway robotics jobs — autonomy, industrial, and maritime-adjacent teams. Updated daily on Robot Jobs Board.`
+        : 'Norway robotics jobs across autonomy, industrial, and maritime-adjacent teams. Updated daily on Robot Jobs Board.',
+    intro:
+      'Norway robotics hiring is smaller but active around industrial automation, autonomy, and maritime-adjacent platforms. This page aggregates live Norway robotics jobs from public employer ATS boards. Check Germany or the UK hubs for denser European markets.',
   },
 };
 
@@ -192,11 +350,12 @@ export function locationPageCopy(
       intro: preset.intro,
     };
   }
-  const roles = jobCount === 1 ? '1 live robotics job' : jobCount > 0 ? `${jobCount} live robotics jobs` : 'Live robotics jobs';
+  const jobs =
+    jobCount === 1 ? '1 live robotics job' : jobCount > 0 ? `${jobCount} live robotics jobs` : 'Live robotics jobs';
   return {
     title: jobCount > 0 ? `${fallbackLabel} robotics jobs (${jobCount} open)` : `${fallbackLabel} robotics jobs`,
     h1: `${fallbackLabel} robotics jobs`,
-    description: `${roles} in ${fallbackLabel}, including AMR, humanoid, drone, and industrial roles. Updated from public company boards.`.slice(
+    description: `${jobs} in ${fallbackLabel}, including AMR, humanoid, drone, and industrial openings. Updated from public company boards.`.slice(
       0,
       160,
     ),
