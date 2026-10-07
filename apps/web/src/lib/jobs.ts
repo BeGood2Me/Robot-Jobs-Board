@@ -459,39 +459,83 @@ export type GoneJob = {
   company: { name: string; slug: string };
 };
 
+function jobRecency(job: { postedAt?: string | Date | null; createdAt?: string | Date | null }): number {
+  const raw = job.postedAt ?? job.createdAt;
+  if (!raw) return 0;
+  const time = typeof raw === 'string' ? Date.parse(raw) : raw.getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+/** Prefer newest when multiple jobs share a slug (common across employers). */
+function pickNewestJob<T extends { postedAt?: string | Date | null; createdAt?: string | Date | null }>(
+  jobs: T[],
+): T | null {
+  if (!jobs.length) return null;
+  return jobs.reduce((best, job) => (jobRecency(job) > jobRecency(best) ? job : best));
+}
+
+async function hydrateSnapshotJob(job: NonNullable<Awaited<ReturnType<typeof loadPublicSnapshot>>>['jobs'][number]) {
+  const body = await loadJobBody(job.id);
+  if (body) {
+    return reviveJobDates({
+      ...job,
+      descriptionHtml: body.descriptionHtml ?? '',
+      descriptionPlain: body.descriptionPlain ?? '',
+    }) as unknown as JobWithRelations;
+  }
+  const fromDb = await withDb(() => loadJobByIdCached(job.id), null);
+  if (fromDb && fromDb.isActive && !fromDb.isHidden) {
+    return reviveJobDates(fromDb) as JobWithRelations;
+  }
+  // Do not ISR-cache an empty description (stale shard / failed revalidate).
+  noStore();
+  return reviveJobDates({
+    ...job,
+    descriptionHtml: job.descriptionHtml ?? '',
+    descriptionPlain: job.descriptionPlain ?? '',
+  }) as unknown as JobWithRelations;
+}
+
+const loadJobBySlugCached = unstable_cache(
+  async (slug: string) =>
+    prisma.job.findMany({
+      where: { slug, isActive: true, isHidden: false },
+      select: { id: true, slug: true },
+      orderBy: [{ postedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 5,
+    }),
+  ['job-by-slug'],
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
+);
+
 /** Dedupes metadata + page in one request; caches across crawlers. */
 export const getJobById = cache(async (id: string, slug?: string) => {
   const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     let job = snapshot.jobs.find((item) => item.id === id) ?? null;
     if (!job && slug) {
-      job = snapshot.jobs.find((item) => item.slug === slug) ?? null;
+      job = pickNewestJob(snapshot.jobs.filter((item) => item.slug === slug));
     }
     if (!job) return null;
-    const body = await loadJobBody(job.id);
-    if (body) {
-      return reviveJobDates({
-        ...job,
-        descriptionHtml: body.descriptionHtml ?? '',
-        descriptionPlain: body.descriptionPlain ?? '',
-      }) as unknown as JobWithRelations | null;
-    }
-    // bodies.json.gz missing (or job absent) — fall back to DB for the description.
-    const fromDb = await withDb(() => loadJobByIdCached(job.id), null);
-    if (fromDb && fromDb.isActive && !fromDb.isHidden) {
-      return reviveJobDates(fromDb) as JobWithRelations | null;
-    }
-    // Do not ISR-cache an empty description (stale shard / failed revalidate).
-    noStore();
-    return reviveJobDates({
-      ...job,
-      descriptionHtml: job.descriptionHtml ?? '',
-      descriptionPlain: job.descriptionPlain ?? '',
-    }) as unknown as JobWithRelations | null;
+    return hydrateSnapshotJob(job);
   }
   const job = await withDb(() => loadJobByIdCached(id), null);
   if (!job || !job.isActive || job.isHidden) return null;
   return reviveJobDates(job) as JobWithRelations | null;
+});
+
+/** Active job id/slug by URL slug (newest if duplicates). Used by /jobs/[slug] redirects. */
+export const getJobBySlug = cache(async (slug: string): Promise<{ id: string; slug: string } | null> => {
+  const snapshot = await loadPublicSnapshot();
+  if (snapshot) {
+    const job = pickNewestJob(snapshot.jobs.filter((item) => item.slug === slug));
+    if (!job) return null;
+    return { id: job.id, slug: job.slug };
+  }
+  const rows = await withDb(() => loadJobBySlugCached(slug), []);
+  const job = rows[0];
+  if (!job) return null;
+  return { id: job.id, slug: job.slug };
 });
 
 /** Closed or hidden jobs — redirect to the employer page instead of 404. */
@@ -504,6 +548,37 @@ export const getGoneJobById = cache(async (id: string): Promise<GoneJob | null> 
 
   const job = await withDb(() => loadJobByIdCached(id), null);
   if (!job || (job.isActive && !job.isHidden)) return null;
+  return {
+    id: job.id,
+    slug: job.slug,
+    title: job.title,
+    company: { name: job.company.name, slug: job.company.slug },
+  };
+});
+
+/** Closed job by slug — recovers legacy /jobs/{legacyId}/{slug} and /jobs/{slug} URLs. */
+export const getGoneJobBySlug = cache(async (slug: string): Promise<GoneJob | null> => {
+  const snapshot = await loadPublicSnapshot();
+  if (snapshot?.goneJobs?.length) {
+    const matches = snapshot.goneJobs.filter((item) => item.slug === slug);
+    if (matches.length) return matches[0]!;
+  }
+
+  const job = await withDb(
+    () =>
+      prisma.job.findFirst({
+        where: { slug, OR: [{ isActive: false }, { isHidden: true }] },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          company: { select: { name: true, slug: true } },
+        },
+        orderBy: [{ updatedAt: 'desc' }],
+      }),
+    null,
+  );
+  if (!job) return null;
   return {
     id: job.id,
     slug: job.slug,

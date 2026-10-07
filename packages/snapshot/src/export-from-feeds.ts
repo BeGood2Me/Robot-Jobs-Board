@@ -9,6 +9,7 @@ import { shouldIngestJob } from '@robot-jobs-board/ingestion/region';
 import { isRobotRole, RuleBasedClassifier, capJobsPerCompany } from '@robot-jobs-board/taxonomy';
 import { defaultSnapshotOutDir } from './export';
 import { buildCountryFacets } from './filter';
+import { loadPreviousBoard } from './load-previous-board';
 import { stableEntityId } from './stable-id';
 import type { PublicBoardSnapshot, SnapshotGoneJob, SnapshotJob, SnapshotJobBody } from './types';
 import { SNAPSHOT_BODIES_FILE, SNAPSHOT_JOBS_DIR } from './types';
@@ -27,16 +28,6 @@ const preferredCountries = [
   'France',
   'Switzerland',
 ];
-
-function readPreviousSnapshot(outDir: string): PublicBoardSnapshot | null {
-  const path = join(outDir, 'board.json.gz');
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(gunzipSync(readFileSync(path)).toString('utf8')) as PublicBoardSnapshot;
-  } catch {
-    return null;
-  }
-}
 
 function readBodiesMap(outDir: string): Record<string, SnapshotJobBody> | null {
   const path = join(outDir, SNAPSHOT_BODIES_FILE);
@@ -222,7 +213,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
   siteUrl: string;
 }): Promise<{ jobCount: number; generatedAt: string }> {
   const site = options.siteUrl.replace(/\/$/, '');
-  const previous = readPreviousSnapshot(options.outDir);
+  const previous = await loadPreviousBoard(options.outDir);
   const previousSlugById = new Map(
     (previous?.jobs ?? []).map((job) => [job.id, job.slug] as const),
   );

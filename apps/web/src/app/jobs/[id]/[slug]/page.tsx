@@ -5,12 +5,16 @@ import { directApplyUrl } from '@robot-jobs-board/ingestion/apply-url';
 import { ApplyNowLink } from '@/components/apply-now-link';
 import { JobCard } from '@/components/job-card';
 import { jobPostingJsonLd } from '@/lib/jsonld';
-import { getJobById, getGoneJobById, relatedJobs } from '@/lib/jobs';
+import { getJobById, getGoneJobById, getGoneJobBySlug, relatedJobs } from '@/lib/jobs';
 import { sanitizeJobHtml } from '@/lib/sanitize';
 import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 
 export const revalidate = 14400;
+
+async function resolveGoneJob(id: string, slug: string) {
+  return (await getGoneJobById(id)) ?? (await getGoneJobBySlug(slug));
+}
 
 export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'>): Promise<Metadata> {
   const { id, slug } = await params;
@@ -37,7 +41,7 @@ export async function generateMetadata({ params }: PageProps<'/jobs/[id]/[slug]'
     };
   }
 
-  const gone = await getGoneJobById(id);
+  const gone = await resolveGoneJob(id, slug);
   if (gone) {
     return {
       title: `${gone.title} – Job closed`,
@@ -55,7 +59,7 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
   const { id, slug } = await params;
   const job = await getJobById(id, slug);
   if (!job) {
-    const gone = await getGoneJobById(id);
+    const gone = await resolveGoneJob(id, slug);
     if (gone) permanentRedirect(`/companies/${gone.company.slug}`);
     notFound();
   }

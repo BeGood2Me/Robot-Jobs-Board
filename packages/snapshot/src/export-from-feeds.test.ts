@@ -90,4 +90,30 @@ describe('buildGoneJobs', () => {
     const gone = buildGoneJobs(previous, [], new Set());
     expect(gone.map((item) => item.id)).toEqual(['neura-1']);
   });
+
+  it('carries prior gone entries forward when still inactive', () => {
+    const previous: PublicBoardSnapshot = {
+      version: 1,
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      siteUrl: 'https://www.robotjobsboard.com',
+      jobs: [job({ id: 'keep-1', slug: 'keep', title: 'Keep' })],
+      goneJobs: [
+        {
+          id: 'legacy-cuid',
+          slug: 'old-role',
+          title: 'Old Role',
+          company: { name: 'Figure', slug: 'figure' },
+        },
+      ],
+      companies: [],
+      domains: [],
+      tags: [],
+      seniorities: [],
+      countryFacets: [],
+      places: { cities: [], countries: [], regions: [] },
+    };
+
+    const gone = buildGoneJobs(previous, [job({ id: 'keep-1', slug: 'keep', title: 'Keep' })], new Set());
+    expect(gone.map((item) => item.id)).toEqual(['legacy-cuid']);
+  });
 });

@@ -220,6 +220,9 @@ function expandRegionToken(token: string): string | undefined {
   return undefined;
 }
 
+const COUNTRY_NAME_RE =
+  /^(united\s+states|usa|u\.s\.a\.?|u\.s\.|canada|united\s+kingdom|uk|australia|ireland|germany|france|switzerland|netherlands|norway|poland|finland)$/i;
+
 /** Prefer stored region; else parse from locationRaw so GSC always gets addressRegion. */
 function resolveAddressRegion(job: {
   region?: string | null;
@@ -247,6 +250,37 @@ function resolveAddressRegion(job: {
 
   const city = job.city?.trim();
   if (city && !/^remote$/i.test(city)) return city;
+
+  const country = job.country?.trim();
+  if (country) return country;
+
+  return 'Nationwide';
+}
+
+/**
+ * City for PostalAddress.addressLocality. When ATS only gives country (common on
+ * nationwide roles), fall back so GSC does not flag missing addressLocality.
+ */
+function resolveAddressLocality(job: {
+  city?: string | null;
+  country?: string | null;
+  locationRaw?: string | null;
+}): string {
+  const city = job.city?.trim();
+  if (city && !/^remote$/i.test(city) && !COUNTRY_NAME_RE.test(city)) return city;
+
+  const parts = (job.locationRaw ?? '')
+    .split(/[,|;/]/g)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  for (const part of parts) {
+    if (/^remote\b/i.test(part)) continue;
+    if (COUNTRY_NAME_RE.test(part)) continue;
+    if (expandRegionToken(part)) continue;
+    if (part.length < 2) continue;
+    return part;
+  }
 
   const country = job.country?.trim();
   if (country) return country;
@@ -375,7 +409,7 @@ export function jobPostingJsonLd(job: JobWithRelations) {
   }
 
   if (job.workplaceType !== 'REMOTE') {
-    const addressLocality = job.city?.trim() || undefined;
+    const addressLocality = resolveAddressLocality(job);
     const region = resolveAddressRegion(job);
     // Prefer a real street; otherwise use locality/region so GSC does not flag missing streetAddress.
     const streetAddress =
@@ -387,7 +421,7 @@ export function jobPostingJsonLd(job: JobWithRelations) {
         '@type': 'PostalAddress',
         streetAddress,
         ...(postalCode ? { postalCode } : {}),
-        ...(addressLocality ? { addressLocality } : {}),
+        addressLocality,
         addressRegion: region,
         addressCountry: job.country?.trim() || 'US',
       },
