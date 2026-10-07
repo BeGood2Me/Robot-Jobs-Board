@@ -29,6 +29,8 @@ const jobDetailSelect = {
   sourceSystem: true,
   externalId: true,
   companyId: true,
+  featuredUntil: true,
+  featuredAt: true,
   company: {
     select: { name: true, slug: true, website: true, logoUrl: true, sourceIdentifier: true },
   },
@@ -53,6 +55,8 @@ function serializeJob(
     postedAt: job.postedAt?.toISOString() ?? null,
     expiresAt: job.expiresAt?.toISOString() ?? null,
     createdAt: job.createdAt.toISOString(),
+    featuredUntil: job.featuredUntil?.toISOString() ?? null,
+    featuredAt: job.featuredAt?.toISOString() ?? null,
   };
 }
 

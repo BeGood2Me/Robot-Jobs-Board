@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { Clock, MapPin } from '@phosphor-icons/react/ssr';
+import { isJobFeatured } from '@/lib/is-featured';
 import type { JobCardData } from '@/lib/jobs';
 import { employmentLabel, formatPosted } from '@/lib/site';
 import { SaveJobButton } from './save-job-button';
 
 export function JobCard({ job }: { job: JobCardData }) {
   const href = `/jobs/${job.id}/${job.slug}`;
+  const featured = isJobFeatured(job);
   const location =
     [
       job.isRemote ? 'Remote' : null,
@@ -22,9 +24,16 @@ export function JobCard({ job }: { job: JobCardData }) {
     .join(' \u00b7 ');
 
   return (
-    <article className="rounded-2xl border border-line bg-card p-6 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] md:hover:-translate-y-0.5 md:hover:border-accent/40 md:hover:shadow-[0_0_24px_rgba(94,234,212,0.08)]">
+    <article
+      className={`rounded-2xl border bg-card p-6 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] md:hover:-translate-y-0.5 md:hover:border-accent/40 md:hover:shadow-[0_0_24px_rgba(94,234,212,0.08)] ${
+        featured ? 'border-accent/50' : 'border-line'
+      }`}
+    >
       <div className="flex flex-col gap-6 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
+          {featured ? (
+            <p className="mb-1 text-xs font-semibold tracking-wide text-accent uppercase">Featured</p>
+          ) : null}
           <h2 className="text-xl font-semibold">
             <Link href={href} className="hover:text-accent">
               {job.title}

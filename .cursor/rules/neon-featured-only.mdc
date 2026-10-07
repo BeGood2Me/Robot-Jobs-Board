@@ -1,0 +1,11 @@
+---
+description: Neon is Featured-only; daily board ingest stays on GitHub
+alwaysApply: true
+---
+
+# Neon vs GitHub ingest
+
+- **Daily ingest / public board data**: GitHub Actions + snapshot (`board.json.gz` / snapshot pipeline) only. Never move or duplicate daily ingest onto Neon.
+- **Neon**: Paid Featured only — Stripe checkout/webhook fulfillment, `PaidListing` / `FeaturedBoost`, featured overlay reads/writes. Do not use Neon as the source of truth for the full job board.
+- Keep `SNAPSHOT_ONLY=1` (or equivalent) so public listing pages stay snapshot-first and do not query Neon for the main board.
+- When changing ingestion, export, or board loading: prefer GitHub snapshot paths. Do not add Prisma/Neon reads or writes to the daily ingest runner for board content.

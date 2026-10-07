@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     '*': ['./public/snapshot/jobs/**/*'],
   },
-  serverExternalPackages: ['@prisma/client', 'prisma'],
+  serverExternalPackages: ['@prisma/client', 'prisma', 'stripe'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'boards.greenhouse.io' },
@@ -54,6 +54,12 @@ const nextConfig: NextConfig = {
       { source: '/blog', destination: '/guides', permanent: true },
       { source: '/blog/:slug', destination: '/guides/:slug', permanent: true },
       { source: '/skills/:slug-jobs', destination: '/?tag=:slug', permanent: true },
+    ];
+  },
+  async rewrites() {
+    return [
+      // One-segment /jobs/{slug} → by-slug handler (cannot use /jobs/[slug] beside /jobs/[id]/[slug]).
+      { source: '/jobs/:slug', destination: '/jobs/by-slug/:slug' },
     ];
   },
 };

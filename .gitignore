@@ -8,6 +8,7 @@ coverage
 .env.local
 .env.*.local
 .env.blob.local
+.env.stripe.live.local
 *.log
 .DS_Store
 prisma/*.db

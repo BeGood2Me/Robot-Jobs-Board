@@ -76,6 +76,9 @@ export type SnapshotJob = {
   seniorities: Array<{ seniority: { id: string; slug: string; label: string } }>;
   /** UG / PG / PhD when the posting is an internship and the level is explicit. */
   internshipTrack?: 'ug' | 'pg' | 'phd' | null;
+  /** Paid Featured window (ISO). Present on direct/paid posts. */
+  featuredUntil?: string | null;
+  featuredAt?: string | null;
 };
 
 export type SnapshotGoneJob = {

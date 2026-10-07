@@ -15,6 +15,14 @@ enum SourceSystem {
   workday
   workable
   jobshop
+  /// Self-serve paid posts from /post-a-job (Stripe). Never deactivated by ATS ingest.
+  direct
+}
+
+enum PaidListingStatus {
+  draft
+  paid
+  expired
 }
 
 enum WorkplaceType {
@@ -78,11 +86,15 @@ model Job {
   isHidden          Boolean         @default(false)
   hiddenAt          DateTime?
   hiddenNote        String?
+  /// Paid Featured placement end (null = not featured). Overlay + board pin while active.
+  featuredUntil     DateTime?
+  featuredAt        DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   robotDomains      JobRobotDomain[]
   techTags          JobTechTag[]
   seniorities       JobSeniority[]
+  paidListing       PaidListing?
 
   @@unique([sourceSystem, externalId])
   @@index([isActive])
@@ -95,6 +107,61 @@ model Job {
   @@index([postedAt])
   @@index([slug])
   @@index([isActive, postedAt])
+  @@index([featuredUntil])
+}
+
+/// Draft → paid self-serve Featured listing ($149 / 30 days).
+model PaidListing {
+  id              String            @id @default(cuid())
+  status          PaidListingStatus @default(draft)
+  title           String
+  companyName     String
+  applyUrl        String
+  description     String            @db.Text
+  locationRaw     String
+  city            String?
+  country         String?
+  isRemote        Boolean           @default(false)
+  workplaceType   WorkplaceType     @default(ONSITE)
+  employmentType  EmploymentType    @default(FULL_TIME)
+  compensationText String?
+  buyerEmail      String
+  stripeSessionId String?           @unique
+  /// Set after creating a new direct Job (post-a-job form).
+  jobId           String?           @unique
+  job             Job?              @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  /// Board/snapshot job id when Featuring an existing free listing (no new Job row).
+  targetJobId     String?
+  targetJobSlug   String?
+  /// True when checkout was an extend of an already-Featured listing.
+  isExtension     Boolean           @default(false)
+  paidAt          DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  featuredBoost   FeaturedBoost?
+
+  @@index([status])
+  @@index([buyerEmail])
+  @@index([targetJobId])
+}
+
+/// Pins an existing board job (usually snapshot/ATS) as Featured without duplicating the listing.
+model FeaturedBoost {
+  id              String   @id @default(cuid())
+  jobId           String   @unique
+  jobSlug         String
+  title           String
+  companyName     String
+  buyerEmail      String
+  featuredAt      DateTime
+  featuredUntil   DateTime
+  stripeSessionId String?  @unique
+  paidListingId   String?  @unique
+  paidListing     PaidListing? @relation(fields: [paidListingId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([featuredUntil])
 }
 
 model RobotDomain {

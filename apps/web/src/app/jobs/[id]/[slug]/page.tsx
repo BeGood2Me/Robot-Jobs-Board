@@ -3,11 +3,13 @@ import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { directApplyUrl } from '@robot-jobs-board/ingestion/apply-url';
 import { ApplyNowLink } from '@/components/apply-now-link';
+import { FeatureJobButton } from '@/components/feature-job-button';
 import { JobCard } from '@/components/job-card';
 import { jobPostingJsonLd } from '@/lib/jsonld';
 import { getJobById, getGoneJobById, getGoneJobBySlug, relatedJobs } from '@/lib/jobs';
 import { sanitizeJobHtml } from '@/lib/sanitize';
 import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
+import { isJobFeatured } from '@/lib/is-featured';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 
 export const revalidate = 14400;
@@ -90,6 +92,9 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
           {job.company.name}
         </Link>
       </p>
+      {isJobFeatured(job) ? (
+        <p className="mt-3 text-xs font-semibold tracking-wide text-accent uppercase">Featured</p>
+      ) : null}
       <h1 className="mt-2 max-w-[680px] text-4xl font-semibold">{job.title}</h1>
       <p className="mt-4 text-muted">{facts.join(' · ')}</p>
       {job.compensationText ? (
@@ -127,6 +132,14 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
       <article className="job-html mt-12 max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
       <div className="mt-12">
         <ApplyNowLink {...applyProps} />
+      </div>
+      <div className="mt-10 max-w-3xl">
+        <FeatureJobButton
+          jobId={job.id}
+          jobTitle={job.title}
+          companyName={job.company.name}
+          alreadyFeatured={isJobFeatured(job)}
+        />
       </div>
       <section className="mt-16">
         <h2 className="text-2xl font-semibold">Related jobs</h2>

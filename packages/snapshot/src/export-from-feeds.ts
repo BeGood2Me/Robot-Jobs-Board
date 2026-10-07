@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
+import { prisma } from '@robot-jobs-board/db';
 import { seedCompanies } from '@robot-jobs-board/db/seed-companies';
 import { taxonomySeed } from '@robot-jobs-board/db/taxonomy-seed';
 import { jobsForFeed } from '@robot-jobs-board/ingestion/feeds';
@@ -208,6 +209,73 @@ function mergeCarriedJobs(jobs: SnapshotJob[], carried: SnapshotJob[], seen: Set
   return added;
 }
 
+/** Paid /post-a-job listings — never drop them when rebuilding from ATS feeds. */
+async function carryForwardDirectJobs(
+  previous: PublicBoardSnapshot | null,
+  outDir: string,
+): Promise<SnapshotJob[]> {
+  if (!previous) return [];
+  const now = Date.now();
+  const bodies = readBodiesMap(outDir);
+
+  // Prefer Neon featuredUntil so extends after the last snapshot still keep the job.
+  const neonFeatured = new Map<string, { featuredUntil: string; featuredAt: string | null }>();
+  try {
+    const rows = await prisma.job.findMany({
+      where: {
+        sourceSystem: 'direct',
+        isActive: true,
+        isHidden: false,
+        OR: [{ featuredUntil: { gt: new Date() } }, { expiresAt: { gt: new Date() } }],
+      },
+      select: { id: true, featuredUntil: true, featuredAt: true, expiresAt: true },
+    });
+    for (const row of rows) {
+      const until = row.featuredUntil ?? row.expiresAt;
+      if (!until || until.getTime() <= now) continue;
+      neonFeatured.set(row.id, {
+        featuredUntil: until.toISOString(),
+        featuredAt: row.featuredAt?.toISOString() ?? null,
+      });
+    }
+  } catch {
+    // Snapshot export can run without DB; fall back to previous board dates.
+  }
+
+  return previous.jobs
+    .filter((job) => {
+      if (job.sourceSystem !== 'direct') return false;
+      if (!job.isActive || job.isHidden) return false;
+      const neon = neonFeatured.get(job.id);
+      if (neon) return true;
+      if (job.featuredUntil) {
+        const until = Date.parse(job.featuredUntil);
+        if (Number.isFinite(until) && until <= now) return false;
+      }
+      return true;
+    })
+    .map((job) => {
+      const neon = neonFeatured.get(job.id);
+      const withBody =
+        job.descriptionHtml != null && job.descriptionPlain != null
+          ? job
+          : (() => {
+              const body = readJobBody(outDir, job.id, bodies);
+              return {
+                ...job,
+                descriptionHtml: body?.descriptionHtml ?? job.descriptionHtml ?? '',
+                descriptionPlain: body?.descriptionPlain ?? job.descriptionPlain ?? '',
+              };
+            })();
+      if (!neon) return withBody;
+      return {
+        ...withBody,
+        featuredUntil: neon.featuredUntil,
+        featuredAt: neon.featuredAt ?? withBody.featuredAt ?? null,
+      };
+    });
+}
+
 export async function exportPublicSnapshotFromFeeds(options: {
   outDir: string;
   siteUrl: string;
@@ -301,7 +369,52 @@ export async function exportPublicSnapshotFromFeeds(options: {
     }
   }
 
+  const directCarried = await carryForwardDirectJobs(previous, options.outDir);
+  const directAdded = mergeCarriedJobs(jobs, directCarried, seen);
+  if (directAdded > 0) {
+    console.log(
+      JSON.stringify({
+        event: 'snapshot.direct.carried',
+        retained: directAdded,
+      }),
+    );
+  }
+
+  // Stamp paid Featured boosts (existing ATS jobs) into the board snapshot.
+  try {
+    const now = new Date();
+    const boosts = await prisma.featuredBoost.findMany({
+      where: { featuredUntil: { gt: now } },
+      select: { jobId: true, featuredAt: true, featuredUntil: true },
+      take: 50,
+    });
+    if (boosts.length) {
+      const byId = new Map(boosts.map((b) => [b.jobId, b]));
+      for (let i = 0; i < jobs.length; i++) {
+        const boost = byId.get(jobs[i]!.id);
+        if (!boost) continue;
+        jobs[i] = {
+          ...jobs[i]!,
+          featuredAt: boost.featuredAt.toISOString(),
+          featuredUntil: boost.featuredUntil.toISOString(),
+        };
+      }
+      console.log(JSON.stringify({ event: 'snapshot.featured.boosts', stamped: boosts.length }));
+    }
+  } catch (error) {
+    console.warn(
+      JSON.stringify({
+        event: 'snapshot.featured.boosts.skip',
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
+
   jobs.sort((a, b) => {
+    const aFeatured = a.featuredUntil && Date.parse(a.featuredUntil) > Date.now();
+    const bFeatured = b.featuredUntil && Date.parse(b.featuredUntil) > Date.now();
+    if (aFeatured && !bFeatured) return -1;
+    if (!aFeatured && bFeatured) return 1;
     const aTime = a.postedAt ?? a.createdAt;
     const bTime = b.postedAt ?? b.createdAt;
     return bTime.localeCompare(aTime);
@@ -313,9 +426,22 @@ export async function exportPublicSnapshotFromFeeds(options: {
   const cities = new Set<string>();
   const countries = new Set<string>();
   const regions = new Set<string>();
+  const directCompanies = new Map<
+    string,
+    { id: string; name: string; slug: string; website: string | null; logoUrl: string | null }
+  >();
 
   for (const job of jobs) {
     companyCounts.set(job.company.slug, (companyCounts.get(job.company.slug) ?? 0) + 1);
+    if (job.sourceSystem === 'direct') {
+      directCompanies.set(job.company.slug, {
+        id: job.companyId,
+        name: job.company.name,
+        slug: job.company.slug,
+        website: job.company.website,
+        logoUrl: job.company.logoUrl,
+      });
+    }
     for (const { domainId } of job.robotDomains) {
       domainCounts.set(domainId, (domainCounts.get(domainId) ?? 0) + 1);
     }
@@ -328,6 +454,31 @@ export async function exportPublicSnapshotFromFeeds(options: {
   }
 
   const countryFacets = buildCountryFacets(jobs, preferredCountries);
+  const seedSlugs = new Set(seedCompanies.map((c) => c.slug));
+  const companies = [
+    ...seedCompanies.map((company) => ({
+      id: stableEntityId('company', company.slug),
+      name: company.name,
+      slug: company.slug,
+      website: company.website,
+      logoUrl: null as string | null,
+      description: company.description,
+      seoIntro: company.seoIntro,
+      openJobCount: companyCounts.get(company.slug) ?? 0,
+    })),
+    ...[...directCompanies.values()]
+      .filter((company) => !seedSlugs.has(company.slug))
+      .map((company) => ({
+        id: company.id,
+        name: company.name,
+        slug: company.slug,
+        website: company.website,
+        logoUrl: company.logoUrl,
+        description: `${company.name} hires robotics talent.`,
+        seoIntro: `${company.name} jobs on Robot Jobs Board.`,
+        openJobCount: companyCounts.get(company.slug) ?? 0,
+      })),
+  ];
 
   const snapshot: PublicBoardSnapshot = {
     version: 1,
@@ -335,16 +486,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     siteUrl: site,
     jobs,
     goneJobs: buildGoneJobs(previous, jobs, retainedCompanySlugs),
-    companies: seedCompanies.map((company) => ({
-      id: stableEntityId('company', company.slug),
-      name: company.name,
-      slug: company.slug,
-      website: company.website,
-      logoUrl: null,
-      description: company.description,
-      seoIntro: company.seoIntro,
-      openJobCount: companyCounts.get(company.slug) ?? 0,
-    })),
+    companies,
     domains: taxonomy.domains.map((domain) => ({
       ...domain,
       openJobCount: domainCounts.get(domain.id) ?? 0,

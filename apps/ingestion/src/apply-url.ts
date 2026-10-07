@@ -135,6 +135,9 @@ export function directApplyUrl(job: ApplyUrlJob): string {
       return leverDirectUrl({ ...job, url });
     case 'workable':
       return workableDirectUrl({ ...job, url });
+    case 'direct':
+      // Buyer-supplied apply URL from /post-a-job — do not rewrite.
+      return url;
     default:
       return stripApplyFormPath(url);
   }

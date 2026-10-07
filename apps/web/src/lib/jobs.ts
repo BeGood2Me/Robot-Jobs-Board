@@ -7,6 +7,13 @@ import {
 import { unstable_cache, unstable_noStore as noStore } from 'next/cache';
 import { cache } from 'react';
 import { prisma, withDb } from './db';
+import {
+  applyFeaturedBoosts,
+  loadFeaturedBoosts,
+  loadFeaturedJobById,
+  loadFeaturedJobs,
+  mergeFeaturedIntoJobs,
+} from './featured-overlay';
 import { type JobFilters } from './job-filter-utils';
 import { loadJobBody, loadPublicSnapshot } from './snapshot/load';
 import { PAGE_SIZE, PUBLIC_REVALIDATE_SECONDS } from './site';
@@ -27,6 +34,8 @@ export const jobCardSelect = {
   employmentType: true,
   compensationText: true,
   postedAt: true,
+  featuredUntil: true,
+  featuredAt: true,
   company: { select: { name: true, slug: true } },
 } satisfies Prisma.JobSelect;
 
@@ -57,6 +66,8 @@ export const jobDetailSelect = {
   sourceSystem: true,
   externalId: true,
   companyId: true,
+  featuredUntil: true,
+  featuredAt: true,
   company: {
     select: { name: true, slug: true, website: true, logoUrl: true, sourceIdentifier: true },
   },
@@ -330,7 +341,10 @@ export function jobWhere(filters: JobFilters, activeOnly = true): Prisma.JobWher
 export async function searchJobs(filters: JobFilters) {
   const snapshot = await loadPublicSnapshot();
   if (snapshot) {
-    const result = searchJobsFromSnapshot(snapshot.jobs, filters, PAGE_SIZE);
+    const [featured, boosts] = await Promise.all([loadFeaturedJobs(), loadFeaturedBoosts()]);
+    const withBoosts = applyFeaturedBoosts(snapshot.jobs, boosts);
+    const merged = mergeFeaturedIntoJobs(withBoosts, featured);
+    const result = searchJobsFromSnapshot(merged, filters, PAGE_SIZE);
     return {
       ...result,
       jobs: result.jobs.map((job) => reviveJobDates(job)) as JobCardData[],
@@ -516,8 +530,14 @@ export const getJobById = cache(async (id: string, slug?: string) => {
     if (!job && slug) {
       job = pickNewestJob(snapshot.jobs.filter((item) => item.slug === slug));
     }
-    if (!job) return null;
-    return hydrateSnapshotJob(job);
+    if (!job) {
+      const featured = await loadFeaturedJobById(id);
+      if (featured) return hydrateSnapshotJob(featured);
+      return null;
+    }
+    const boosts = await loadFeaturedBoosts();
+    const [stamped] = applyFeaturedBoosts([job], boosts);
+    return hydrateSnapshotJob(stamped ?? job);
   }
   const job = await withDb(() => loadJobByIdCached(id), null);
   if (!job || !job.isActive || job.isHidden) return null;
@@ -529,8 +549,11 @@ export const getJobBySlug = cache(async (slug: string): Promise<{ id: string; sl
   const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     const job = pickNewestJob(snapshot.jobs.filter((item) => item.slug === slug));
-    if (!job) return null;
-    return { id: job.id, slug: job.slug };
+    if (job) return { id: job.id, slug: job.slug };
+    const featured = await loadFeaturedJobs();
+    const fromFeatured = pickNewestJob(featured.filter((item) => item.slug === slug));
+    if (fromFeatured) return { id: fromFeatured.id, slug: fromFeatured.slug };
+    return null;
   }
   const rows = await withDb(() => loadJobBySlugCached(slug), []);
   const job = rows[0];

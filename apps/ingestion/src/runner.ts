@@ -304,6 +304,8 @@ export async function deleteStaleJobs(inactiveAfterDays: number): Promise<number
   const result = await prisma.job.updateMany({
     where: {
       isActive: true,
+      // Paid /post-a-job listings are not feed-synced — never auto-deactivate.
+      sourceSystem: { not: 'direct' },
       lastSeenAt: { lt: cutoff },
     },
     data: { isActive: false },
@@ -319,6 +321,7 @@ export async function purgeInactiveJobs(purgeAfterDays?: number): Promise<number
   const result = await prisma.job.deleteMany({
     where: {
       isActive: false,
+      sourceSystem: { not: 'direct' },
       lastSeenAt: { lt: cutoff },
     },
   });
@@ -330,7 +333,7 @@ export const expireStaleJobs = deleteStaleJobs;
 
 export async function expireNonRobotJobs(): Promise<number> {
   const active = await prisma.job.findMany({
-    where: { isActive: true },
+    where: { isActive: true, sourceSystem: { not: 'direct' } },
     select: { id: true, title: true, department: true },
   });
   const ids = active.filter((job) => !isRobotRole(job)).map((job) => job.id);

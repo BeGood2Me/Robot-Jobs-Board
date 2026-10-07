@@ -7,8 +7,8 @@ export const revalidate = 14400;
 type SlugParams = { params: Promise<{ slug: string }> };
 
 /**
- * Legacy / shorthand URLs: /jobs/{slug} → /jobs/{id}/{slug}.
- * Google still has slug-only and incomplete links that 404 without this.
+ * Internal target for /jobs/{slug} (see next.config rewrite).
+ * Cannot live at /jobs/[slug] — conflicts with /jobs/[id]/[slug].
  */
 export async function generateMetadata({ params }: SlugParams): Promise<Metadata> {
   const { slug } = await params;

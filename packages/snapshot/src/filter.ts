@@ -245,8 +245,30 @@ function postedAtMs(job: SnapshotJob): number {
   return value ? Date.parse(value) : 0;
 }
 
+function isFeaturedActive(job: SnapshotJob): boolean {
+  if (!job.featuredUntil) return false;
+  const until = Date.parse(job.featuredUntil);
+  return Number.isFinite(until) && until > Date.now();
+}
+
+/** Unlimited Featured share the top via stable daily rotation. */
+function rotateFeaturedJobs(jobs: SnapshotJob[]): SnapshotJob[] {
+  if (jobs.length <= 1) return jobs;
+  const day = Math.floor(Date.now() / 86_400_000);
+  const sorted = [...jobs].sort((a, b) => {
+    const aKey = `${a.featuredAt ?? ''}:${a.id}`;
+    const bKey = `${b.featuredAt ?? ''}:${b.id}`;
+    return aKey.localeCompare(bKey);
+  });
+  const offset = day % sorted.length;
+  return [...sorted.slice(offset), ...sorted.slice(0, offset)];
+}
+
 export function sortJobsNewest(jobs: SnapshotJob[]): SnapshotJob[] {
-  return [...jobs].sort((a, b) => postedAtMs(b) - postedAtMs(a));
+  const featured = jobs.filter(isFeaturedActive);
+  const rest = jobs.filter((job) => !isFeaturedActive(job));
+  const rankedRest = [...rest].sort((a, b) => postedAtMs(b) - postedAtMs(a));
+  return [...rotateFeaturedJobs(featured), ...rankedRest];
 }
 
 export function searchJobsFromSnapshot(

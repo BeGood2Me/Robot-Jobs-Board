@@ -45,6 +45,8 @@ export function sourceLabel(source: string): string {
       return 'Workday';
     case 'workable':
       return 'Workable';
+    case 'direct':
+      return 'the company site';
     default:
       return 'the company site';
   }
