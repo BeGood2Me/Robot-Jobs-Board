@@ -12,7 +12,7 @@ import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
 import { isJobFeatured } from '@/lib/is-featured';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 
-export const revalidate = 14400;
+export const revalidate = 86400;
 
 async function resolveGoneJob(id: string, slug: string) {
   return (await getGoneJobById(id)) ?? (await getGoneJobBySlug(slug));

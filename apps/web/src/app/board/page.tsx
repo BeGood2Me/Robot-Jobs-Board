@@ -2,8 +2,11 @@ import type { Metadata } from 'next';
 import { JobBoard } from '@/components/job-board';
 import { filtersFromSearchParams, isDefaultBoardListing } from '@/lib/job-filter-utils';
 
-/** Filtered homepage queries — rewritten from `/?…` so `/` stays ISR-cached. */
-export const dynamic = 'force-dynamic';
+/**
+ * Filtered homepage queries — rewritten from `/?…` so `/` stays ISR-cached.
+ * searchParams make this dynamic; keep a long revalidate for nested data caches.
+ */
+export const revalidate = 86400;
 
 type BoardSearchParams = Promise<Record<string, string | string[] | undefined>>;
 

@@ -143,13 +143,14 @@ async function fetchActiveFeaturedBoosts(): Promise<FeaturedBoostStamp[]> {
   }
 }
 
+/** Long TTL — Stripe webhook / success path bust `featured-overlay-v1` on pay. */
 export const loadFeaturedJobs = unstable_cache(fetchActiveFeaturedJobs, ['featured-overlay-v1'], {
-  revalidate: 60,
+  revalidate: 86400,
   tags: ['featured-overlay-v1'],
 });
 
 export const loadFeaturedBoosts = unstable_cache(fetchActiveFeaturedBoosts, ['featured-boosts-v1'], {
-  revalidate: 60,
+  revalidate: 86400,
   tags: ['featured-overlay-v1'],
 });
 

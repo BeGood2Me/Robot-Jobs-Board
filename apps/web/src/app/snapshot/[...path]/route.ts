@@ -1,7 +1,7 @@
 import { readStaticSnapshotFile, snapshotCdnBaseUrl } from '@/lib/snapshot/load';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
-export const revalidate = 14400;
+export const revalidate = 86400;
 
 type Params = { path: string[] };
 

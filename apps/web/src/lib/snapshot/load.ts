@@ -58,7 +58,8 @@ function snapshotDataBaseUrl(): string {
 }
 
 /** Manifest polls often so a new ingest is visible even when /api/revalidate is blocked (Attack Challenge). */
-const MANIFEST_REVALIDATE_SECONDS = 60;
+/** Manifest is small; ingest revalidate busts the board tag. Avoid 60s polls burning Fluid CPU. */
+const MANIFEST_REVALIDATE_SECONDS = 3600;
 
 /**
  * Fetch snapshot bytes.

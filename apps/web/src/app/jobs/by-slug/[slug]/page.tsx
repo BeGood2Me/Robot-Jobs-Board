@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { getGoneJobBySlug, getJobBySlug } from '@/lib/jobs';
 
-export const revalidate = 14400;
+export const revalidate = 86400;
 
 type SlugParams = { params: Promise<{ slug: string }> };
 
