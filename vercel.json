@@ -1,0 +1,5 @@
+{
+  "buildCommand": "echo snapshot-data-cdn && mkdir -p public && echo ok > public/index.html",
+  "installCommand": "echo skip",
+  "outputDirectory": "public"
+}
