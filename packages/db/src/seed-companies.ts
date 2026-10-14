@@ -94,7 +94,7 @@ export const seedCompanies: SeedCompany[] = [
     'anduril',
     'https://www.anduril.com',
     'Anduril builds autonomous defense systems including aerial drones and command software.',
-    'Anduril Industries hires for autonomous air, land, and maritime systems — live autonomy, perception, and robotics software openings across the US. Robot Jobs Board lists Anduril jobs aggregated from their public career board.',
+    'Anduril Industries jobs and careers cover autonomy, perception, and robotics software for air, land, and maritime systems across the US. Browse live Anduril openings aggregated on Robot Jobs Board from their public Greenhouse careers board.',
     'andurilindustries',
   ),
   greenhouse(
@@ -270,7 +270,7 @@ export const seedCompanies: SeedCompany[] = [
     '1x',
     'https://www.1x.tech',
     '1X builds humanoid robots for home and commercial work, including NEO and EVE.',
-    '1X builds NEO and EVE humanoids with live hardware, learning, and robot ops openings in the US and Europe. Compare 1X jobs aggregated on Robot Jobs Board from their public career page.',
+    '1X Technologies (1X) jobs and careers cover NEO and EVE humanoid hardware, learning, internships, and robot ops in the US and Europe. Compare live 1X jobs aggregated on Robot Jobs Board from their public Ashby careers page.',
     '1x',
   ),
   ashby(
@@ -366,7 +366,7 @@ export const seedCompanies: SeedCompany[] = [
     'shield-ai',
     'https://www.shield.ai',
     'Shield AI builds autonomous aircraft and Hivemind software for defense missions.',
-    'Shield AI flies uncrewed aircraft with GPS-denied autonomy — live aerospace and software openings across the US. Browse Shield AI drone jobs aggregated on Robot Jobs Board.',
+    'Shield AI jobs and careers span autonomous aircraft, Hivemind software, and aerospace engineering across the US. Browse live Shield AI openings on Robot Jobs Board — titles, locations, and apply links from their public Lever careers board.',
     'shieldai',
   ),
   lever(
@@ -446,7 +446,7 @@ export const seedCompanies: SeedCompany[] = [
     'openai',
     'https://openai.com',
     'OpenAI builds frontier AI systems and is hiring across a Robotics team spanning hardware, firmware, controls, and ML infrastructure.',
-    'OpenAI (San Francisco) posts robotics roles from actuator and firmware engineering through inference and distributed data systems for robot training — including listings with public base salaries into the high hundreds of thousands. Robot Jobs Board aggregates OpenAI Robotics team jobs from their public Ashby board (not the full company careers page).',
+    'OpenAI robotics jobs and careers cover actuators, firmware, controls, and ML infrastructure for the Robotics team in San Francisco. Robot Jobs Board lists OpenAI robotics openings from their public Ashby board (robotics-focused roles, not the full company careers page).',
     'openai',
     // OpenAI's Ashby board is company-wide; keep Robotics team / robot-titled roles only.
     { keyword: 'robot' },
@@ -483,7 +483,7 @@ export const seedCompanies: SeedCompany[] = [
     website: 'https://www.autostoresystem.com',
     description: 'AutoStore builds cube storage robots and software for dense warehouse fulfillment.',
     seoIntro:
-      'AutoStore warehouse robotics roles span Norway, the US, and Europe — electronics, product, and deployment. Browse live AutoStore jobs aggregated on Robot Jobs Board from their public Workday board.',
+      'AutoStore jobs and careers span warehouse robotics, electronics, product, and deployment roles in Norway, the US, and Europe. Browse live AutoStore openings aggregated on Robot Jobs Board from their public Workday careers board.',
     sourceSystem: SourceSystem.workday,
     sourceIdentifier: 'autostore',
     config: {

@@ -118,7 +118,7 @@ export default async function CompanyPage({
         {companyPageTitle(company.name, total)}
       </h1>
       <p className="mt-3 font-mono text-sm text-muted">
-        {total} open job{total === 1 ? '' : 's'}
+        {total < 1 ? 'No open roles' : total === 1 ? '1 open role' : `${total} open roles`}
         {newestPosted ? ` · ${formatPosted(newestPosted)}` : null}
       </p>
       {company.website ? (
@@ -134,7 +134,10 @@ export default async function CompanyPage({
       <p className="mt-6 max-w-[680px] text-pretty text-muted">
         {companyPageIntro(company.name, total, company.description, company.seoIntro)}
       </p>
-      <div className="mt-8 grid gap-4">
+      <h2 className="mt-10 text-2xl font-semibold">
+        {total < 1 ? `Open ${company.name} jobs` : `Open ${company.name} jobs (${total})`}
+      </h2>
+      <div className="mt-6 grid gap-4">
         {jobs.map((job) => (
           <JobCard key={job.id} job={job} />
         ))}

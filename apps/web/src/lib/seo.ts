@@ -28,14 +28,21 @@ export function jobPageDescription(job: JobSeoFields): string {
   const workplace = workplaceLabel(job.workplaceType, job.isRemote);
   const employment = employmentLabel(job.employmentType);
   const posted = formatPosted(job.postedAt);
-  const lead = `${employment} · ${workplace} · ${posted}. Apply on ${job.company.name}'s original posting.`;
-  const snippet = job.descriptionPlain.replace(/\s+/g, ' ').trim().slice(0, 100);
+  const lead = `${employment} · ${workplace} · ${posted}. Part of ${job.company.name} jobs on Robot Jobs Board — apply on the original posting.`;
+  const snippet = job.descriptionPlain.replace(/\s+/g, ' ').trim().slice(0, 80);
   return `${lead} ${snippet}`.slice(0, 160);
 }
 
+function companyOpeningsPhrase(total: number): string {
+  if (total < 1) return 'no open roles right now';
+  if (total === 1) return '1 open role';
+  return `${total} open roles`;
+}
+
+/** Title/H1 aimed at "{company} jobs" and "{company} careers" queries. */
 export function companyPageTitle(name: string, total = 1): string {
-  if (total < 1) return `${name} careers on Robot Jobs Board`;
-  return `${name} robotics jobs`;
+  if (total < 1) return `${name} Jobs & Careers`;
+  return `${name} Jobs & Careers — ${companyOpeningsPhrase(total)}`;
 }
 
 export function companyPageDescription(
@@ -45,18 +52,24 @@ export function companyPageDescription(
   seoIntro?: string | null,
 ): string {
   const source = (seoIntro?.trim() || description).replace(/\s+/g, ' ').trim();
+  const openings = companyOpeningsPhrase(total);
   if (total < 1) {
-    return `${name} careers on Robot Jobs Board. ${source}`.slice(0, 160);
+    return `${name} jobs and careers on Robot Jobs Board. ${source}`.slice(0, 160);
   }
-  const openings = total === 1 ? '1 live job' : `${total} live jobs`;
-  return `${name} robotics jobs — ${openings} on Robot Jobs Board. Compare titles and locations, then apply on the original posting. ${source}`.slice(
+  return `${name} jobs and careers — ${openings} on Robot Jobs Board. Compare titles and locations, then apply on the original posting. ${source}`.slice(
     0,
     160,
   );
 }
 
 export function companyPageIntro(name: string, total: number, description: string, seoIntro?: string | null): string {
-  if (seoIntro?.trim()) return seoIntro;
-  const openings = total === 1 ? '1 open job' : total < 1 ? 'robotics jobs' : `${total} open jobs`;
+  const body = seoIntro?.trim() || description;
+  const openings = companyOpeningsPhrase(total);
+  if (seoIntro?.trim()) {
+    if (total < 1) {
+      return `${name} has no open robotics jobs on Robot Jobs Board right now. ${body}`;
+    }
+    return `${name} has ${openings} listed on Robot Jobs Board. ${body}`;
+  }
   return `${name} posts robotics jobs on Greenhouse, Lever, Ashby, and other company boards. Robot Jobs Board aggregates ${openings} in one place so you can compare titles, locations, and stacks without checking each careers page separately. ${description}`;
 }

@@ -1,5 +1,5 @@
 ---
-description: Neon is Featured-only; daily board ingest stays on GitHub
+description: Neon is Featured-only; daily board ingest stays on GitHub; never kill Featured sales
 alwaysApply: true
 ---
 
@@ -9,3 +9,9 @@ alwaysApply: true
 - **Neon**: Paid Featured only — Stripe checkout/webhook fulfillment, `PaidListing` / `FeaturedBoost`, featured overlay reads/writes. Do not use Neon as the source of truth for the full job board.
 - Keep `SNAPSHOT_ONLY=1` (or equivalent) so public listing pages stay snapshot-first and do not query Neon for the main board.
 - When changing ingestion, export, or board loading: prefer GitHub snapshot paths. Do not add Prisma/Neon reads or writes to the daily ingest runner for board content.
+
+# Featured sales are the product
+
+- The site’s goal is traffic **and** companies buying Featured listings.
+- **Never** recommend or set `DISABLE_FEATURED_OVERLAY=1` (or otherwise disable checkout/overlay) to save Vercel/Neon usage.
+- Cut Fluid CPU with caching/ISR only — keep Stripe checkout, webhook publish, and the Featured overlay available.

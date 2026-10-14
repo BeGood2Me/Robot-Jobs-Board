@@ -87,15 +87,27 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd(job)) }} />
-      <p className="text-sm">
-        <Link href={`/companies/${job.company.slug}`} className="text-muted hover:text-accent">
-          {job.company.name}
-        </Link>
-      </p>
+      <nav aria-label="Breadcrumb" className="text-sm text-muted">
+        <ol className="flex flex-wrap gap-2">
+          <li>
+            <Link href="/" className="underline hover:text-accent">
+              Robotics jobs
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li>
+            <Link href={`/companies/${job.company.slug}`} className="underline hover:text-accent">
+              {job.company.name} jobs
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li className="text-foreground">{job.title}</li>
+        </ol>
+      </nav>
       {isJobFeatured(job) ? (
         <p className="mt-3 text-xs font-semibold tracking-wide text-accent uppercase">Featured</p>
       ) : null}
-      <h1 className="mt-2 max-w-[680px] text-4xl font-semibold">{job.title}</h1>
+      <h1 className="mt-4 max-w-[680px] text-4xl font-semibold">{job.title}</h1>
       <p className="mt-4 text-muted">{facts.join(' · ')}</p>
       {job.compensationText ? (
         <p className="mt-2 text-base font-medium text-foreground">{job.compensationText}</p>
@@ -126,12 +138,18 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
           </Link>
         ))}
       </div>
-      <div className="mt-8">
+      <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
         <ApplyNowLink {...applyProps} />
+        <Link href={`/companies/${job.company.slug}`} className="text-sm underline hover:text-accent">
+          View all {job.company.name} jobs
+        </Link>
       </div>
       <article className="job-html mt-12 max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
-      <div className="mt-12">
+      <div className="mt-12 flex flex-wrap items-center gap-x-4 gap-y-2">
         <ApplyNowLink {...applyProps} />
+        <Link href={`/companies/${job.company.slug}`} className="text-sm underline hover:text-accent">
+          View all {job.company.name} jobs
+        </Link>
       </div>
       <div className="mt-10 max-w-3xl">
         <FeatureJobButton

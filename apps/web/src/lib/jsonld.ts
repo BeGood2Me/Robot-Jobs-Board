@@ -1,4 +1,5 @@
 import type { JobWithRelations } from './jobs';
+import { companyPageTitle } from './seo';
 import { PAGE_SIZE, getSiteUrl } from './site';
 
 function addDays(date: Date, days: number) {
@@ -356,12 +357,13 @@ function jobDescriptionForSchema(job: {
 
 export function jobPostingJsonLd(job: JobWithRelations) {
   const site = getSiteUrl();
+  const jobUrl = `${site}/jobs/${job.id}/${job.slug}`;
+  const companyUrl = `${site}/companies/${job.company.slug}`;
   const description = jobDescriptionForSchema(job);
   const postedAt = asDate(job.postedAt);
   const createdAt = asDateRequired(job.createdAt);
   const expiresAt = asDate(job.expiresAt);
   const data: Record<string, unknown> = {
-    '@context': 'https://schema.org/',
     '@type': 'JobPosting',
     title: job.title,
     description,
@@ -370,6 +372,7 @@ export function jobPostingJsonLd(job: JobWithRelations) {
     hiringOrganization: {
       '@type': 'Organization',
       name: job.company.name,
+      url: companyUrl,
       sameAs: job.company.website ?? undefined,
       logo: job.company.logoUrl ?? undefined,
     },
@@ -379,7 +382,7 @@ export function jobPostingJsonLd(job: JobWithRelations) {
       value: job.externalId,
     },
     directApply: false,
-    url: `${site}/jobs/${job.id}/${job.slug}`,
+    url: jobUrl,
     applicationContact: undefined,
   };
 
@@ -428,7 +431,27 @@ export function jobPostingJsonLd(job: JobWithRelations) {
     };
   }
 
-  return data;
+  // Point brand/careers equity at the company hub; individual roles stay indexable for long-tail titles.
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      data,
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Robotics jobs', item: site },
+          { '@type': 'ListItem', position: 2, name: 'Companies', item: `${site}/companies` },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: `${job.company.name} jobs`,
+            item: companyUrl,
+          },
+          { '@type': 'ListItem', position: 4, name: job.title, item: jobUrl },
+        ],
+      },
+    ],
+  };
 }
 
 export function blogArticleJsonLd(post: {
@@ -564,10 +587,7 @@ export function companyPageJsonLd(company: {
   const site = getSiteUrl();
   const url = `${site}/companies/${company.slug}`;
   const offset = (company.page - 1) * PAGE_SIZE;
-  const pageName =
-    company.total < 1
-      ? `${company.name} careers on Robot Jobs Board`
-      : `${company.name} jobs & careers`;
+  const pageName = companyPageTitle(company.name, company.total);
   const pageDescription = (company.seoIntro?.trim() || company.description).replace(/\s+/g, ' ').trim();
   const organization: Record<string, unknown> = {
     '@type': 'Organization',
