@@ -46,7 +46,7 @@ export const config = {
     /*
      * Crawl-heavy HTML + public JSON APIs only.
      * Skip low-traffic static pages (/privacy|/terms|/post-a-job|/mcp|/guides)
-     * to cut middleware Active CPU without dropping bot shields on the board.
+     * and /api/mcp (MCP clients use UAs that match BLOCKED_BOTS; route still rate-limits).
      */
     '/',
     '/board',
@@ -61,7 +61,6 @@ export const config = {
     '/api/facets',
     '/api/companies',
     '/api/companies/:path*',
-    '/api/mcp',
     '/api/newsletter',
   ],
 };
