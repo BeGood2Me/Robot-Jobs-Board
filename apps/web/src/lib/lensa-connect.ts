@@ -16,23 +16,31 @@ function locationHaystack(job: LensaConnectJobContext): string {
   return [job.locationRaw, job.city, job.region, job.country].filter(Boolean).join(' ').toLowerCase();
 }
 
+const NON_US_MARKERS =
+  /\b(united kingdom|u\.k\.|england|scotland|wales|northern ireland|germany|france|spain|italy|netherlands|belgium|sweden|norway|denmark|finland|poland|portugal|ireland|switzerland|austria|canada|india|china|japan|singapore|australia|new zealand|mexico|brazil)\b/;
+
+const US_STATE_ABBR = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/i;
+
 /** Lensa Connect is US CPC — show widget on US-ish job pages only. */
 export function isUsJobContext(job: LensaConnectJobContext): boolean {
   const hay = locationHaystack(job);
+  if (NON_US_MARKERS.test(hay) && !/\b(united states|usa|u\.s\.|u\.s\.a\.)\b/.test(hay)) {
+    return false;
+  }
   if (/\b(united states|usa|u\.s\.|u\.s\.a\.)\b/.test(hay)) return true;
-  if (/\b(us|usa)\b/.test(hay) && job.isRemote) return true;
-  if (
-    /\b(california|ca|texas|tx|massachusetts|ma|washington|wa|new york|ny|colorado|co|pennsylvania|pa)\b/.test(hay)
-  ) {
+  if (US_STATE_ABBR.test(hay)) return true;
+  if (/\b(california|texas|massachusetts|washington|new york|colorado|pennsylvania)\b/.test(hay)) {
     return true;
   }
-  if (job.isRemote && /\bremote\b/.test(hay)) return true;
+  if (job.isRemote && /\bremote\b/.test(hay) && !NON_US_MARKERS.test(hay)) return true;
+  if (job.isRemote && !job.country) return true;
   return false;
 }
 
 function sanFranciscoCampaignSrc(): string | null {
   if (process.env.DISABLE_LENSA_CONNECT === '1') return null;
   return (
+    process.env.LENSA_CONNECT_WIDGET_SF?.trim() ||
     process.env.NEXT_PUBLIC_LENSA_CONNECT_WIDGET_SF?.trim() ||
     process.env.NEXT_PUBLIC_LENSA_CONNECT_WIDGET_SRC?.trim() ||
     null
