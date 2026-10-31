@@ -28,7 +28,7 @@ async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
   });
 
   const published = await publishPaidListing(paidListingId);
-  revalidateFeaturedSurfaces(published);
+  await revalidateFeaturedSurfaces(published);
   return { received: true as const, ...published };
 }
 

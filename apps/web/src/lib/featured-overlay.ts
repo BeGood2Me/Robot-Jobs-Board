@@ -1,10 +1,15 @@
-import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
+import { getCache } from '@vercel/functions';
 import { prisma } from '@robot-jobs-board/db';
 import type { SnapshotJob } from '@robot-jobs-board/snapshot';
 
 /**
  * Tiny Neon read for active Featured jobs/boosts. Allowed even when SNAPSHOT_ONLY=1
  * so paid posts go live without waiting for the daily snapshot rebuild.
+ *
+ * Public pages must not query Neon on every request: an empty result is stored in
+ * Vercel Runtime Cache (shared across Fluid isolates). Stripe webhook / success
+ * expires that entry so a new Featured listing appears immediately.
  */
 export function isFeaturedOverlayEnabled(): boolean {
   if (process.env.DISABLE_FEATURED_OVERLAY === '1') return false;
@@ -17,6 +22,39 @@ export type FeaturedBoostStamp = {
   featuredUntil: string;
   featuredAt: string;
 };
+
+export type FeaturedOverlayPayload = {
+  jobs: SnapshotJob[];
+  boosts: FeaturedBoostStamp[];
+};
+
+const EMPTY_OVERLAY: FeaturedOverlayPayload = { jobs: [], boosts: [] };
+
+/** Shared by Next Data Cache tags and Runtime Cache invalidation. */
+export const FEATURED_OVERLAY_CACHE_TAG = 'featured-overlay-v1';
+const FEATURED_OVERLAY_CACHE_KEY = 'payload';
+const FEATURED_OVERLAY_CACHE_TTL_SECONDS = 86400;
+/** Avoid a Neon round-trip on every SSG/ISR page in the same isolate. Runtime Cache is the cross-isolate layer. */
+const FEATURED_OVERLAY_MEMORY_TTL_MS = 60_000;
+
+type MemoryOverlay = { payload: FeaturedOverlayPayload; until: number };
+
+let memoryOverlay: MemoryOverlay | null = null;
+let inflightOverlay: Promise<FeaturedOverlayPayload> | null = null;
+let overlayGeneration = 0;
+
+function readMemoryOverlay(now = Date.now()): FeaturedOverlayPayload | undefined {
+  if (!memoryOverlay || memoryOverlay.until <= now) return undefined;
+  return memoryOverlay.payload;
+}
+
+function writeMemoryOverlay(payload: FeaturedOverlayPayload, now = Date.now()): void {
+  memoryOverlay = { payload, until: now + FEATURED_OVERLAY_MEMORY_TTL_MS };
+}
+
+function clearMemoryOverlay(): void {
+  memoryOverlay = null;
+}
 
 const featuredSelect = {
   id: true,
@@ -96,11 +134,60 @@ function toSnapshotJob(
   };
 }
 
-async function fetchActiveFeaturedJobs(): Promise<SnapshotJob[]> {
-  if (!isFeaturedOverlayEnabled()) return [];
+function featuredRuntimeCache() {
+  return getCache({ namespace: 'robot-jobs-board-featured' });
+}
+
+function isOverlayPayload(value: unknown): value is FeaturedOverlayPayload {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value as FeaturedOverlayPayload;
+  return Array.isArray(payload.jobs) && Array.isArray(payload.boosts);
+}
+
+async function readFeaturedOverlayCache(): Promise<FeaturedOverlayPayload | undefined> {
   try {
-    const now = new Date();
-    const rows = await prisma.job.findMany({
+    const value = await featuredRuntimeCache().get(FEATURED_OVERLAY_CACHE_KEY);
+    return isOverlayPayload(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function writeFeaturedOverlayCache(payload: FeaturedOverlayPayload): Promise<void> {
+  try {
+    await featuredRuntimeCache().set(FEATURED_OVERLAY_CACHE_KEY, payload, {
+      ttl: FEATURED_OVERLAY_CACHE_TTL_SECONDS,
+      tags: [FEATURED_OVERLAY_CACHE_TAG],
+      name: 'featured-overlay',
+    });
+  } catch (error) {
+    console.warn(
+      JSON.stringify({
+        event: 'featured.overlay.cache_write_failed',
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
+}
+
+/** Drop the empty/full overlay cache so the next public read hits Neon (after pay). */
+export async function expireFeaturedOverlayCache(): Promise<void> {
+  overlayGeneration += 1;
+  clearMemoryOverlay();
+  inflightOverlay = null;
+  try {
+    const cache = featuredRuntimeCache();
+    await cache.expireTag(FEATURED_OVERLAY_CACHE_TAG);
+    await cache.delete(FEATURED_OVERLAY_CACHE_KEY);
+  } catch {
+    // Ignore — Next revalidateTag still runs for Data Cache.
+  }
+}
+
+async function queryActiveFeaturedOverlay(): Promise<FeaturedOverlayPayload> {
+  const now = new Date();
+  const [jobRows, boostRows] = await Promise.all([
+    prisma.job.findMany({
       where: {
         isActive: true,
         isHidden: false,
@@ -109,50 +196,79 @@ async function fetchActiveFeaturedJobs(): Promise<SnapshotJob[]> {
       select: featuredSelect,
       orderBy: [{ featuredAt: 'asc' }, { id: 'asc' }],
       take: 50,
-    });
-    return rows.map((row) => toSnapshotJob(row));
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Featured overlay unavailable', error);
-    }
-    return [];
-  }
-}
-
-async function fetchActiveFeaturedBoosts(): Promise<FeaturedBoostStamp[]> {
-  if (!isFeaturedOverlayEnabled()) return [];
-  try {
-    const now = new Date();
-    const rows = await prisma.featuredBoost.findMany({
+    }),
+    prisma.featuredBoost.findMany({
       where: { featuredUntil: { gt: now } },
       select: { jobId: true, jobSlug: true, featuredUntil: true, featuredAt: true },
       orderBy: [{ featuredAt: 'asc' }, { jobId: 'asc' }],
       take: 50,
-    });
-    return rows.map((row) => ({
+    }),
+  ]);
+  return {
+    jobs: jobRows.map((row) => toSnapshotJob(row)),
+    boosts: boostRows.map((row) => ({
       jobId: row.jobId,
       jobSlug: row.jobSlug,
       featuredUntil: row.featuredUntil.toISOString(),
       featuredAt: row.featuredAt.toISOString(),
-    }));
+    })),
+  };
+}
+
+async function queryAndCacheFeaturedOverlay(): Promise<FeaturedOverlayPayload> {
+  const generation = overlayGeneration;
+  try {
+    const payload = await queryActiveFeaturedOverlay();
+    console.log(
+      JSON.stringify({
+        event: 'featured.overlay.neon',
+        jobs: payload.jobs.length,
+        boosts: payload.boosts.length,
+      }),
+    );
+    if (generation !== overlayGeneration) return payload;
+    await writeFeaturedOverlayCache(payload);
+    writeMemoryOverlay(payload);
+    return payload;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn('Featured boosts unavailable', error);
+      console.warn('Featured overlay unavailable', error);
     }
-    return [];
+    // Do not cache failures (cold start / blip) as "no Featured".
+    return EMPTY_OVERLAY;
   }
 }
 
-/** Long TTL — Stripe webhook / success path bust `featured-overlay-v1` on pay. */
-export const loadFeaturedJobs = unstable_cache(fetchActiveFeaturedJobs, ['featured-overlay-v1'], {
-  revalidate: 86400,
-  tags: ['featured-overlay-v1'],
-});
+async function loadFeaturedOverlayUncached(): Promise<FeaturedOverlayPayload> {
+  if (!isFeaturedOverlayEnabled()) return EMPTY_OVERLAY;
 
-export const loadFeaturedBoosts = unstable_cache(fetchActiveFeaturedBoosts, ['featured-boosts-v1'], {
-  revalidate: 86400,
-  tags: ['featured-overlay-v1'],
-});
+  const fromMemory = readMemoryOverlay();
+  if (fromMemory) return fromMemory;
+
+  const cached = await readFeaturedOverlayCache();
+  if (cached) {
+    writeMemoryOverlay(cached);
+    return cached;
+  }
+
+  if (!inflightOverlay) {
+    inflightOverlay = queryAndCacheFeaturedOverlay().finally(() => {
+      inflightOverlay = null;
+    });
+  }
+  return inflightOverlay;
+}
+
+/** Per-request memo + Runtime Cache. Empty results skip Neon until TTL or pay. */
+export const loadFeaturedOverlay = cache(loadFeaturedOverlayUncached);
+
+export async function loadFeaturedJobs(): Promise<SnapshotJob[]> {
+  return (await loadFeaturedOverlay()).jobs;
+}
+
+export async function loadFeaturedBoosts(): Promise<FeaturedBoostStamp[]> {
+  return (await loadFeaturedOverlay()).boosts;
+}
 
 /** Stamp Featured windows from boosts onto matching snapshot jobs. */
 export function applyFeaturedBoosts(jobs: SnapshotJob[], boosts: FeaturedBoostStamp[]): SnapshotJob[] {
@@ -200,28 +316,13 @@ export function mergeFeaturedIntoJobs(base: SnapshotJob[], featured: SnapshotJob
 
 export { isJobFeatured } from './is-featured';
 
+/** Resolve from the cached overlay list — never an extra uncached Neon lookup (crawler 404s). */
 export async function loadFeaturedJobById(id: string): Promise<SnapshotJob | null> {
-  if (!isFeaturedOverlayEnabled()) return null;
-  try {
-    const now = new Date();
-    const job = await prisma.job.findFirst({
-      where: {
-        id,
-        isActive: true,
-        isHidden: false,
-        featuredUntil: { gt: now },
-      },
-      select: featuredSelect,
-    });
-    return job ? toSnapshotJob(job) : null;
-  } catch {
-    return null;
-  }
+  const jobs = await loadFeaturedJobs();
+  return jobs.find((job) => job.id === id) ?? null;
 }
 
-export async function getBoostForJob(
-  jobId: string,
-): Promise<FeaturedBoostStamp | null> {
+export async function getBoostForJob(jobId: string): Promise<FeaturedBoostStamp | null> {
   const boosts = await loadFeaturedBoosts();
   return boosts.find((b) => b.jobId === jobId) ?? null;
 }

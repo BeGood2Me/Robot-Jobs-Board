@@ -9,9 +9,7 @@ import { cache } from 'react';
 import { prisma, withDb } from './db';
 import {
   applyFeaturedBoosts,
-  loadFeaturedBoosts,
-  loadFeaturedJobById,
-  loadFeaturedJobs,
+  loadFeaturedOverlay,
   mergeFeaturedIntoJobs,
 } from './featured-overlay';
 import { type JobFilters } from './job-filter-utils';
@@ -341,7 +339,7 @@ export function jobWhere(filters: JobFilters, activeOnly = true): Prisma.JobWher
 export async function searchJobs(filters: JobFilters) {
   const snapshot = await loadPublicSnapshot();
   if (snapshot) {
-    const [featured, boosts] = await Promise.all([loadFeaturedJobs(), loadFeaturedBoosts()]);
+    const { jobs: featured, boosts } = await loadFeaturedOverlay();
     const withBoosts = applyFeaturedBoosts(snapshot.jobs, boosts);
     const merged = mergeFeaturedIntoJobs(withBoosts, featured);
     const result = searchJobsFromSnapshot(merged, filters, PAGE_SIZE);
@@ -530,13 +528,16 @@ export const getJobById = cache(async (id: string, slug?: string) => {
     if (!job && slug) {
       job = pickNewestJob(snapshot.jobs.filter((item) => item.slug === slug));
     }
+    const overlay = await loadFeaturedOverlay();
     if (!job) {
-      const featured = await loadFeaturedJobById(id);
+      const featured =
+        overlay.jobs.find((item) => item.id === id) ??
+        (slug ? pickNewestJob(overlay.jobs.filter((item) => item.slug === slug)) : null);
       if (featured) return hydrateSnapshotJob(featured);
       return null;
     }
-    const boosts = await loadFeaturedBoosts();
-    const [stamped] = applyFeaturedBoosts([job], boosts);
+    if (!overlay.boosts.length) return hydrateSnapshotJob(job);
+    const [stamped] = applyFeaturedBoosts([job], overlay.boosts);
     return hydrateSnapshotJob(stamped ?? job);
   }
   const job = await withDb(() => loadJobByIdCached(id), null);
@@ -550,8 +551,8 @@ export const getJobBySlug = cache(async (slug: string): Promise<{ id: string; sl
   if (snapshot) {
     const job = pickNewestJob(snapshot.jobs.filter((item) => item.slug === slug));
     if (job) return { id: job.id, slug: job.slug };
-    const featured = await loadFeaturedJobs();
-    const fromFeatured = pickNewestJob(featured.filter((item) => item.slug === slug));
+    const overlay = await loadFeaturedOverlay();
+    const fromFeatured = pickNewestJob(overlay.jobs.filter((item) => item.slug === slug));
     if (fromFeatured) return { id: fromFeatured.id, slug: fromFeatured.slug };
     return null;
   }

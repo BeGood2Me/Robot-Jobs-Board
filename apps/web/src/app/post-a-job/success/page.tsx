@@ -31,7 +31,7 @@ export default async function PostAJobSuccessPage({ searchParams }: Props) {
         error = 'Could not find your listing for this payment.';
       } else {
         const published = await publishPaidListing(paidListingId);
-        revalidateFeaturedSurfaces(published);
+        await revalidateFeaturedSurfaces(published);
         jobHref = `/jobs/${published.jobId}/${published.jobSlug}`;
         title = published.title;
         extended = published.extended;
