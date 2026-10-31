@@ -12,9 +12,11 @@ import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
 import {
   isEmployerFeaturedUpsellEligible,
   isPaidFeatured,
+  isPartnerFeatured,
 } from '@/lib/is-featured';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 import { JobListingBadge } from '@/components/job-listing-badge';
+import { PartnerSponsoredDisclosure } from '@/components/partner-sponsored-disclosure';
 
 export const revalidate = 86400;
 
@@ -74,12 +76,14 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
   const related = await relatedJobs(job);
   const html = sanitizeJobHtml(job.descriptionHtml || `<p>${job.descriptionPlain}</p>`);
   const applyHref = directApplyUrl(job);
+  const partnerListing = isPartnerFeatured(job);
   const applyProps = {
     href: applyHref,
     jobId: job.id,
     jobTitle: job.title,
     companySlug: job.company.slug,
     companyName: job.company.name,
+    sponsored: partnerListing,
   };
   const facts = [
     job.locationRaw,
@@ -109,6 +113,7 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
         </ol>
       </nav>
       <JobListingBadge job={job} className="mt-3" />
+      {partnerListing ? <PartnerSponsoredDisclosure className="mt-2" /> : null}
       <h1 className="mt-4 max-w-[680px] text-4xl font-semibold">{job.title}</h1>
       <p className="mt-4 text-muted">{facts.join(' · ')}</p>
       {job.compensationText ? (
@@ -140,13 +145,17 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
           </Link>
         ))}
       </div>
-      <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <ApplyNowLink {...applyProps} />
-        <Link href={`/companies/${job.company.slug}`} className="text-sm underline hover:text-accent">
-          View all {job.company.name} jobs
-        </Link>
+      <div className="mt-8 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <ApplyNowLink {...applyProps} />
+          <Link href={`/companies/${job.company.slug}`} className="text-sm underline hover:text-accent">
+            View all {job.company.name} jobs
+          </Link>
+        </div>
+        {partnerListing ? <PartnerSponsoredDisclosure className="mt-1" /> : null}
       </div>
       <article className="job-html mt-12 max-w-3xl" dangerouslySetInnerHTML={{ __html: html }} />
+      {partnerListing ? <PartnerSponsoredDisclosure className="mt-6" /> : null}
       <div className="mt-12 flex flex-wrap items-center gap-x-4 gap-y-2">
         <ApplyNowLink {...applyProps} />
         <Link href={`/companies/${job.company.slug}`} className="text-sm underline hover:text-accent">

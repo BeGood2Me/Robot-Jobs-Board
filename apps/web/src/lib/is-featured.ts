@@ -27,7 +27,7 @@ export function isPaidFeatured(job: JobFeaturedFields): boolean {
   return featuredActive(job) && job.featuredSource !== 'partner';
 }
 
-/** Either paid or partner Featured — sorting, borders, etc. */
+/** Either paid or partner top placement — card border, sort (not the public badge label). */
 export function isJobFeatured(job: JobFeaturedFields): boolean {
   return featuredActive(job);
 }

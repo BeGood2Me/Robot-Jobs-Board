@@ -1,5 +1,6 @@
-import { isJobFeatured, type JobFeaturedFields } from '@/lib/is-featured';
+import { isPaidFeatured, isPartnerFeatured, type JobFeaturedFields } from '@/lib/is-featured';
 
+/** Partner referral slots: Sponsored only. Paid employer placement: Featured only. */
 export function JobListingBadge({
   job,
   className = '',
@@ -7,12 +8,19 @@ export function JobListingBadge({
   job: JobFeaturedFields;
   className?: string;
 }) {
-  if (!isJobFeatured(job)) return null;
-  return (
-    <p
-      className={`mb-1 text-xs font-semibold tracking-wide text-accent uppercase ${className}`.trim()}
-    >
-      Featured
-    </p>
-  );
+  if (isPartnerFeatured(job)) {
+    return (
+      <p className={`text-xs font-semibold tracking-wide text-muted uppercase ${className}`.trim()}>
+        Sponsored
+      </p>
+    );
+  }
+  if (isPaidFeatured(job)) {
+    return (
+      <p className={`text-xs font-semibold tracking-wide text-accent uppercase ${className}`.trim()}>
+        Featured
+      </p>
+    );
+  }
+  return null;
 }

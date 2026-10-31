@@ -8,13 +8,13 @@ export const metadata: Metadata = {
   alternates: { canonical: '/terms' },
 };
 
-const UPDATED = 'August 20, 2026';
+const UPDATED = 'October 31, 2026';
 
 export default function TermsPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="max-w-[680px] text-4xl font-semibold text-balance">Terms of use</h1>
-      <p className="mt-3 font-mono text-sm text-muted">Version 1.1 · Last revised {UPDATED}</p>
+      <p className="mt-3 font-mono text-sm text-muted">Version 1.2 · Last revised {UPDATED}</p>
       <p className="mt-2 text-sm text-muted">
         Based on the{' '}
         <a
@@ -113,6 +113,19 @@ export default function TermsPage() {
             , we may ingest listings from that board. Candidates still apply on your ATS. You are responsible for the
             accuracy and legality of your own postings and confirm you have the right to make those public postings
             available for indexing.
+          </p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">2.9 Sponsored and Featured listings</h3>
+          <p className="mt-3">
+            Some jobs appear at the top of the board as <strong className="font-semibold text-foreground">Featured</strong>{' '}
+            listings when an employer pays for placement through our{' '}
+            <Link href="/post-a-job" className="underline">
+              Post a job
+            </Link>{' '}
+            product. Other top listings are marked{' '}
+            <strong className="font-semibold text-foreground">Sponsored</strong>: we may receive a referral or similar
+            fee if you apply through our link to a third-party job page. Sponsored listings are labeled on the board and
+            on the job page near apply links. That compensation does not change how we index ordinary employer career
+            feeds.
           </p>
         </section>
 

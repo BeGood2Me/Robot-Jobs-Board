@@ -1,6 +1,7 @@
 'use client';
 
 import { track } from '@vercel/analytics';
+import { PARTNER_APPLY_LINK_REL } from '@/lib/partner-listing';
 
 type ApplyNowLinkProps = {
   href: string;
@@ -9,6 +10,8 @@ type ApplyNowLinkProps = {
   companySlug: string;
   companyName: string;
   className?: string;
+  /** Partner/referral listings — `rel="sponsored"`; does not change the apply URL. */
+  sponsored?: boolean;
 };
 
 declare global {
@@ -24,6 +27,7 @@ export function ApplyNowLink({
   companySlug,
   companyName,
   className,
+  sponsored = false,
 }: ApplyNowLinkProps) {
   function handleClick() {
     track('Apply Click', {
@@ -44,7 +48,7 @@ export function ApplyNowLink({
     <a
       href={href}
       target="_blank"
-      rel="noopener noreferrer"
+      rel={sponsored ? PARTNER_APPLY_LINK_REL : 'noopener noreferrer'}
       onClick={handleClick}
       className={
         className ??
