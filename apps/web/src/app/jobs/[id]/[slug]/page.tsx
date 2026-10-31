@@ -9,8 +9,12 @@ import { jobPostingJsonLd } from '@/lib/jsonld';
 import { getJobById, getGoneJobById, getGoneJobBySlug, relatedJobs } from '@/lib/jobs';
 import { sanitizeJobHtml } from '@/lib/sanitize';
 import { jobPageDescription, jobPagePath, jobPageTitle } from '@/lib/seo';
-import { isJobFeatured } from '@/lib/is-featured';
+import {
+  isEmployerFeaturedUpsellEligible,
+  isPaidFeatured,
+} from '@/lib/is-featured';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
+import { JobListingBadge } from '@/components/job-listing-badge';
 
 export const revalidate = 86400;
 
@@ -104,9 +108,7 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
           <li className="text-foreground">{job.title}</li>
         </ol>
       </nav>
-      {isJobFeatured(job) ? (
-        <p className="mt-3 text-xs font-semibold tracking-wide text-accent uppercase">Featured</p>
-      ) : null}
+      <JobListingBadge job={job} className="mt-3" />
       <h1 className="mt-4 max-w-[680px] text-4xl font-semibold">{job.title}</h1>
       <p className="mt-4 text-muted">{facts.join(' · ')}</p>
       {job.compensationText ? (
@@ -151,14 +153,16 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
           View all {job.company.name} jobs
         </Link>
       </div>
-      <div className="mt-10 max-w-3xl">
-        <FeatureJobButton
-          jobId={job.id}
-          jobTitle={job.title}
-          companyName={job.company.name}
-          alreadyFeatured={isJobFeatured(job)}
-        />
-      </div>
+      {isEmployerFeaturedUpsellEligible(job) ? (
+        <div className="mt-10 max-w-3xl">
+          <FeatureJobButton
+            jobId={job.id}
+            jobTitle={job.title}
+            companyName={job.company.name}
+            alreadyFeatured={isPaidFeatured(job)}
+          />
+        </div>
+      ) : null}
       <section className="mt-16">
         <h2 className="text-2xl font-semibold">Related jobs</h2>
         <div className="mt-6 grid gap-4">

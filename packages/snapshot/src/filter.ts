@@ -251,6 +251,10 @@ function isFeaturedActive(job: SnapshotJob): boolean {
   return Number.isFinite(until) && until > Date.now();
 }
 
+function isPartnerFeatured(job: SnapshotJob): boolean {
+  return job.featuredSource === 'partner';
+}
+
 /** Unlimited Featured share the top via stable daily rotation. */
 function rotateFeaturedJobs(jobs: SnapshotJob[]): SnapshotJob[] {
   if (jobs.length <= 1) return jobs;
@@ -266,9 +270,11 @@ function rotateFeaturedJobs(jobs: SnapshotJob[]): SnapshotJob[] {
 
 export function sortJobsNewest(jobs: SnapshotJob[]): SnapshotJob[] {
   const featured = jobs.filter(isFeaturedActive);
+  const paidFeatured = featured.filter((job) => !isPartnerFeatured(job));
+  const partnerFeatured = featured.filter(isPartnerFeatured);
   const rest = jobs.filter((job) => !isFeaturedActive(job));
   const rankedRest = [...rest].sort((a, b) => postedAtMs(b) - postedAtMs(a));
-  return [...rotateFeaturedJobs(featured), ...rankedRest];
+  return [...rotateFeaturedJobs(paidFeatured), ...rotateFeaturedJobs(partnerFeatured), ...rankedRest];
 }
 
 export function searchJobsFromSnapshot(

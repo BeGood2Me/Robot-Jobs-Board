@@ -29,3 +29,4 @@ apps/web/public/snapshot/**
 
 # Private local notes, plans, and outreach — never commit.
 docs/
+.env*

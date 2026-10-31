@@ -6,6 +6,7 @@ import {
 } from '@robot-jobs-board/snapshot';
 import { unstable_cache, unstable_noStore as noStore } from 'next/cache';
 import { cache } from 'react';
+import type { FeaturedSource } from '@/lib/is-featured';
 import { prisma, withDb } from './db';
 import {
   applyFeaturedBoosts,
@@ -37,7 +38,9 @@ export const jobCardSelect = {
   company: { select: { name: true, slug: true } },
 } satisfies Prisma.JobSelect;
 
-export type JobCardData = Prisma.JobGetPayload<{ select: typeof jobCardSelect }>;
+export type JobCardData = Prisma.JobGetPayload<{ select: typeof jobCardSelect }> & {
+  featuredSource?: FeaturedSource | null;
+};
 
 /** Explicit columns for detail pages — avoids transferring unused Job/Company TEXT. */
 export const jobDetailSelect = {
@@ -86,7 +89,9 @@ export const jobDetailInclude = {
 
 export const jobCardInclude = jobDetailInclude;
 
-export type JobWithRelations = Prisma.JobGetPayload<{ select: typeof jobDetailSelect }>;
+export type JobWithRelations = Prisma.JobGetPayload<{ select: typeof jobDetailSelect }> & {
+  featuredSource?: FeaturedSource | null;
+};
 
 export const publicJobWhere = {
   isActive: true,

@@ -2,7 +2,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-export const ADMIN_COOKIE = 'robot_roles_admin';
+export const ADMIN_COOKIE = 'robot_jobs_board_admin';
+/** Previous cookie name — still accepted so renames do not force re-login. */
+export const LEGACY_ADMIN_COOKIE = 'robot_roles_admin';
 
 export function getAdminSecret(): string {
   return process.env.ADMIN_SECRET ?? '';
@@ -24,7 +26,8 @@ export async function isAdmin(): Promise<boolean> {
   const secret = getAdminSecret();
   if (!secret) return false;
   const jar = await cookies();
-  return secretsEqual(jar.get(ADMIN_COOKIE)?.value ?? '', secret);
+  const value = jar.get(ADMIN_COOKIE)?.value ?? jar.get(LEGACY_ADMIN_COOKIE)?.value ?? '';
+  return secretsEqual(value, secret);
 }
 
 export async function requireAdmin(): Promise<void> {

@@ -15,6 +15,7 @@ import { stableEntityId } from './stable-id';
 import type { PublicBoardSnapshot, SnapshotGoneJob, SnapshotJob, SnapshotJobBody } from './types';
 import { SNAPSHOT_BODIES_FILE, SNAPSHOT_JOBS_DIR } from './types';
 import { writePublicSnapshotFiles } from './write-snapshot';
+import { mergeManualFeaturedJobsIntoListLive } from './manual-featured-live';
 
 const classifier = new RuleBasedClassifier();
 const MAX_GONE_JOBS = 3000;
@@ -290,7 +291,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     previousCountByCompany.set(job.company.slug, (previousCountByCompany.get(job.company.slug) ?? 0) + 1);
   }
   const taxonomy = buildTaxonomy();
-  const jobs: SnapshotJob[] = [];
+  let jobs: SnapshotJob[] = [];
   const seen = new Set<string>();
   const retainedCompanySlugs = new Set<string>();
 
@@ -409,6 +410,8 @@ export async function exportPublicSnapshotFromFeeds(options: {
       }),
     );
   }
+
+  jobs = await mergeManualFeaturedJobsIntoListLive(jobs);
 
   jobs.sort((a, b) => {
     const aFeatured = a.featuredUntil && Date.parse(a.featuredUntil) > Date.now();

@@ -3,7 +3,7 @@ import { prisma } from '@robot-jobs-board/db';
 import { apiRateLimitResponse } from '@/lib/api-rate-limit';
 import { createFeaturedCheckoutSession } from '@/lib/stripe-checkout';
 import { getJobById } from '@/lib/jobs';
-import { isJobFeatured } from '@/lib/is-featured';
+import { isPartnerFeatured, isPaidFeatured } from '@/lib/is-featured';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +45,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'That job is not available to Feature.' }, { status: 404 });
   }
 
-  const extending = isJobFeatured(job);
+  if (isPartnerFeatured(job)) {
+    return NextResponse.json(
+      { error: 'Partner listings cannot be Featured through checkout. Email hello@robotjobsboard.com.' },
+      { status: 400 },
+    );
+  }
+
+  const extending = isPaidFeatured(job);
 
   const listing = await prisma.paidListing.create({
     data: {

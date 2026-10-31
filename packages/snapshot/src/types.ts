@@ -79,6 +79,8 @@ export type SnapshotJob = {
   /** Paid Featured window (ISO). Present on direct/paid posts. */
   featuredUntil?: string | null;
   featuredAt?: string | null;
+  /** Paid Stripe/Neon Featured (default) vs snapshot-only partner/referral slots. */
+  featuredSource?: 'paid' | 'partner' | null;
 };
 
 export type SnapshotGoneJob = {

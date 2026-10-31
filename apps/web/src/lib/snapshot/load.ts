@@ -2,13 +2,14 @@ import { gunzipSync } from 'node:zlib';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cache } from 'react';
-import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
 import {
   bodyShardIndex,
   bodyShardPath,
   resolveSnapshotBaseUrl,
   SNAPSHOT_BODIES_FILE,
 } from '@robot-jobs-board/snapshot';
+import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
+import { applyLiveManualFeaturedToSnapshot } from '@/lib/manual-featured-board';
 import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
 
 /** Used by /api/revalidate for path busting after ingest. */
@@ -140,21 +141,25 @@ async function bodiesShardsEnabled(): Promise<boolean> {
 export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | null> => {
   const manifest = await readManifest();
   const generatedAt = manifest?.generatedAt?.trim();
+  let base: PublicBoardSnapshot | null = null;
+
   if (boardMem && generatedAt && boardMem.generatedAt === generatedAt) {
-    return boardMem.snapshot;
+    base = boardMem.snapshot;
+  } else {
+    const gz = await fetchSnapshotBytes('board.json.gz', generatedAt);
+    if (!gz) return null;
+    try {
+      base = parseGzipJson<PublicBoardSnapshot>(gz);
+      if (generatedAt || base.generatedAt) {
+        boardMem = { generatedAt: generatedAt || base.generatedAt, snapshot: base };
+      }
+    } catch {
+      return null;
+    }
   }
 
-  const gz = await fetchSnapshotBytes('board.json.gz', generatedAt);
-  if (!gz) return null;
-  try {
-    const snapshot = parseGzipJson<PublicBoardSnapshot>(gz);
-    if (generatedAt || snapshot.generatedAt) {
-      boardMem = { generatedAt: generatedAt || snapshot.generatedAt, snapshot };
-    }
-    return snapshot;
-  } catch {
-    return null;
-  }
+  if (!base) return null;
+  return applyLiveManualFeaturedToSnapshot(base);
 });
 
 async function loadBodyFromShard(id: string): Promise<SnapshotJobBody | null> {

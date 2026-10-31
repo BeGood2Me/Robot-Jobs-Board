@@ -3,6 +3,7 @@ import { Clock, MapPin } from '@phosphor-icons/react/ssr';
 import { isJobFeatured } from '@/lib/is-featured';
 import type { JobCardData } from '@/lib/jobs';
 import { employmentLabel, formatPosted } from '@/lib/site';
+import { JobListingBadge } from './job-listing-badge';
 import { SaveJobButton } from './save-job-button';
 
 export function JobCard({ job }: { job: JobCardData }) {
@@ -31,9 +32,7 @@ export function JobCard({ job }: { job: JobCardData }) {
     >
       <div className="flex flex-col gap-6 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
-          {featured ? (
-            <p className="mb-1 text-xs font-semibold tracking-wide text-accent uppercase">Featured</p>
-          ) : null}
+          <JobListingBadge job={job} />
           <h2 className="text-xl font-semibold">
             <Link href={href} className="hover:text-accent">
               {job.title}
