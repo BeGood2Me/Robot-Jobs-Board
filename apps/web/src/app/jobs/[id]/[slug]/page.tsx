@@ -16,7 +16,6 @@ import {
 } from '@/lib/is-featured';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 import { JobListingBadge } from '@/components/job-listing-badge';
-import { LensaConnectWidget } from '@/components/lensa-connect-widget';
 import { PartnerSponsoredDisclosure } from '@/components/partner-sponsored-disclosure';
 
 export const revalidate = 86400;
@@ -173,16 +172,6 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
           />
         </div>
       ) : null}
-      <LensaConnectWidget
-        job={{
-          isRemote: job.isRemote,
-          workplaceType: job.workplaceType,
-          city: job.city,
-          country: job.country,
-          region: job.region,
-          locationRaw: job.locationRaw,
-        }}
-      />
       <section className="mt-16">
         <h2 className="text-2xl font-semibold">Related jobs</h2>
         <div className="mt-6 grid gap-4">
