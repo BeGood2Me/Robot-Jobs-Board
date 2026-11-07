@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-11-07T07:36:20.683Z",
+  "siteUrl": "https://www.robotjobsboard.com",
+  "jobCount": 2481,
+  "companyCount": 53,
+  "boardIncludesDescriptions": false,
+  "bodiesFile": "bodies.json.gz",
+  "bodiesShardCount": 64,
+  "bodiesShardsDir": "bodies/shards"
+}
