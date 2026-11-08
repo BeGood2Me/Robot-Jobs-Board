@@ -103,6 +103,15 @@ export function manualFeaturedJobs(): SnapshotJob[] {
   return [micro1ManualFeaturedJob()];
 }
 
+function isPartnerDirectSlot(job: SnapshotJob): boolean {
+  return job.sourceSystem === 'direct' && job.featuredSource === 'partner';
+}
+
+/** Drop any prior partner direct listing for the same company (e.g. rotated micro1 post ids). */
+function isReplacedPartnerSlot(job: SnapshotJob, entry: SnapshotJob): boolean {
+  return isPartnerDirectSlot(job) && isPartnerDirectSlot(entry) && job.company.slug === entry.company.slug;
+}
+
 /** Insert/replace partner Featured rows (snapshot-only; no Neon). */
 export function mergeManualFeaturedJobsIntoList(
   jobs: SnapshotJob[],
@@ -113,7 +122,10 @@ export function mergeManualFeaturedJobsIntoList(
   let next = [...jobs];
   for (const entry of manual) {
     next = next.filter(
-      (job) => job.id !== entry.id && !(job.externalId === entry.externalId && job.sourceSystem === entry.sourceSystem),
+      (job) =>
+        job.id !== entry.id &&
+        !(job.externalId === entry.externalId && job.sourceSystem === entry.sourceSystem) &&
+        !isReplacedPartnerSlot(job, entry),
     );
     next.push(entry);
   }

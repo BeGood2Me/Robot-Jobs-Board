@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sortJobsNewest } from './filter';
-import { manualFeaturedJobs } from './manual-featured';
+import { manualFeaturedJobs, mergeManualFeaturedJobsIntoList } from './manual-featured';
+import { MICRO1_MANUAL_POST_ID } from './micro1-post-status';
 import type { SnapshotJob } from './types';
 
 function featuredJob(id: string, source: SnapshotJob['featuredSource']): SnapshotJob {
@@ -61,5 +62,21 @@ describe('manualFeaturedJobs', () => {
     const [job] = manualFeaturedJobs();
     expect(job?.url).toContain('referralCode=3943c7a5-1466-416f-81e0-f148afc37813');
     expect(job?.featuredSource).toBe('partner');
+  });
+});
+
+describe('mergeManualFeaturedJobsIntoList', () => {
+  it('replaces prior micro1 partner slots when the post id rotates', () => {
+    const legacy = manualFeaturedJobs()[0]!;
+    const rotated = {
+      ...legacy,
+      id: 'legacy-id',
+      externalId: 'cfaf2d70-673a-4edb-aeba-558fcf33eb9a',
+      title: 'Member of Technical Staff, Model Training (applied research)',
+    };
+    const merged = mergeManualFeaturedJobsIntoList([rotated], manualFeaturedJobs());
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.externalId).toBe(MICRO1_MANUAL_POST_ID);
+    expect(merged[0]?.title).toContain('Embodied AI');
   });
 });
