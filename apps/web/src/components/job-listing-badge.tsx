@@ -10,14 +10,14 @@ export function JobListingBadge({
 }) {
   if (isPartnerFeatured(job)) {
     return (
-      <p className={`text-xs font-semibold tracking-wide text-muted uppercase ${className}`.trim()}>
+      <p className={`text-[11px] font-semibold tracking-wide text-muted uppercase ${className}`.trim()}>
         Sponsored
       </p>
     );
   }
   if (isPaidFeatured(job)) {
     return (
-      <p className={`text-xs font-semibold tracking-wide text-accent uppercase ${className}`.trim()}>
+      <p className={`text-[11px] font-semibold tracking-wide text-accent uppercase ${className}`.trim()}>
         Featured
       </p>
     );

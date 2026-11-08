@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Clock, MapPin } from '@phosphor-icons/react/ssr';
-import { isJobFeatured } from '@/lib/is-featured';
+import { isJobFeatured, isPaidFeatured } from '@/lib/is-featured';
 import type { JobCardData } from '@/lib/jobs';
 import { employmentLabel, formatPosted } from '@/lib/site';
 import { JobListingBadge } from './job-listing-badge';
@@ -9,6 +9,7 @@ import { SaveJobButton } from './save-job-button';
 export function JobCard({ job }: { job: JobCardData }) {
   const href = `/jobs/${job.id}/${job.slug}`;
   const featured = isJobFeatured(job);
+  const paidFeatured = isPaidFeatured(job);
   const location =
     [
       job.isRemote ? 'Remote' : null,
@@ -27,12 +28,13 @@ export function JobCard({ job }: { job: JobCardData }) {
   return (
     <article
       className={`rounded-2xl border bg-card p-6 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] md:hover:-translate-y-0.5 md:hover:border-accent/40 md:hover:shadow-[0_0_24px_rgba(94,234,212,0.08)] ${
-        featured ? 'border-accent/50' : 'border-line'
+        paidFeatured ? 'border-accent/50' : 'border-line'
       }`}
     >
-      <div className="flex flex-col gap-6 md:flex-row md:items-center">
+      {featured ? <JobListingBadge job={job} /> : null}
+
+      <div className={`flex flex-col gap-6 md:flex-row md:items-start md:gap-6 ${featured ? 'mt-3' : ''}`}>
         <div className="min-w-0 flex-1">
-          <JobListingBadge job={job} />
           <h2 className="text-xl font-semibold">
             <Link href={href} className="hover:text-accent">
               {job.title}
@@ -57,8 +59,9 @@ export function JobCard({ job }: { job: JobCardData }) {
             ) : null}
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-stretch gap-2 md:items-end">
-          <div className="flex items-center gap-2">
+
+        <div className="flex shrink-0 flex-col gap-2 md:items-end">
+          <div className="flex items-center gap-2 md:justify-end">
             <SaveJobButton jobId={job.id} title={job.title} />
             <Link
               href={href}
