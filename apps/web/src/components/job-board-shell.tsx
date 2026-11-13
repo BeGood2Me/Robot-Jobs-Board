@@ -37,7 +37,6 @@ export function JobBoardShell({
 
   return (
     <div className="mt-8 grid gap-8 lg:mt-10 lg:grid-cols-[280px_minmax(0,1fr)]">
-      {/* Listings first in the DOM so phones never scroll past a filter panel */}
       <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-start-1">
         <MobileSearchBar filters={filters} />
         <div className="sticky top-16 z-30 -mx-6 border-b border-line bg-background/95 px-6 py-3 backdrop-blur-xl lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
@@ -74,7 +73,6 @@ export function JobBoardShell({
         {children}
       </div>
 
-      {/* Desktop sidebar only — never shown in the mobile document flow */}
       <aside className="max-lg:hidden lg:col-start-1 lg:row-start-1 lg:sticky lg:top-20 lg:self-start">
         <JobFilters {...filterProps} />
       </aside>

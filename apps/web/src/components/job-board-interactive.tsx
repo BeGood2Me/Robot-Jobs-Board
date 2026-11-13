@@ -11,7 +11,9 @@ import {
   jobBoardHref,
   type JobFilters as JobFilterValues,
 } from '@/lib/job-filter-utils';
+import { MarginReferralAd } from '@/components/margin-referral-ad';
 import type { JobCardData } from '@/lib/jobs';
+import type { MarginReferralOffer } from '@/lib/margin-referral';
 import { PAGE_SIZE } from '@/lib/site';
 
 type FilterOptions = {
@@ -68,11 +70,13 @@ export function JobBoardInteractive({
   initialFilters,
   initialResult,
   filterOptions,
+  marginReferral,
 }: {
   initialQuery: string;
   initialFilters: JobFilterValues;
   initialResult: BoardResult;
   filterOptions: FilterOptions;
+  marginReferral?: MarginReferralOffer | null;
 }) {
   const searchParams = useSearchParams();
   const query = searchParams.toString();
@@ -132,6 +136,9 @@ export function JobBoardInteractive({
           <EmptyJobs filters={filters} />
         )}
         <JobPagination page={result.page} pages={pages} hrefFor={(target) => jobBoardHref(filters, target)} />
+        {marginReferral && pages > 1 ? (
+          <MarginReferralAd offer={marginReferral} layout="mobileFooter" />
+        ) : null}
       </div>
     </JobBoardShell>
   );

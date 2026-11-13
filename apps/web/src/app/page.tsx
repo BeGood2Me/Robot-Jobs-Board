@@ -4,7 +4,7 @@ import { JobBoard } from '@/components/job-board';
 export const revalidate = 86400;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const title = 'Robotics jobs board';
+  const title = 'Robotics Jobs Board';
   const description =
     'Robotics jobs board for engineers and technicians — US, UK, Canada, and remote. Updated daily from company ATS boards; filter by robot type and apply on the original posting.';
   return {
@@ -22,5 +22,5 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** Default board listing — no searchParams so Vercel can ISR-cache `/`. */
 export default async function HomePage() {
-  return <JobBoard params={{}} />;
+  return <JobBoard params={{}} showHomeMarginReferral />;
 }
