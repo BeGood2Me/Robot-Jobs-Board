@@ -16,6 +16,7 @@ import {
 } from '@/lib/is-featured';
 import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
 import { JobListingBadge } from '@/components/job-listing-badge';
+import { JobViewTracker } from '@/components/job-view-tracker';
 import { PartnerSponsoredDisclosure } from '@/components/partner-sponsored-disclosure';
 
 export const revalidate = 86400;
@@ -94,6 +95,12 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
+      <JobViewTracker
+        jobId={job.id}
+        company={job.company.slug}
+        companyName={job.company.name}
+        title={job.title}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd(job)) }} />
       <nav aria-label="Breadcrumb" className="text-sm text-muted">
         <ol className="flex flex-wrap gap-2">

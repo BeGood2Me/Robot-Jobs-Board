@@ -25,6 +25,7 @@
     "snapshot:upload": "pnpm --filter @robot-jobs-board/snapshot upload",
     "snapshot:export:feeds:upload": "pnpm --filter @robot-jobs-board/snapshot export:feeds:upload",
     "mcp": "pnpm --filter @robot-jobs-board/mcp start",
+    "job-stats": "node scripts/job-listing-stats.mjs",
     "postinstall": "pnpm db:generate"
   },
   "devDependencies": {

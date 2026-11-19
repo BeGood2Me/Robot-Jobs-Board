@@ -1,7 +1,7 @@
 'use client';
 
-import { track } from '@vercel/analytics';
 import { PARTNER_APPLY_LINK_REL } from '@/lib/partner-listing';
+import { trackApplyClick } from '@/lib/vercel-job-analytics';
 
 type ApplyNowLinkProps = {
   href: string;
@@ -14,12 +14,6 @@ type ApplyNowLinkProps = {
   sponsored?: boolean;
 };
 
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
 export function ApplyNowLink({
   href,
   jobId,
@@ -30,17 +24,11 @@ export function ApplyNowLink({
   sponsored = false,
 }: ApplyNowLinkProps) {
   function handleClick() {
-    track('Apply Click', {
+    trackApplyClick({
       jobId,
       company: companySlug,
       companyName,
       title: jobTitle,
-    });
-    window.gtag?.('event', 'apply_click', {
-      job_id: jobId,
-      company: companySlug,
-      company_name: companyName,
-      job_title: jobTitle,
     });
   }
 

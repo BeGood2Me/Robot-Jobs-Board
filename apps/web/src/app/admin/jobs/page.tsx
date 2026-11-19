@@ -66,6 +66,9 @@ export default async function AdminJobsPage({ searchParams }: PageProps<'/admin/
         <Link href="/admin/jobs?view=all" className={view === 'all' ? 'font-semibold underline' : 'text-muted'}>
           All
         </Link>
+        <Link href="/admin/analytics" className="text-muted underline">
+          Listing stats
+        </Link>
         <form action="/api/admin/logout" method="post">
           <button type="submit" className="text-muted underline">
             Sign out
