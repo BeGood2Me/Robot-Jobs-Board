@@ -3,6 +3,7 @@ import {
   buildCountryFacets,
   relatedJobsFromSnapshot,
   searchJobsFromSnapshot,
+  sortJobsNewest,
 } from '@robot-jobs-board/snapshot';
 import { unstable_cache, unstable_noStore as noStore } from 'next/cache';
 import { cache } from 'react';
@@ -846,13 +847,10 @@ export async function getCompanyJobsPage(companyId: string, requestedPage: numbe
   const page = Math.max(1, requestedPage);
   const snapshot = await loadPublicSnapshot();
   if (snapshot) {
-    const jobs = snapshot.jobs
-      .filter((job) => job.companyId === companyId)
-      .sort((a, b) => {
-        const aTime = Date.parse(a.postedAt ?? a.createdAt);
-        const bTime = Date.parse(b.postedAt ?? b.createdAt);
-        return bTime - aTime;
-      });
+    const { boosts } = await loadFeaturedOverlay();
+    const withBoosts = applyFeaturedBoosts(snapshot.jobs, boosts);
+    const filtered = withBoosts.filter((job) => job.companyId === companyId);
+    const jobs = sortJobsNewest(filtered);
     const total = jobs.length;
     const skip = (page - 1) * PAGE_SIZE;
     return {

@@ -6,6 +6,7 @@ import {
   validateFeaturedListing,
   workplaceFromInput,
 } from '@/lib/featured-listing';
+import { assertHomepageFeaturedSlotAvailable } from '@/lib/featured-slots';
 import { createFeaturedCheckoutSession } from '@/lib/stripe-checkout';
 
 export const dynamic = 'force-dynamic';
@@ -40,25 +41,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const listing = await prisma.paidListing.create({
-    data: {
-      status: 'draft',
-      title: data.title,
-      companyName: data.companyName,
-      applyUrl: data.applyUrl,
-      description: data.description,
-      locationRaw: locationRawFromInput(data),
-      city: data.city || null,
-      country: data.country || null,
-      isRemote: data.isRemote,
-      workplaceType: workplaceFromInput(data),
-      employmentType: data.employmentType,
-      compensationText: data.compensationText || null,
-      buyerEmail: data.buyerEmail,
-    },
-  });
-
   try {
+    await assertHomepageFeaturedSlotAvailable();
+
+    const listing = await prisma.paidListing.create({
+      data: {
+        status: 'draft',
+        title: data.title,
+        companyName: data.companyName,
+        applyUrl: data.applyUrl,
+        description: data.description,
+        locationRaw: locationRawFromInput(data),
+        city: data.city || null,
+        country: data.country || null,
+        isRemote: data.isRemote,
+        workplaceType: workplaceFromInput(data),
+        employmentType: data.employmentType,
+        compensationText: data.compensationText || null,
+        buyerEmail: data.buyerEmail,
+      },
+    });
+
     const session = await createFeaturedCheckoutSession({
       paidListingId: listing.id,
       buyerEmail: data.buyerEmail,
@@ -76,6 +79,9 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Stripe checkout failed.';
     console.error('Stripe checkout.sessions.create failed', error);
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof Error && message.includes('slots') ? 409 : 502 },
+    );
   }
 }

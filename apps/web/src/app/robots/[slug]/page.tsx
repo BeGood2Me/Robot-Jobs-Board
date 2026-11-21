@@ -8,7 +8,11 @@ import {
   loadListing,
   parseDomainSlug,
 } from '@/lib/programmatic';
+import { loadHubFacets } from '@/lib/hub-facets';
+import { mergeRssAlternates } from '@/lib/rss/metadata';
 import { domainStaticParams } from '@/lib/snapshot/static-params';
+
+const FACET_DOMAIN_SLUGS = new Set(['amr', 'humanoid', 'drone']);
 
 export const revalidate = 86400;
 export const dynamicParams = false;
@@ -30,7 +34,7 @@ export async function generateMetadata({ params }: PageProps<'/robots/[slug]'>):
   return {
     title: copy.title,
     description: copy.description,
-    alternates: { canonical },
+    alternates: indexable ? mergeRssAlternates(canonical) : { canonical },
     robots: indexable ? undefined : { index: false, follow: true },
     openGraph: {
       title: copy.title,
@@ -51,6 +55,10 @@ export default async function DomainJobsPage({ params }: PageProps<'/robots/[slu
   const listing = await loadListing(filter, `domain-${domain.id}`);
   const copy = domainCopy(domain.slug, domain.name, domain.description, listing.total);
   const path = `/robots/${slug}`;
+  const facets =
+    domainSlug && FACET_DOMAIN_SLUGS.has(domainSlug)
+      ? await loadHubFacets(filter, { showCities: false })
+      : undefined;
   return (
     <SeoJobList
       h1={copy.h1}
@@ -61,6 +69,7 @@ export default async function DomainJobsPage({ params }: PageProps<'/robots/[slu
       breadcrumbLabel={copy.h1}
       path={path}
       description={copy.description}
+      facets={facets}
     />
   );
 }

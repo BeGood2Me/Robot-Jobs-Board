@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { HubFacetChips } from '@/components/hub-facet-chips';
+import { HubFeaturedCta } from '@/components/hub-featured-cta';
 import { JobCard } from '@/components/job-card';
+import type { HubFacetLink } from '@/lib/hub-facets';
 import type { JobCardData } from '@/lib/jobs';
 import { locationPageJsonLd } from '@/lib/jsonld';
 
@@ -12,6 +15,7 @@ const HUB_LINKS = [
   { href: '/locations/remote-robotics-jobs', label: 'Remote robotics jobs' },
   { href: '/locations/canada-robotics-jobs', label: 'Canada robotics jobs' },
   { href: '/companies', label: 'Companies' },
+  { href: '/categories', label: 'All categories' },
 ] as const;
 
 export function SeoJobList({
@@ -23,6 +27,8 @@ export function SeoJobList({
   breadcrumbLabel,
   path,
   description,
+  facets,
+  showFeaturedCta = true,
 }: {
   h1: string;
   intro: string;
@@ -32,6 +38,8 @@ export function SeoJobList({
   breadcrumbLabel: string;
   path: string;
   description: string;
+  facets?: { companies?: HubFacetLink[]; cities?: HubFacetLink[] };
+  showFeaturedCta?: boolean;
 }) {
   const related = HUB_LINKS.filter((link) => link.href !== path);
 
@@ -68,6 +76,8 @@ export function SeoJobList({
         {indexable ? ' · Updated from public company ATS boards' : null}
       </p>
       <p className="mt-6 max-w-[680px] text-muted">{intro}</p>
+      {showFeaturedCta ? <HubFeaturedCta /> : null}
+      {facets ? <HubFacetChips companies={facets.companies} cities={facets.cities} /> : null}
       {!indexable ? (
         <p className="mt-4 font-mono text-xs text-muted">
           Fewer than five live jobs. This page is not indexed yet.

@@ -18,7 +18,10 @@ Important notes:
 
 - [Robotics jobs](${site}/): Filterable board — location, robot type, skills, experience, remote
 - [Companies hiring](${site}/companies): Employer index with open robotics roles
+- [Job categories](${site}/categories): Robot types and location hubs with counts
+- [RSS feeds](${site}/rss): Index of snapshot-backed job feeds (board, hubs, companies)
 - [Post a job](${site}/post-a-job): How employers get listed
+- [RSS — all jobs](${site}/robotics-jobs.rss): Latest robotics roles feed
 
 ## Guides
 

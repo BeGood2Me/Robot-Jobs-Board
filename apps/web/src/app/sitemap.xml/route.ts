@@ -8,6 +8,7 @@ export async function GET() {
   <sitemap><loc>${site}/sitemap-categories.xml</loc></sitemap>
   <sitemap><loc>${site}/sitemap-companies.xml</loc></sitemap>
   <sitemap><loc>${site}/sitemap-blog.xml</loc></sitemap>
+  <sitemap><loc>${site}/sitemap-feeds.xml</loc></sitemap>
 </sitemapindex>`;
   return new Response(xml, {
     headers: { 'Content-Type': 'application/xml; charset=utf-8' },

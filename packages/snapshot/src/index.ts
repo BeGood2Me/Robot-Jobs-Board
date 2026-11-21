@@ -1,5 +1,6 @@
 export * from './types';
 export * from './filter';
+export * from './featured-placement';
 export {
   applyManualFeaturedToSnapshot,
   mergeManualFeaturedJobsIntoList,

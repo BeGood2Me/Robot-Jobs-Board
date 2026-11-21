@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { HOMEPAGE_FEATURED_CAP } from '@robot-jobs-board/snapshot';
 import { PostAJobForm } from '@/components/post-a-job-form';
 
 export const metadata: Metadata = {
@@ -12,8 +13,9 @@ export default function PostAJobPage() {
     <div className="mx-auto max-w-4xl px-6 py-16">
       <h1 className="text-4xl font-semibold">Post a Featured job</h1>
       <p className="mt-4 max-w-2xl text-lg text-muted">
-        $149 · 30 days near the top of the board. Fill in the role, pay with Stripe, and it goes live
-        automatically.
+        $149 · 30 days near the top of the board (up to {HOMEPAGE_FEATURED_CAP} concurrent pins). Pay
+        with Stripe — your
+        listing goes live automatically.
       </p>
       <div className="mt-10">
         <PostAJobForm />

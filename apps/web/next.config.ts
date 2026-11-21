@@ -60,6 +60,11 @@ const nextConfig: NextConfig = {
     return [
       // One-segment /jobs/{slug} → by-slug handler (cannot use /jobs/[slug] beside /jobs/[id]/[slug]).
       { source: '/jobs/:slug', destination: '/jobs/by-slug/:slug' },
+      // Public RSS — served via snapshot-only /rss/* handlers.
+      { source: '/robotics-jobs.rss', destination: '/rss/all' },
+      { source: '/robots/:slug.rss', destination: '/rss/robots/:slug' },
+      { source: '/locations/:slug.rss', destination: '/rss/locations/:slug' },
+      { source: '/companies/:slug.rss', destination: '/rss/companies/:slug' },
     ];
   },
 };

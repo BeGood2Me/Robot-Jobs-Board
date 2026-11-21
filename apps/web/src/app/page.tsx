@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { JobBoard } from '@/components/job-board';
+import { mergeRssAlternates } from '@/lib/rss/metadata';
 
 export const revalidate = 86400;
 
@@ -10,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: { canonical: '/' },
+    alternates: mergeRssAlternates('/'),
     openGraph: {
       title,
       description,

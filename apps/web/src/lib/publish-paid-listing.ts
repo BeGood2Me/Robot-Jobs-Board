@@ -328,6 +328,30 @@ export async function publishPaidListing(paidListingId: string): Promise<Publish
     job = recovered;
   }
 
+  await prisma.featuredBoost.upsert({
+    where: { jobId: job.id },
+    create: {
+      jobId: job.id,
+      jobSlug: job.slug,
+      title: job.title,
+      companyName: listing.companyName,
+      buyerEmail: listing.buyerEmail,
+      featuredAt: now,
+      featuredUntil,
+      stripeSessionId: listing.stripeSessionId,
+      paidListingId: listing.id,
+    },
+    update: {
+      jobSlug: job.slug,
+      featuredUntil,
+      buyerEmail: listing.buyerEmail,
+      stripeSessionId: listing.stripeSessionId,
+      paidListingId: listing.id,
+      title: job.title,
+      companyName: listing.companyName,
+    },
+  });
+
   await prisma.paidListing.update({
     where: { id: listing.id },
     data: {

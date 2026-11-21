@@ -3,8 +3,12 @@ import { slugify } from '@/lib/site';
 export const FEATURED_PRICE_CENTS = 14900;
 export const FEATURED_DURATION_DAYS = 30;
 
-/** Stack another 30 days from now, or from the current end if still Featured. */
-export function extendFeaturedUntil(currentEnd: Date | string | null | undefined, from = new Date()): Date {
+/** Stack another billing period from now, or from the current end if still Featured. */
+export function extendFeaturedUntil(
+  currentEnd: Date | string | null | undefined,
+  from = new Date(),
+  durationDays = FEATURED_DURATION_DAYS,
+): Date {
   const currentMs =
     currentEnd == null
       ? 0
@@ -12,7 +16,7 @@ export function extendFeaturedUntil(currentEnd: Date | string | null | undefined
         ? Date.parse(currentEnd)
         : currentEnd.getTime();
   const baseMs = Number.isFinite(currentMs) && currentMs > from.getTime() ? currentMs : from.getTime();
-  return new Date(baseMs + FEATURED_DURATION_DAYS * 86_400_000);
+  return new Date(baseMs + durationDays * 86_400_000);
 }
 
 export type FeaturedEmploymentType =

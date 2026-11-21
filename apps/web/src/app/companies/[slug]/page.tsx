@@ -11,7 +11,8 @@ import {
 import { companyPageJsonLd } from '@/lib/jsonld';
 import { companyPageDescription, companyPageIntro, companyPageTitle } from '@/lib/seo';
 import { companyStaticParams } from '@/lib/snapshot/static-params';
-import { formatPosted, PAGE_SIZE } from '@/lib/site';
+import { mergeRssAlternates } from '@/lib/rss/metadata';
+import { INDEX_JOB_THRESHOLD, formatPosted, PAGE_SIZE } from '@/lib/site';
 
 export const revalidate = 86400;
 /** New companies appear via ingest/CDN without a rebuild — allow slugs beyond build-time static params. */
@@ -46,7 +47,8 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates:
+      page > 1 || total < INDEX_JOB_THRESHOLD ? { canonical } : mergeRssAlternates(canonical),
     robots: total < 1 || page > 1 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,

@@ -1,4 +1,5 @@
 import type { JobFilters, ListingFilter, SnapshotJob } from './types';
+import { capHomepagePaidFeatured } from './featured-placement';
 
 const WORKPLACES = new Set(['ONSITE', 'REMOTE', 'HYBRID']);
 const EMPLOYMENTS = new Set(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN', 'TEMPORARY']);
@@ -272,9 +273,12 @@ export function sortJobsNewest(jobs: SnapshotJob[]): SnapshotJob[] {
   const featured = jobs.filter(isFeaturedActive);
   const paidFeatured = featured.filter((job) => !isPartnerFeatured(job));
   const partnerFeatured = featured.filter(isPartnerFeatured);
-  const rest = jobs.filter((job) => !isFeaturedActive(job));
+  const cappedPaid = capHomepagePaidFeatured(paidFeatured);
+  const cappedPaidIds = new Set(cappedPaid.map((j) => j.id));
+  const uncappedPaid = paidFeatured.filter((j) => !cappedPaidIds.has(j.id));
+  const rest = jobs.filter((job) => !isFeaturedActive(job) || uncappedPaid.includes(job));
   const rankedRest = [...rest].sort((a, b) => postedAtMs(b) - postedAtMs(a));
-  return [...rotateFeaturedJobs(paidFeatured), ...rotateFeaturedJobs(partnerFeatured), ...rankedRest];
+  return [...rotateFeaturedJobs(cappedPaid), ...rotateFeaturedJobs(partnerFeatured), ...rankedRest];
 }
 
 export function searchJobsFromSnapshot(
@@ -296,7 +300,11 @@ export function searchJobsFromSnapshot(
     const companyMatches = filtered.filter((job) => !titleIds.has(job.id) && companySearchMatch(job, q));
     const companyIds = new Set(companyMatches.map((job) => job.id));
     const rest = filtered.filter((job) => !titleIds.has(job.id) && !companyIds.has(job.id));
-    ranked = [...sortJobsNewest(titleMatches), ...sortJobsNewest(companyMatches), ...sortJobsNewest(rest)];
+    ranked = [
+      ...sortJobsNewest(titleMatches),
+      ...sortJobsNewest(companyMatches),
+      ...sortJobsNewest(rest),
+    ];
   }
 
   const total = ranked.length;

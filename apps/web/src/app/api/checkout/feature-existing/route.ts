@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@robot-jobs-board/db';
 import { apiRateLimitResponse } from '@/lib/api-rate-limit';
+import { assertHomepageFeaturedSlotAvailable } from '@/lib/featured-slots';
 import { createFeaturedCheckoutSession } from '@/lib/stripe-checkout';
 import { getJobById } from '@/lib/jobs';
 import { isPartnerFeatured, isPaidFeatured } from '@/lib/is-featured';
@@ -54,31 +55,35 @@ export async function POST(request: Request) {
 
   const extending = isPaidFeatured(job);
 
-  const listing = await prisma.paidListing.create({
-    data: {
-      status: 'draft',
-      title: job.title,
-      companyName: job.company.name,
-      applyUrl: job.url,
-      description: job.descriptionPlain || job.title,
-      locationRaw: job.locationRaw || '',
-      city: job.city,
-      country: job.country,
-      isRemote: job.isRemote,
-      workplaceType: job.workplaceType,
-      employmentType: job.employmentType,
-      compensationText: job.compensationText,
-      buyerEmail,
-      targetJobId: job.id,
-      targetJobSlug: job.slug,
-      isExtension: extending,
-    },
-  });
-
-  const cancelPath = `/jobs/${job.id}/${job.slug}?canceled=1`;
-  const label = extending ? 'Extend Featured' : 'Feature';
-
   try {
+    if (!extending) {
+      await assertHomepageFeaturedSlotAvailable();
+    }
+
+    const listing = await prisma.paidListing.create({
+      data: {
+        status: 'draft',
+        title: job.title,
+        companyName: job.company.name,
+        applyUrl: job.url,
+        description: job.descriptionPlain || job.title,
+        locationRaw: job.locationRaw || '',
+        city: job.city,
+        country: job.country,
+        isRemote: job.isRemote,
+        workplaceType: job.workplaceType,
+        employmentType: job.employmentType,
+        compensationText: job.compensationText,
+        buyerEmail,
+        targetJobId: job.id,
+        targetJobSlug: job.slug,
+        isExtension: extending,
+      },
+    });
+
+    const cancelPath = `/jobs/${job.id}/${job.slug}?canceled=1`;
+    const label = extending ? 'Extend Featured' : 'Feature';
+
     const session = await createFeaturedCheckoutSession({
       paidListingId: listing.id,
       buyerEmail,
@@ -100,6 +105,9 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Stripe checkout failed.';
     console.error('feature-existing checkout failed', error);
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof Error && message.includes('slots') ? 409 : 502 },
+    );
   }
 }
