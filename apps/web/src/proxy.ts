@@ -8,6 +8,11 @@ const BLOCKED_BOTS =
 const BOARD_FILTER_KEY =
   /^(?:q|domain|domains|tag|tags|seniority|seniorities|country|countries|region|city|workplace|employment|intern|entry|remote|sort|page)$/;
 
+/** Snapshot-backed RSS and feed index — allow aggregator UAs (not in BLOCKED_BOTS list). */
+function isPublicFeedPath(pathname: string): boolean {
+  return pathname === '/rss' || pathname.startsWith('/rss/') || pathname.endsWith('.rss');
+}
+
 /** True when search should hit `/board` instead of the cached homepage. */
 function needsFilteredBoardRewrite(searchParams: URLSearchParams): boolean {
   for (const key of searchParams.keys()) {
@@ -22,12 +27,12 @@ function needsFilteredBoardRewrite(searchParams: URLSearchParams): boolean {
 }
 
 export function proxy(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
   const ua = request.headers.get('user-agent') ?? '';
-  if (BLOCKED_BOTS.test(ua)) {
+  if (!isPublicFeedPath(pathname) && BLOCKED_BOTS.test(ua)) {
     return new NextResponse('Blocked', { status: 403 });
   }
-
-  const { pathname, searchParams } = request.nextUrl;
 
   // Keep `/` fully ISR-cacheable; serve filtered board via internal rewrite.
   if (pathname === '/' && searchParams.toString() && needsFilteredBoardRewrite(searchParams)) {
