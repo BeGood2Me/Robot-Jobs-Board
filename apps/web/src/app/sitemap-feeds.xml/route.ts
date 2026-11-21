@@ -1,8 +1,8 @@
 import { listPublicFeeds } from '@/lib/rss/registry';
 import { snapshotXmlHeaders } from '@/lib/snapshot/sitemap';
-import { getSiteUrl, PUBLIC_REVALIDATE_SECONDS } from '@/lib/site';
+import { getSiteUrl } from '@/lib/site';
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 86400;
 
 function urlset(urls: string[], lastmod: string) {
   return `<?xml version="1.0" encoding="UTF-8"?>
