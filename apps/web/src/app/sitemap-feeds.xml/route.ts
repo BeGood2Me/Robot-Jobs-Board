@@ -1,4 +1,3 @@
-import { listPublicFeeds } from '@/lib/rss/registry';
 import { snapshotXmlHeaders } from '@/lib/snapshot/sitemap';
 import { getSiteUrl } from '@/lib/site';
 
@@ -11,10 +10,13 @@ ${urls.map((url) => `  <url><loc>${url}</loc><lastmod>${lastmod}</lastmod></url>
 </urlset>`;
 }
 
+/**
+ * HTML discovery only — do not list `*.rss` URLs here. GSC treats sitemap URLs as
+ * web pages; mass-submitting feed XML caused "Blocked due to other 4xx issue".
+ * Feed endpoints stay on `link rel="alternate"`, /rss hub, and llms.txt.
+ */
 export async function GET() {
   const site = getSiteUrl();
-  const feeds = (await listPublicFeeds()) ?? [];
   const lastmod = new Date().toISOString().slice(0, 10);
-  const urls = [`${site}/rss`, ...feeds.map((feed) => `${site}${feed.feedPath}`)];
-  return new Response(urlset(urls, lastmod), { headers: snapshotXmlHeaders() });
+  return new Response(urlset([`${site}/rss`], lastmod), { headers: snapshotXmlHeaders() });
 }

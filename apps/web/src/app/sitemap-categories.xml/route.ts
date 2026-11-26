@@ -15,7 +15,7 @@ ${urls.map((url) => `  <url><loc>${url}</loc>${mod}</url>`).join('\n')}
 const loadCategorySitemapUrls = unstable_cache(
   async () => {
     const site = getSiteUrl();
-    const urls: string[] = [`${site}/`, `${site}/categories`];
+    const urls: string[] = [`${site}/`, `${site}/categories`, `${site}/rss`];
 
     const domains = await prisma.robotDomain.findMany({
       select: {

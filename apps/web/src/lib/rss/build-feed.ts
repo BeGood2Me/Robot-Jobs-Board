@@ -63,5 +63,20 @@ export function rssResponseHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/rss+xml; charset=utf-8',
     'Cache-Control': `public, s-maxage=${PUBLIC_REVALIDATE_SECONDS}, stale-while-revalidate=86400`,
+    'X-Robots-Tag': 'noindex, nofollow',
   };
+}
+
+export function buildEmptyRssFeedXml(options: {
+  channelTitle: string;
+  channelDescription: string;
+  channelPageUrl: string;
+  feedUrl: string;
+  siteUrl: string;
+}): string {
+  return buildRssFeedXml({
+    ...options,
+    jobs: [],
+    lastBuild: new Date().toISOString(),
+  });
 }

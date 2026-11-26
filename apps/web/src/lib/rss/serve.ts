@@ -1,5 +1,5 @@
 import type { FeedDescriptor } from './registry';
-import { buildRssFeedXml, rssResponseHeaders } from './build-feed';
+import { buildEmptyRssFeedXml, buildRssFeedXml, rssResponseHeaders } from './build-feed';
 import { loadRssJobs } from './load-jobs';
 import { getSiteUrl } from '@/lib/site';
 
@@ -11,7 +11,15 @@ export async function serveFeedXml(feed: FeedDescriptor): Promise<Response> {
   });
 
   if (!source) {
-    return new Response('Feed unavailable — snapshot not loaded yet.', { status: 503 });
+    const siteUrl = getSiteUrl();
+    const xml = buildEmptyRssFeedXml({
+      channelTitle: feed.title,
+      channelDescription: feed.description,
+      channelPageUrl: `${siteUrl}${feed.pagePath}`,
+      feedUrl: `${siteUrl}${feed.feedPath}`,
+      siteUrl,
+    });
+    return new Response(xml, { headers: rssResponseHeaders() });
   }
 
   const siteUrl = getSiteUrl();

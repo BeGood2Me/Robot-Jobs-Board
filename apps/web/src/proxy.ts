@@ -4,6 +4,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 const BLOCKED_BOTS =
   /GPTBot|ChatGPT-User|CCBot|anthropic-ai|ClaudeBot|Claude-Web|Bytespider|DataForSeoBot|AhrefsBot|SemrushBot|DotBot|PetalBot|Amazonbot|meta-externalagent|ImagesiftBot|magpie-crawler|SeekportBot|BLEXBot|MJ12bot|AhrefsSiteAudit|SemrushBot-BA|AwarioBot|Diffbot|omgili|YouBot/i;
 
+/** Never apply scraper blocks to major search crawlers (GSC / indexing). */
+const VERIFIED_SEARCH_CRAWLER =
+  /Googlebot|Google-InspectionTool|GoogleOther|Storebot-Google|Google-Site-Verification|bingbot|Applebot|DuckDuckBot/i;
+
 /** Query keys that make `/` a filtered board (must not share the ISR cache with bare `/`). */
 const BOARD_FILTER_KEY =
   /^(?:q|domain|domains|tag|tags|seniority|seniorities|country|countries|region|city|workplace|employment|intern|entry|remote|sort|page)$/;
@@ -30,7 +34,11 @@ export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   const ua = request.headers.get('user-agent') ?? '';
-  if (!isPublicFeedPath(pathname) && BLOCKED_BOTS.test(ua)) {
+  if (
+    !isPublicFeedPath(pathname) &&
+    BLOCKED_BOTS.test(ua) &&
+    !VERIFIED_SEARCH_CRAWLER.test(ua)
+  ) {
     return new NextResponse('Blocked', { status: 403 });
   }
 
