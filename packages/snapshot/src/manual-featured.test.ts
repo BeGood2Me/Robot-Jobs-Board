@@ -77,6 +77,6 @@ describe('mergeManualFeaturedJobsIntoList', () => {
     const merged = mergeManualFeaturedJobsIntoList([rotated], manualFeaturedJobs());
     expect(merged).toHaveLength(1);
     expect(merged[0]?.externalId).toBe(MICRO1_MANUAL_POST_ID);
-    expect(merged[0]?.title).toContain('Embodied AI');
+    expect(merged[0]?.title).toContain('Mechanical Design Engineer');
   });
 });

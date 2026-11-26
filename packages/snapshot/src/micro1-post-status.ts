@@ -1,4 +1,4 @@
-export const MICRO1_MANUAL_POST_ID = '6ce8225a-9f5a-4b30-a556-9081176bffff';
+export const MICRO1_MANUAL_POST_ID = 'b7a0623b-f333-4183-a744-9879576aa933';
 
 export function micro1PostPageUrl(postId: string): string {
   return `https://jobs.micro1.ai/post/${postId}`;
