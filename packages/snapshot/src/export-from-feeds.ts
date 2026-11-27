@@ -5,8 +5,9 @@ import { prisma } from '@robot-jobs-board/db';
 import { seedCompanies } from '@robot-jobs-board/db/seed-companies';
 import { taxonomySeed } from '@robot-jobs-board/db/taxonomy-seed';
 import { jobsForFeed } from '@robot-jobs-board/ingestion/feeds';
-import { slugify } from '@robot-jobs-board/ingestion/normalize';
+import { decodeJobHtml, htmlToPlain, slugify } from '@robot-jobs-board/ingestion/normalize';
 import {
+  fetchWorkdayDetail,
   fetchWorkdayJobList,
   postedAtFromWorkdayListPosting,
   type WorkdayBoard,
@@ -39,16 +40,24 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** GitHub Actions often gets 429 on full Workday pulls; list API + bullet req id backfills postedOn. */
-async function backfillWorkdayPostedAt(jobs: SnapshotJob[]): Promise<SnapshotJob[]> {
-  let next = jobs;
+function workdaySnapshotNeedsBackfill(job: SnapshotJob, companySlug: string): boolean {
+  if (job.company.slug !== companySlug || job.sourceSystem !== 'workday') return false;
+  return !job.postedAt || !(job.descriptionPlain?.trim());
+}
+
+/**
+ * GitHub Actions often gets 429 on full Workday pulls and retains stale rows — list API +
+ * per-job detail backfill restores postedOn and descriptions without re-running every feed.
+ */
+async function backfillWorkdaySnapshotJobs(jobs: SnapshotJob[]): Promise<SnapshotJob[]> {
+  let next = [...jobs];
   const ref = new Date();
 
   for (const company of seedCompanies) {
     const board = workdayBoardFromCompany(company);
     if (!board) continue;
     const slug = company.slug;
-    if (!next.some((job) => job.company.slug === slug && !job.postedAt)) continue;
+    if (!next.some((job) => workdaySnapshotNeedsBackfill(job, slug))) continue;
 
     try {
       const list = await fetchWorkdayJobList(board);
@@ -58,22 +67,48 @@ async function backfillWorkdayPostedAt(jobs: SnapshotJob[]): Promise<SnapshotJob
         if (reqId) byReq.set(reqId, posting);
       }
 
-      let patched = 0;
-      next = next.map((job) => {
-        if (job.company.slug !== slug || job.postedAt) return job;
+      let patchedDates = 0;
+      let patchedBodies = 0;
+
+      for (let i = 0; i < next.length; i++) {
+        const job = next[i]!;
+        if (job.company.slug !== slug || job.sourceSystem !== 'workday') continue;
+
         const posting = byReq.get(job.externalId);
-        if (!posting) return job;
-        const posted = postedAtFromWorkdayListPosting(posting, ref);
-        if (!posted) return job;
-        patched++;
-        return { ...job, postedAt: posted.toISOString() };
-      });
-      if (patched > 0) {
+        let out = job;
+
+        if (!out.postedAt && posting) {
+          const posted = postedAtFromWorkdayListPosting(posting, ref);
+          if (posted) {
+            out = { ...out, postedAt: posted.toISOString() };
+            patchedDates++;
+          }
+        }
+
+        if (!out.descriptionPlain?.trim() && posting) {
+          const detail = await fetchWorkdayDetail(board, posting.externalPath);
+          const raw = detail?.jobPostingInfo?.jobDescription;
+          if (raw) {
+            const descriptionHtml = decodeJobHtml(raw);
+            const descriptionPlain = htmlToPlain(descriptionHtml);
+            if (descriptionPlain.trim()) {
+              out = { ...out, descriptionHtml, descriptionPlain };
+              patchedBodies++;
+            }
+          }
+          await sleep(120);
+        }
+
+        next[i] = out;
+      }
+
+      if (patchedDates > 0 || patchedBodies > 0) {
         console.log(
           JSON.stringify({
             event: 'snapshot.workday.backfill',
             company: company.name,
-            patched,
+            patchedDates,
+            patchedBodies,
           }),
         );
       }
@@ -489,7 +524,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     );
   }
 
-  jobs = await backfillWorkdayPostedAt(jobs);
+  jobs = await backfillWorkdaySnapshotJobs(jobs);
   jobs = await mergeManualFeaturedJobsIntoListLive(jobs);
 
   jobs.sort((a, b) => {

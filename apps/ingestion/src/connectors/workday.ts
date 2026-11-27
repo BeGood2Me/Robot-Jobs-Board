@@ -143,7 +143,7 @@ async function fetchWorkdayPage(board: WorkdayBoard, offset: number, limit: numb
   return (await response.json()) as WorkdayJobsResponse;
 }
 
-async function fetchWorkdayDetail(board: WorkdayBoard, externalPath: string): Promise<WorkdayJobDetail | null> {
+export async function fetchWorkdayDetail(board: WorkdayBoard, externalPath: string): Promise<WorkdayJobDetail | null> {
   const response = await fetchWorkdayWithRetry(boardUrl(board, externalPath), {
     headers: { Accept: 'application/json' },
   });
