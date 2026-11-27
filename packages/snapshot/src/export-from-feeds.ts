@@ -6,6 +6,11 @@ import { seedCompanies } from '@robot-jobs-board/db/seed-companies';
 import { taxonomySeed } from '@robot-jobs-board/db/taxonomy-seed';
 import { jobsForFeed } from '@robot-jobs-board/ingestion/feeds';
 import { slugify } from '@robot-jobs-board/ingestion/normalize';
+import {
+  fetchWorkdayJobList,
+  postedAtFromWorkdayListPosting,
+  type WorkdayBoard,
+} from '@robot-jobs-board/ingestion/workday';
 import { shouldIngestJob } from '@robot-jobs-board/ingestion/region';
 import { isRobotRole, RuleBasedClassifier, capJobsPerCompany } from '@robot-jobs-board/taxonomy';
 import { defaultSnapshotOutDir } from './export';
@@ -19,6 +24,74 @@ import { mergeManualFeaturedJobsIntoListLive } from './manual-featured-live';
 
 const classifier = new RuleBasedClassifier();
 const MAX_GONE_JOBS = 3000;
+
+function workdayBoardFromCompany(company: (typeof seedCompanies)[number]): WorkdayBoard | null {
+  if (company.sourceSystem !== 'workday') return null;
+  const cfg = company.config;
+  const host = cfg.host;
+  const tenant = cfg.tenant;
+  const site = cfg.site ?? cfg.boardToken;
+  if (!host || !tenant || !site) return null;
+  return { host, tenant, site };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** GitHub Actions often gets 429 on full Workday pulls; list API + bullet req id backfills postedOn. */
+async function backfillWorkdayPostedAt(jobs: SnapshotJob[]): Promise<SnapshotJob[]> {
+  let next = jobs;
+  const ref = new Date();
+
+  for (const company of seedCompanies) {
+    const board = workdayBoardFromCompany(company);
+    if (!board) continue;
+    const slug = company.slug;
+    if (!next.some((job) => job.company.slug === slug && !job.postedAt)) continue;
+
+    try {
+      const list = await fetchWorkdayJobList(board);
+      const byReq = new Map<string, (typeof list)[number]>();
+      for (const posting of list) {
+        const reqId = posting.bulletFields?.[0];
+        if (reqId) byReq.set(reqId, posting);
+      }
+
+      let patched = 0;
+      next = next.map((job) => {
+        if (job.company.slug !== slug || job.postedAt) return job;
+        const posting = byReq.get(job.externalId);
+        if (!posting) return job;
+        const posted = postedAtFromWorkdayListPosting(posting, ref);
+        if (!posted) return job;
+        patched++;
+        return { ...job, postedAt: posted.toISOString() };
+      });
+      if (patched > 0) {
+        console.log(
+          JSON.stringify({
+            event: 'snapshot.workday.backfill',
+            company: company.name,
+            patched,
+          }),
+        );
+      }
+    } catch (error) {
+      console.warn(
+        JSON.stringify({
+          event: 'snapshot.workday.backfill.error',
+          company: company.name,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+
+    await sleep(1200);
+  }
+
+  return next;
+}
 
 const preferredCountries = [
   'United States',
@@ -416,6 +489,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     );
   }
 
+  jobs = await backfillWorkdayPostedAt(jobs);
   jobs = await mergeManualFeaturedJobsIntoListLive(jobs);
 
   jobs.sort((a, b) => {

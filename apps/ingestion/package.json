@@ -9,7 +9,8 @@
     "./html": "./src/html.ts",
     "./feeds": "./src/feeds.ts",
     "./normalize": "./src/normalize.ts",
-    "./region": "./src/region.ts"
+    "./region": "./src/region.ts",
+    "./workday": "./src/connectors/workday.ts"
   },
   "scripts": {
     "ingest:run": "tsx src/cli.ts run",

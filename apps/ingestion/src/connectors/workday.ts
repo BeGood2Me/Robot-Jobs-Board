@@ -69,6 +69,33 @@ function resolveWorkdayPostedAt(
   return null;
 }
 
+/** List row only (no detail) — used when CI retains jobs after a 429. */
+export function postedAtFromWorkdayListPosting(
+  posting: WorkdayJobListItem,
+  ref = new Date(),
+): Date | null {
+  return resolveWorkdayPostedAt(posting, null, ref);
+}
+
+const WORKDAY_RETRY_STATUS = new Set([429, 503]);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWorkdayWithRetry(url: string, init: RequestInit, attempts = 5): Promise<Response> {
+  let last: Response | null = null;
+  for (let i = 0; i < attempts; i++) {
+    const response = await fetch(url, init);
+    if (!WORKDAY_RETRY_STATUS.has(response.status)) return response;
+    last = response;
+    if (i < attempts - 1) {
+      await sleep(800 * 2 ** i + Math.floor(Math.random() * 400));
+    }
+  }
+  return last ?? fetch(url, init);
+}
+
 export function mapWorkdayJob(
   board: WorkdayBoard,
   posting: WorkdayJobListItem,
@@ -105,7 +132,7 @@ export function mapWorkdayJob(
 }
 
 async function fetchWorkdayPage(board: WorkdayBoard, offset: number, limit: number): Promise<WorkdayJobsResponse> {
-  const response = await fetch(boardUrl(board, '/jobs'), {
+  const response = await fetchWorkdayWithRetry(boardUrl(board, '/jobs'), {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ appliedFacets: {}, limit, offset, searchText: '' }),
@@ -117,14 +144,15 @@ async function fetchWorkdayPage(board: WorkdayBoard, offset: number, limit: numb
 }
 
 async function fetchWorkdayDetail(board: WorkdayBoard, externalPath: string): Promise<WorkdayJobDetail | null> {
-  const response = await fetch(boardUrl(board, externalPath), {
+  const response = await fetchWorkdayWithRetry(boardUrl(board, externalPath), {
     headers: { Accept: 'application/json' },
   });
   if (!response.ok) return null;
   return (await response.json()) as WorkdayJobDetail;
 }
 
-export async function fetchWorkdayJobs(board: WorkdayBoard): Promise<NormalizedJob[]> {
+/** Workday list API only (cheap). Enough to backfill postedOn when full ingest hits 429. */
+export async function fetchWorkdayJobList(board: WorkdayBoard): Promise<WorkdayJobListItem[]> {
   const limit = 20;
   let offset = 0;
   const postings: WorkdayJobListItem[] = [];
@@ -137,10 +165,17 @@ export async function fetchWorkdayJobs(board: WorkdayBoard): Promise<NormalizedJ
     if (batch.length === 0 || offset >= (page.total ?? offset)) break;
   }
 
+  return postings;
+}
+
+export async function fetchWorkdayJobs(board: WorkdayBoard): Promise<NormalizedJob[]> {
+  const postings = await fetchWorkdayJobList(board);
+
   const mapped: NormalizedJob[] = [];
   for (const posting of postings) {
     const detail = await fetchWorkdayDetail(board, posting.externalPath);
     mapped.push(mapWorkdayJob(board, posting, detail));
+    await sleep(75);
   }
   return mapped;
 }
