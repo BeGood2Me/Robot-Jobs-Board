@@ -478,21 +478,6 @@ export const seedCompanies: SeedCompany[] = [
     },
   },
   {
-    name: 'AutoStore',
-    slug: 'autostore',
-    website: 'https://www.autostoresystem.com',
-    description: 'AutoStore builds cube storage robots and software for dense warehouse fulfillment.',
-    seoIntro:
-      'AutoStore jobs and careers span warehouse robotics, electronics, product, and deployment roles in Norway, the US, and Europe. Browse live AutoStore openings aggregated on Robot Jobs Board from their public Workday careers board.',
-    sourceSystem: SourceSystem.workday,
-    sourceIdentifier: 'autostore',
-    config: {
-      host: 'autostore.wd3.myworkdayjobs.com',
-      tenant: 'autostore',
-      site: 'autostore',
-    },
-  },
-  {
     name: 'Exotec',
     slug: 'exotec',
     website: 'https://www.exotec.com',
