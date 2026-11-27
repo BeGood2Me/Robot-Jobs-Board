@@ -83,6 +83,16 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function retryAfterMs(response: Response): number | null {
+  const header = response.headers.get('retry-after');
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(120_000, seconds * 1000);
+  const until = Date.parse(header);
+  if (Number.isFinite(until)) return Math.min(120_000, Math.max(0, until - Date.now()));
+  return null;
+}
+
 async function fetchWorkdayWithRetry(url: string, init: RequestInit, attempts = 5): Promise<Response> {
   let last: Response | null = null;
   for (let i = 0; i < attempts; i++) {
@@ -90,7 +100,9 @@ async function fetchWorkdayWithRetry(url: string, init: RequestInit, attempts = 
     if (!WORKDAY_RETRY_STATUS.has(response.status)) return response;
     last = response;
     if (i < attempts - 1) {
-      await sleep(800 * 2 ** i + Math.floor(Math.random() * 400));
+      const fromHeader = retryAfterMs(response);
+      const backoff = fromHeader ?? 800 * 2 ** i + Math.floor(Math.random() * 400);
+      await sleep(backoff);
     }
   }
   return last ?? fetch(url, init);
@@ -131,12 +143,21 @@ export function mapWorkdayJob(
   };
 }
 
-async function fetchWorkdayPage(board: WorkdayBoard, offset: number, limit: number): Promise<WorkdayJobsResponse> {
-  const response = await fetchWorkdayWithRetry(boardUrl(board, '/jobs'), {
-    method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ appliedFacets: {}, limit, offset, searchText: '' }),
-  });
+async function fetchWorkdayPage(
+  board: WorkdayBoard,
+  offset: number,
+  limit: number,
+  listAttempts = 5,
+): Promise<WorkdayJobsResponse> {
+  const response = await fetchWorkdayWithRetry(
+    boardUrl(board, '/jobs'),
+    {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appliedFacets: {}, limit, offset, searchText: '' }),
+    },
+    listAttempts,
+  );
   if (!response.ok) {
     throw new Error(`Workday list failed for ${board.site}: ${response.status} ${response.statusText}`);
   }
@@ -152,13 +173,17 @@ export async function fetchWorkdayDetail(board: WorkdayBoard, externalPath: stri
 }
 
 /** Workday list API only (cheap). Enough to backfill postedOn when full ingest hits 429. */
-export async function fetchWorkdayJobList(board: WorkdayBoard): Promise<WorkdayJobListItem[]> {
+export async function fetchWorkdayJobList(
+  board: WorkdayBoard,
+  options?: { listAttempts?: number },
+): Promise<WorkdayJobListItem[]> {
+  const listAttempts = options?.listAttempts ?? 5;
   const limit = 20;
   let offset = 0;
   const postings: WorkdayJobListItem[] = [];
 
   for (;;) {
-    const page = await fetchWorkdayPage(board, offset, limit);
+    const page = await fetchWorkdayPage(board, offset, limit, listAttempts);
     const batch = page.jobPostings ?? [];
     postings.push(...batch);
     offset += batch.length;

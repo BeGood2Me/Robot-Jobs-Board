@@ -40,6 +40,67 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function workdayPostedCacheKey(companySlug: string, externalId: string): string {
+  return `${companySlug}:${externalId}`;
+}
+
+function applyWorkdayPostedAtPrimed(jobs: SnapshotJob[], primed: Map<string, string>): SnapshotJob[] {
+  if (!primed.size) return jobs;
+  return jobs.map((job) => {
+    if (job.postedAt || job.sourceSystem !== 'workday') return job;
+    const iso = primed.get(workdayPostedCacheKey(job.company.slug, job.externalId));
+    return iso ? { ...job, postedAt: iso } : job;
+  });
+}
+
+/** Before other ATS pulls — GHA gets 429 on Workday late in the export run. */
+async function primeWorkdayPostedAtFromPrevious(
+  previous: PublicBoardSnapshot | null,
+): Promise<Map<string, string>> {
+  const primed = new Map<string, string>();
+  if (!previous) return primed;
+
+  const ref = new Date();
+  for (const company of seedCompanies) {
+    const board = workdayBoardFromCompany(company);
+    if (!board) continue;
+    const slug = company.slug;
+    if (!previous.jobs.some((job) => job.company.slug === slug && job.sourceSystem === 'workday' && !job.postedAt)) {
+      continue;
+    }
+
+    try {
+      const list = await fetchWorkdayJobList(board, { listAttempts: 12 });
+      for (const posting of list) {
+        const reqId = posting.bulletFields?.[0];
+        if (!reqId) continue;
+        const posted = postedAtFromWorkdayListPosting(posting, ref);
+        if (posted) primed.set(workdayPostedCacheKey(slug, reqId), posted.toISOString());
+      }
+      console.log(
+        JSON.stringify({
+          event: 'snapshot.workday.prime',
+          company: company.name,
+          listRows: list.length,
+          cached: [...primed.keys()].filter((k) => k.startsWith(`${slug}:`)).length,
+        }),
+      );
+    } catch (error) {
+      console.warn(
+        JSON.stringify({
+          event: 'snapshot.workday.prime.error',
+          company: company.name,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+
+    await sleep(2500);
+  }
+
+  return primed;
+}
+
 function workdaySnapshotNeedsBackfill(job: SnapshotJob, companySlug: string): boolean {
   if (job.company.slug !== companySlug || job.sourceSystem !== 'workday') return false;
   return !job.postedAt || !(job.descriptionPlain?.trim());
@@ -60,7 +121,7 @@ async function backfillWorkdaySnapshotJobs(jobs: SnapshotJob[]): Promise<Snapsho
     if (!next.some((job) => workdaySnapshotNeedsBackfill(job, slug))) continue;
 
     try {
-      const list = await fetchWorkdayJobList(board);
+      const list = await fetchWorkdayJobList(board, { listAttempts: 12 });
       const byReq = new Map<string, (typeof list)[number]>();
       for (const posting of list) {
         const reqId = posting.bulletFields?.[0];
@@ -249,6 +310,7 @@ function toSnapshotJob(
   taxonomy: ReturnType<typeof buildTaxonomy>,
   previousSlugById: Map<string, string>,
   previousPostedByJobId: Map<string, string | null>,
+  workdayPostedAtPrimed: Map<string, string>,
 ): SnapshotJob {
   const classification = classifier.classify({
     title: job.title,
@@ -260,7 +322,11 @@ function toSnapshotJob(
 
   const id = stableEntityId('job', `${job.sourceSystem}:${job.externalId}`);
   const now = new Date().toISOString();
-  const postedAt = job.postedAt?.toISOString() ?? previousPostedByJobId.get(id) ?? null;
+  const postedAt =
+    job.postedAt?.toISOString() ??
+    workdayPostedAtPrimed.get(workdayPostedCacheKey(company.slug, job.externalId)) ??
+    previousPostedByJobId.get(id) ??
+    null;
   return {
     id,
     slug: previousSlugById.get(id) ?? slugify(job.title),
@@ -403,6 +469,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
   for (const job of previous?.jobs ?? []) {
     previousCountByCompany.set(job.company.slug, (previousCountByCompany.get(job.company.slug) ?? 0) + 1);
   }
+  const workdayPostedAtPrimed = await primeWorkdayPostedAtFromPrevious(previous);
   const taxonomy = buildTaxonomy();
   let jobs: SnapshotJob[] = [];
   const seen = new Set<string>();
@@ -464,7 +531,9 @@ export async function exportPublicSnapshotFromFeeds(options: {
       for (const job of capped) {
         const key = `${job.sourceSystem}:${job.externalId}`;
         seen.add(key);
-        jobs.push(toSnapshotJob(company, companyId, job, taxonomy, previousSlugById, previousPostedByJobId));
+        jobs.push(
+          toSnapshotJob(company, companyId, job, taxonomy, previousSlugById, previousPostedByJobId, workdayPostedAtPrimed),
+        );
       }
     } catch (error) {
       const carried = capJobsPerCompany(carryForwardCompanyJobs(previous, company.slug, options.outDir));
@@ -524,6 +593,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     );
   }
 
+  jobs = applyWorkdayPostedAtPrimed(jobs, workdayPostedAtPrimed);
   jobs = await backfillWorkdaySnapshotJobs(jobs);
   jobs = await mergeManualFeaturedJobsIntoListLive(jobs);
 

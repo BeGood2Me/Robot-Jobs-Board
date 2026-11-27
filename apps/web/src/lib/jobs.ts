@@ -17,6 +17,7 @@ import {
 import { type JobFilters } from './job-filter-utils';
 import { loadJobBody, loadPublicSnapshot } from './snapshot/load';
 import { PAGE_SIZE, PUBLIC_REVALIDATE_SECONDS } from './site';
+import { applyWorkdayPostedOverlay } from './workday-posted-overlay';
 
 export type { JobFilters } from './job-filter-utils';
 export { countActiveFilters, filtersFromSearchParams, jobBoardHref } from './job-filter-utils';
@@ -349,9 +350,10 @@ export async function searchJobs(filters: JobFilters) {
     const withBoosts = applyFeaturedBoosts(snapshot.jobs, boosts);
     const merged = mergeFeaturedIntoJobs(withBoosts, featured);
     const result = searchJobsFromSnapshot(merged, filters, PAGE_SIZE);
+    const withDates = await applyWorkdayPostedOverlay(result.jobs);
     return {
       ...result,
-      jobs: result.jobs.map((job) => reviveJobDates(job)) as JobCardData[],
+      jobs: withDates.map((job) => reviveJobDates(job)) as JobCardData[],
     };
   }
 
@@ -853,9 +855,11 @@ export async function getCompanyJobsPage(companyId: string, requestedPage: numbe
     const jobs = sortJobsNewest(filtered);
     const total = jobs.length;
     const skip = (page - 1) * PAGE_SIZE;
+    const pageJobs = jobs.slice(skip, skip + PAGE_SIZE);
+    const withDates = await applyWorkdayPostedOverlay(pageJobs);
     return {
       total,
-      jobs: jobs.slice(skip, skip + PAGE_SIZE).map((job) => reviveJobDates(job)) as JobCardData[],
+      jobs: withDates.map((job) => reviveJobDates(job)) as JobCardData[],
     };
   }
 
