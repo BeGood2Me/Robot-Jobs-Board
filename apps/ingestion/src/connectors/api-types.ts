@@ -119,6 +119,7 @@ export type WorkdayJobListItem = {
   externalPath: string;
   locationsText?: string | null;
   bulletFields?: string[] | null;
+  postedOn?: string | null;
 };
 
 export type WorkdayJobsResponse = {

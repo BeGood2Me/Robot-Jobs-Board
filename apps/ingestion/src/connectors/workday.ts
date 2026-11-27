@@ -24,6 +24,51 @@ function locationFrom(posting: WorkdayJobListItem, detail?: WorkdayJobDetail | n
   return parts.join(', ');
 }
 
+const WORKDAY_DAY_MS = 86_400_000;
+
+/** startDate (YYYY-MM-DD), ISO timestamps, or Workday list/detail strings like "Posted 4 Days Ago". */
+export function parseWorkdayPostedOn(raw: string | null | undefined, ref = new Date()): Date | null {
+  if (!raw?.trim()) return null;
+  const text = raw.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+    const iso = text.length === 10 ? `${text}T12:00:00.000Z` : text;
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const lower = text.toLowerCase();
+  if (lower === 'posted today') return new Date(ref);
+  if (lower === 'posted yesterday') return new Date(ref.getTime() - WORKDAY_DAY_MS);
+
+  const plusMatch = lower.match(/^posted\s+(\d+)\+\s*days?\s+ago$/);
+  if (plusMatch) {
+    const days = Number(plusMatch[1]);
+    if (Number.isFinite(days)) return new Date(ref.getTime() - days * WORKDAY_DAY_MS);
+  }
+
+  const daysMatch = lower.match(/^posted\s+(\d+)\s*days?\s+ago$/);
+  if (daysMatch) {
+    const days = Number(daysMatch[1]);
+    if (Number.isFinite(days)) return new Date(ref.getTime() - days * WORKDAY_DAY_MS);
+  }
+
+  const d = new Date(text);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function resolveWorkdayPostedAt(
+  posting: WorkdayJobListItem,
+  info?: WorkdayJobDetail['jobPostingInfo'] | null | undefined,
+  ref = new Date(),
+): Date | null {
+  for (const raw of [info?.startDate, info?.postedOn, posting.postedOn]) {
+    const parsed = parseWorkdayPostedOn(raw, ref);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
 export function mapWorkdayJob(
   board: WorkdayBoard,
   posting: WorkdayJobListItem,
@@ -37,8 +82,7 @@ export function mapWorkdayJob(
     parsed.country = countryCode.toUpperCase() === 'US' ? 'United States' : parsed.country;
     if (countryCode.toUpperCase() === 'GB') parsed.country = 'United Kingdom';
   }
-  const postedRaw = info?.startDate ?? info?.postedOn;
-  const postedAt = postedRaw && !/^posted/i.test(postedRaw) ? new Date(postedRaw) : null;
+  const postedAt = resolveWorkdayPostedAt(posting, info);
 
   return {
     externalId: info?.jobReqId ?? posting.bulletFields?.[0] ?? posting.externalPath,
@@ -56,7 +100,7 @@ export function mapWorkdayJob(
     employmentType: mapEmployment(info?.timeType),
     department: null,
     compensationText: null,
-    postedAt: postedAt && !Number.isNaN(postedAt.getTime()) ? postedAt : null,
+    postedAt,
   };
 }
 

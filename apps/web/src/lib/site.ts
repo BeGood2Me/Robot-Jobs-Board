@@ -25,6 +25,7 @@ export function slugify(input: string, maxLength = 80): string {
 export function formatPosted(date: Date | string | null | undefined): string {
   if (!date) return 'Date not listed';
   const value = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(value.getTime())) return 'Date not listed';
   const delta = Date.now() - value.getTime();
   const days = Math.floor(delta / 86_400_000);
   if (days <= 0) return 'Posted today';

@@ -140,6 +140,7 @@ function toSnapshotJob(
   job: Awaited<ReturnType<typeof jobsForFeed>>[number],
   taxonomy: ReturnType<typeof buildTaxonomy>,
   previousSlugById: Map<string, string>,
+  previousPostedByJobId: Map<string, string | null>,
 ): SnapshotJob {
   const classification = classifier.classify({
     title: job.title,
@@ -151,6 +152,7 @@ function toSnapshotJob(
 
   const id = stableEntityId('job', `${job.sourceSystem}:${job.externalId}`);
   const now = new Date().toISOString();
+  const postedAt = job.postedAt?.toISOString() ?? previousPostedByJobId.get(id) ?? null;
   return {
     id,
     slug: previousSlugById.get(id) ?? slugify(job.title),
@@ -167,7 +169,7 @@ function toSnapshotJob(
     employmentType: job.employmentType,
     department: job.department,
     compensationText: job.compensationText,
-    postedAt: job.postedAt?.toISOString() ?? null,
+    postedAt,
     expiresAt: null,
     createdAt: now,
     isHidden: false,
@@ -286,6 +288,9 @@ export async function exportPublicSnapshotFromFeeds(options: {
   const previousSlugById = new Map(
     (previous?.jobs ?? []).map((job) => [job.id, job.slug] as const),
   );
+  const previousPostedByJobId = new Map(
+    (previous?.jobs ?? []).map((job) => [job.id, job.postedAt] as const),
+  );
   const previousCountByCompany = new Map<string, number>();
   for (const job of previous?.jobs ?? []) {
     previousCountByCompany.set(job.company.slug, (previousCountByCompany.get(job.company.slug) ?? 0) + 1);
@@ -351,7 +356,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
       for (const job of capped) {
         const key = `${job.sourceSystem}:${job.externalId}`;
         seen.add(key);
-        jobs.push(toSnapshotJob(company, companyId, job, taxonomy, previousSlugById));
+        jobs.push(toSnapshotJob(company, companyId, job, taxonomy, previousSlugById, previousPostedByJobId));
       }
     } catch (error) {
       const carried = capJobsPerCompany(carryForwardCompanyJobs(previous, company.slug, options.outDir));

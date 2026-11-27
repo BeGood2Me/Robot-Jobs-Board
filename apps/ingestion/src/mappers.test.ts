@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mapAshbyJob } from './connectors/ashby';
 import { mapGreenhouseJob } from './connectors/greenhouse';
 import { mapLeverJob } from './connectors/lever';
@@ -187,6 +187,32 @@ describe('ATS mappers', () => {
     expect(job.externalId).toBe('R1');
     expect(job.country).toBe('United States');
     expect(job.descriptionPlain).toContain('Spot');
+  });
+
+  it('maps Workday postedOn from list when detail is missing', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-27T12:00:00.000Z'));
+    const job = mapWorkdayJob(
+      { host: 'autostore.wd3.myworkdayjobs.com', tenant: 'autostore', site: 'autostore' },
+      {
+        title: 'Principal Architect',
+        externalPath: '/job/Atlanta-GA-USA/Principal-Architect_JR102461',
+        postedOn: 'Posted 4 Days Ago',
+        bulletFields: ['JR102461'],
+      },
+      null,
+    );
+    expect(job.postedAt?.toISOString().slice(0, 10)).toBe('2026-11-23');
+    vi.useRealTimers();
+  });
+
+  it('prefers Workday startDate over relative postedOn', () => {
+    const job = mapWorkdayJob(
+      { host: 'autostore.wd3.myworkdayjobs.com', tenant: 'autostore', site: 'autostore' },
+      { title: 'Structural Engineer', externalPath: '/job/x', postedOn: 'Posted 2 Days Ago' },
+      { jobPostingInfo: { startDate: '2026-10-20', postedOn: 'Posted 30+ Days Ago', jobReqId: 'JR1' } },
+    );
+    expect(job.postedAt?.toISOString().slice(0, 10)).toBe('2026-10-20');
   });
 
   it('maps Workable widget and detail fields', () => {
