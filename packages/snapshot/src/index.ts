@@ -1,4 +1,9 @@
 export * from './types';
+export {
+  BLOCKED_COMPANY_SLUGS,
+  stripBlockedCompanies,
+  stripBlockedCompanyRows,
+} from './blocked-companies';
 export * from './filter';
 export * from './featured-placement';
 export {

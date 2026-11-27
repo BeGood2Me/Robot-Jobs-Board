@@ -7,6 +7,8 @@ import {
   bodyShardPath,
   resolveSnapshotBaseUrl,
   SNAPSHOT_BODIES_FILE,
+  stripBlockedCompanies,
+  stripBlockedCompanyRows,
 } from '@robot-jobs-board/snapshot';
 import type { PublicBoardSnapshot, SnapshotJobBody } from '@robot-jobs-board/snapshot';
 import { applyLiveManualFeaturedToSnapshot } from '@/lib/manual-featured-board';
@@ -159,7 +161,12 @@ export const loadPublicSnapshot = cache(async (): Promise<PublicBoardSnapshot | 
   }
 
   if (!base) return null;
-  return applyLiveManualFeaturedToSnapshot(base);
+  const filtered: PublicBoardSnapshot = {
+    ...base,
+    jobs: stripBlockedCompanies(base.jobs),
+    companies: stripBlockedCompanyRows(base.companies),
+  };
+  return applyLiveManualFeaturedToSnapshot(filtered);
 });
 
 async function loadBodyFromShard(id: string): Promise<SnapshotJobBody | null> {

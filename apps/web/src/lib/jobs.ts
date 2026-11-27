@@ -1,5 +1,6 @@
 import type { EmploymentType, Prisma, WorkplaceType } from '@robot-jobs-board/db';
 import {
+  BLOCKED_COMPANY_SLUGS,
   buildCountryFacets,
   relatedJobsFromSnapshot,
   searchJobsFromSnapshot,
@@ -814,6 +815,7 @@ const loadCompanyBySlugCached = unstable_cache(
 );
 
 export const getCompanyBySlug = cache(async (slug: string) => {
+  if (BLOCKED_COMPANY_SLUGS.has(slug)) return null;
   const snapshot = await loadPublicSnapshot();
   if (snapshot) {
     const company = snapshot.companies.find((item) => item.slug === slug);

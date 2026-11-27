@@ -22,6 +22,7 @@ import type { PublicBoardSnapshot, SnapshotGoneJob, SnapshotJob, SnapshotJobBody
 import { SNAPSHOT_BODIES_FILE, SNAPSHOT_JOBS_DIR } from './types';
 import { writePublicSnapshotFiles } from './write-snapshot';
 import { mergeManualFeaturedJobsIntoListLive } from './manual-featured-live';
+import { stripBlockedCompanies, stripBlockedCompanyRows } from './blocked-companies';
 
 const classifier = new RuleBasedClassifier();
 const MAX_GONE_JOBS = 3000;
@@ -596,6 +597,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
   jobs = applyWorkdayPostedAtPrimed(jobs, workdayPostedAtPrimed);
   jobs = await backfillWorkdaySnapshotJobs(jobs);
   jobs = await mergeManualFeaturedJobsIntoListLive(jobs);
+  jobs = stripBlockedCompanies(jobs);
 
   jobs.sort((a, b) => {
     const aFeatured = a.featuredUntil && Date.parse(a.featuredUntil) > Date.now();
@@ -666,6 +668,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
         openJobCount: companyCounts.get(company.slug) ?? 0,
       })),
   ];
+  const companiesListed = stripBlockedCompanyRows(companies);
 
   const snapshot: PublicBoardSnapshot = {
     version: 1,
@@ -673,7 +676,7 @@ export async function exportPublicSnapshotFromFeeds(options: {
     siteUrl: site,
     jobs,
     goneJobs: buildGoneJobs(previous, jobs, retainedCompanySlugs),
-    companies,
+    companies: companiesListed,
     domains: taxonomy.domains.map((domain) => ({
       ...domain,
       openJobCount: domainCounts.get(domain.id) ?? 0,
