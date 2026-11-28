@@ -35,13 +35,18 @@ export const jobCardSelect = {
   employmentType: true,
   compensationText: true,
   postedAt: true,
+  createdAt: true,
   featuredUntil: true,
   featuredAt: true,
   company: { select: { name: true, slug: true } },
 } satisfies Prisma.JobSelect;
 
-export type JobCardData = Prisma.JobGetPayload<{ select: typeof jobCardSelect }> & {
+export type JobCardData = Omit<
+  Prisma.JobGetPayload<{ select: typeof jobCardSelect }>,
+  'createdAt'
+> & {
   featuredSource?: FeaturedSource | null;
+  createdAt?: Date | string | null;
 };
 
 /** Explicit columns for detail pages — avoids transferring unused Job/Company TEXT. */
@@ -660,7 +665,7 @@ export async function relatedJobs(
     .join(',');
   const jobs = await withDb(
     () => loadRelatedJobsCached(job.id, job.companyId, job.city, domainIdsKey, take),
-    [] as JobCardData[],
+    [],
   );
   return jobs.map((item) => reviveJobDates(item)) as JobCardData[];
 }
@@ -862,10 +867,14 @@ export async function getCompanyJobsPage(companyId: string, requestedPage: numbe
     };
   }
 
-  return withDb(
+  const result = await withDb(
     () => loadCompanyJobsPageCached(companyId, page),
-    { total: 0, jobs: [] as JobCardData[] },
+    { total: 0, jobs: [] },
   );
+  return {
+    total: result.total,
+    jobs: result.jobs.map((job) => reviveJobDates(job)) as JobCardData[],
+  };
 }
 
 export type RelatedCompany = {

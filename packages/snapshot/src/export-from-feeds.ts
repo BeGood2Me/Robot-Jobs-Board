@@ -311,6 +311,7 @@ function toSnapshotJob(
   taxonomy: ReturnType<typeof buildTaxonomy>,
   previousSlugById: Map<string, string>,
   previousPostedByJobId: Map<string, string | null>,
+  previousCreatedByJobId: Map<string, string>,
   workdayPostedAtPrimed: Map<string, string>,
 ): SnapshotJob {
   const classification = classifier.classify({
@@ -346,7 +347,7 @@ function toSnapshotJob(
     compensationText: job.compensationText,
     postedAt,
     expiresAt: null,
-    createdAt: now,
+    createdAt: previousCreatedByJobId.get(id) ?? now,
     isHidden: false,
     isActive: true,
     sourceSystem: job.sourceSystem,
@@ -466,6 +467,9 @@ export async function exportPublicSnapshotFromFeeds(options: {
   const previousPostedByJobId = new Map(
     (previous?.jobs ?? []).map((job) => [job.id, job.postedAt] as const),
   );
+  const previousCreatedByJobId = new Map(
+    (previous?.jobs ?? []).map((job) => [job.id, job.createdAt] as const),
+  );
   const previousCountByCompany = new Map<string, number>();
   for (const job of previous?.jobs ?? []) {
     previousCountByCompany.set(job.company.slug, (previousCountByCompany.get(job.company.slug) ?? 0) + 1);
@@ -533,7 +537,16 @@ export async function exportPublicSnapshotFromFeeds(options: {
         const key = `${job.sourceSystem}:${job.externalId}`;
         seen.add(key);
         jobs.push(
-          toSnapshotJob(company, companyId, job, taxonomy, previousSlugById, previousPostedByJobId, workdayPostedAtPrimed),
+          toSnapshotJob(
+            company,
+            companyId,
+            job,
+            taxonomy,
+            previousSlugById,
+            previousPostedByJobId,
+            previousCreatedByJobId,
+            workdayPostedAtPrimed,
+          ),
         );
       }
     } catch (error) {

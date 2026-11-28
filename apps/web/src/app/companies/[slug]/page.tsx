@@ -12,7 +12,7 @@ import { companyPageJsonLd } from '@/lib/jsonld';
 import { companyPageDescription, companyPageIntro, companyPageTitle } from '@/lib/seo';
 import { companyStaticParams } from '@/lib/snapshot/static-params';
 import { mergeRssAlternates } from '@/lib/rss/metadata';
-import { INDEX_JOB_THRESHOLD, formatPosted, PAGE_SIZE } from '@/lib/site';
+import { INDEX_JOB_THRESHOLD, formatJobListedAt, PAGE_SIZE } from '@/lib/site';
 
 export const revalidate = 86400;
 /** New companies appear via ingest/CDN without a rebuild — allow slugs beyond build-time static params. */
@@ -81,7 +81,7 @@ export default async function CompanyPage({
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requestedPage, pages);
-  const newestPosted = jobs[0]?.postedAt ?? null;
+  const newestListed = jobs[0] ?? null;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
@@ -121,7 +121,7 @@ export default async function CompanyPage({
       </h1>
       <p className="mt-3 font-mono text-sm text-muted">
         {total < 1 ? 'No open roles' : total === 1 ? '1 open role' : `${total} open roles`}
-        {newestPosted ? ` · ${formatPosted(newestPosted)}` : null}
+        {newestListed ? ` · ${formatJobListedAt(newestListed)}` : null}
       </p>
       {company.website ? (
         <a

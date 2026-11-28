@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Clock, MapPin } from '@phosphor-icons/react/ssr';
 import { isJobFeatured, isPaidFeatured } from '@/lib/is-featured';
 import type { JobCardData } from '@/lib/jobs';
-import { employmentLabel, formatPosted } from '@/lib/site';
+import { employmentLabel, formatJobListedAt } from '@/lib/site';
 import { JobListingBadge } from './job-listing-badge';
 import { SaveJobButton } from './save-job-button';
 
@@ -70,7 +70,7 @@ export function JobCard({ job }: { job: JobCardData }) {
               View job
             </Link>
           </div>
-          <p className="font-mono text-xs text-muted md:text-right">{formatPosted(job.postedAt)}</p>
+          <p className="font-mono text-xs text-muted md:text-right">{formatJobListedAt(job)}</p>
         </div>
       </div>
     </article>

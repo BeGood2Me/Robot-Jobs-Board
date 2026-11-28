@@ -14,7 +14,7 @@ import {
   isPaidFeatured,
   isPartnerFeatured,
 } from '@/lib/is-featured';
-import { employmentLabel, formatPosted, seniorityLabel, workplaceLabel } from '@/lib/site';
+import { employmentLabel, formatJobListedAt, seniorityLabel, workplaceLabel } from '@/lib/site';
 import { JobListingBadge } from '@/components/job-listing-badge';
 import { PartnerSponsoredDisclosure } from '@/components/partner-sponsored-disclosure';
 
@@ -119,7 +119,7 @@ export default async function JobDetailPage({ params }: PageProps<'/jobs/[id]/[s
       {job.compensationText ? (
         <p className="mt-2 text-base font-medium text-foreground">{job.compensationText}</p>
       ) : null}
-      <p className="mt-2 font-mono text-xs text-muted">{formatPosted(job.postedAt)}</p>
+      <p className="mt-2 font-mono text-xs text-muted">{formatJobListedAt(job)}</p>
       <div className="mt-6 flex flex-wrap gap-2">
         {job.robotDomains.map(({ domain }) => (
           <Link key={domain.id} href={`/robots/${domain.slug}-jobs`} className="rounded-lg bg-chip px-3 py-1 text-sm">

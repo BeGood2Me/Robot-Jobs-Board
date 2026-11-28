@@ -1,4 +1,4 @@
-import { employmentLabel, formatPosted, workplaceLabel } from './site';
+import { employmentLabel, formatJobListedAt, workplaceLabel } from './site';
 
 type JobSeoFields = {
   id: string;
@@ -10,6 +10,7 @@ type JobSeoFields = {
   isRemote: boolean;
   employmentType: string;
   postedAt?: Date | string | null;
+  createdAt?: Date | string | null;
   company: { name: string };
 };
 
@@ -27,7 +28,7 @@ export function jobPageTitle(job: JobSeoFields): string {
 export function jobPageDescription(job: JobSeoFields): string {
   const workplace = workplaceLabel(job.workplaceType, job.isRemote);
   const employment = employmentLabel(job.employmentType);
-  const posted = formatPosted(job.postedAt);
+  const posted = formatJobListedAt(job);
   const lead = `${employment} · ${workplace} · ${posted}. Part of ${job.company.name} jobs on Robot Jobs Board — apply on the original posting.`;
   const snippet = job.descriptionPlain.replace(/\s+/g, ' ').trim().slice(0, 80);
   return `${lead} ${snippet}`.slice(0, 160);

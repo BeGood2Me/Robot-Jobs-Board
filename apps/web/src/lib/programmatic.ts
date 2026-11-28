@@ -389,10 +389,15 @@ export async function loadListing(filter: ListingFilter, cacheKey: string) {
     const count = countListingJobs(snapshot.jobs, filter);
     return { jobs: jobs as JobCardData[], total: count, indexable: count >= INDEX_JOB_THRESHOLD };
   }
-  return withDb(
+  const result = await withDb(
     () => loadListingCached(cacheKey, JSON.stringify(filter)),
-    { jobs: [] as JobCardData[], total: 0, indexable: false },
+    { jobs: [], total: 0, indexable: false },
   );
+  return {
+    jobs: result.jobs as JobCardData[],
+    total: result.total,
+    indexable: result.indexable,
+  };
 }
 
 const listingIndexableCached = unstable_cache(

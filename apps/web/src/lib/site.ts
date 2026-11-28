@@ -22,6 +22,14 @@ export function slugify(input: string, maxLength = 80): string {
   return slug || 'item';
 }
 
+/** Employer posted date when known; otherwise when the job first appeared on RJB (`createdAt`). */
+export function formatJobListedAt(job: {
+  postedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+}): string {
+  return formatPosted(job.postedAt ?? job.createdAt);
+}
+
 export function formatPosted(date: Date | string | null | undefined): string {
   if (!date) return 'Date not listed';
   const value = typeof date === 'string' ? new Date(date) : date;
